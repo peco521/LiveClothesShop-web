@@ -1,0 +1,17 @@
+:host { display: block; }
+.auth-layout { display: grid; grid-template-columns: minmax(280px, .9fr) minmax(0, 1.1fr); max-width: 1160px; margin: 0 auto; border: 1px solid var(--line); border-radius: 24px; overflow: hidden; background: var(--paper); box-shadow: 0 18px 70px #30281e08; }
+.editorial { padding: 38px; background: #e9e5db; display: flex; flex-direction: column; justify-content: center; }
+.edition, .eyebrow { font-size: .68rem; letter-spacing: .18em; font-weight: 700; }
+.fashion-art { position: relative; height: 280px; display: grid; place-items: center; margin: 18px 0 32px; }
+.arch { width: 210px; height: 265px; background: #d7cebe; border-radius: 110px 110px 5px 5px; transform: rotate(-9deg); }
+.garment { position: absolute; height: 255px; color: #7c5f46; filter: drop-shadow(8px 12px 5px #49332620); transform: rotate(7deg); }
+.art-caption { position: absolute; bottom: -8px; right: 0; background: #fffdf7; padding: 12px 17px; font-family: Georgia, serif; font-style: italic; transform: rotate(-6deg); }
+h2 { font-size: clamp(2.5rem, 4vw, 3.7rem); line-height: 1.08; letter-spacing: -.05em; margin: 0 0 20px; font-weight: 500; }
+h2 em { font-family: Georgia, serif; font-weight: 400; }
+.editorial > p:not(.edition) { color: #55554b; max-width: 300px; line-height: 1.7; }
+.editorial-footer { margin-top: 36px; font-size: .7rem; display: flex; gap: 12px; align-items: center; color: #5c5c51; }
+.form-panel { padding: clamp(25px, 4vw, 52px); min-width: 0; }
+.eyebrow { color: var(--accent); margin: 0 0 14px; }
+h1 { margin: 0; font-size: clamp(1.9rem, 3vw, 2.5rem); letter-spacing: -.04em; line-height: 1.15; }
+.description { color: var(--muted); line-height: 1.6; margin: 15px 0 30px; }
+@media (max-width: 760px) { .auth-layout { grid-template-columns: 1fr; } .editorial { display: none; } .form-panel { padding: 28px 22px; } }

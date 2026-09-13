@@ -1,0 +1,49 @@
+<app-auth-layout title="Crea tu cuenta" description="Comienza tu experiencia en LiveClothesShop. Todos los campos son obligatorios.">
+  @if (success()) {
+    <div class="notice success" role="status">
+      <h2>Tu cuenta está lista</h2>
+      <p>Te has registrado correctamente. Inicia sesión para acceder a tu cuenta.</p>
+    </div>
+    <a class="button primary" routerLink="/login">Continuar a iniciar sesión <span aria-hidden="true">→</span></a>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="busy()">
+      <fieldset [disabled]="busy()">
+        <legend class="visually-hidden">Datos de registro de Cliente</legend>
+        <div class="form-grid">
+          @for (field of fields; track field.name) {
+            <div class="field" [class.full-width]="field.name === 'direccion'">
+              <label [for]="field.name">{{ field.label }}</label>
+              <input [id]="field.name" [type]="field.type" [formControlName]="field.name"
+                [attr.autocomplete]="field.autocomplete" [attr.maxlength]="field.max" required
+                [attr.aria-invalid]="form.controls[field.name].touched && form.controls[field.name].invalid"
+                [attr.aria-describedby]="field.name + '-error'" />
+              <app-field-error [control]="form.controls[field.name]" [errorId]="field.name + '-error'" />
+            </div>
+          }
+          <div class="field">
+            <label for="sexo">Sexo</label>
+            <select id="sexo" formControlName="sexo" required aria-describedby="sexo-error"
+              [attr.aria-invalid]="form.controls.sexo.touched && form.controls.sexo.invalid">
+              <option value="" disabled>Selecciona una opción</option>
+              <option value="F">Femenino</option><option value="M">Masculino</option>
+            </select>
+            <app-field-error [control]="form.controls.sexo" errorId="sexo-error" />
+          </div>
+          <div class="field full-width">
+            <label for="contrasena">Contraseña</label>
+            <input id="contrasena" type="password" formControlName="contrasena" autocomplete="new-password"
+              required minlength="12" maxlength="128" aria-describedby="password-help contrasena-error"
+              [attr.aria-invalid]="form.controls.contrasena.touched && form.controls.contrasena.invalid" />
+            <small id="password-help" class="hint">Entre 12 y 128 caracteres. Puedes usar una frase larga.</small>
+            <app-field-error [control]="form.controls.contrasena" errorId="contrasena-error" />
+          </div>
+        </div>
+        @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+        <button class="button primary" type="submit" [disabled]="busy()">
+          {{ busy() ? 'Creando tu cuenta…' : 'Crear cuenta' }} <span aria-hidden="true">→</span>
+        </button>
+      </fieldset>
+    </form>
+    <p class="form-footer">¿Ya tienes cuenta? <a routerLink="/login">Inicia sesión</a></p>
+  }
+</app-auth-layout>

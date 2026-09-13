@@ -1,0 +1,18 @@
+<app-cu07-layout title="Gestionar clientes" [error]="error()">
+  <form [formGroup]="form" (ngSubmit)="aplicar()"><fieldset><legend>Buscar clientes registrados</legend><div class="form-grid">
+    <div class="field"><label for="cliente-buscar">Nombre, apellidos, correo o CI</label><input id="cliente-buscar" formControlName="q" maxlength="100" /></div>
+    <div class="field"><label for="cuenta-filtro">Estado de la cuenta</label><select id="cuenta-filtro" formControlName="activo"><option value="">Todas</option><option value="true">Activa</option><option value="false">Inactiva</option></select></div>
+    <div class="field"><label for="cliente-limite">Resultados por página</label><input id="cliente-limite" type="number" formControlName="limit" min="1" max="100" required /></div>
+  </div><button type="submit">Aplicar filtros</button></fieldset></form>
+  @if (form.touched && form.invalid) { <p class="field-error" role="alert">La búsqueda admite hasta 100 caracteres y el tamaño de página debe ser un entero entre 1 y 100.</p> }
+  @if (busy()) { <p role="status">Cargando clientes…</p> }
+  @if (error()) { <button (click)="load()" [disabled]="busy()">Reintentar</button> }
+  @if (result(); as page) {
+    <p role="status">{{ page.total }} clientes candidatos encontrados.</p>
+    @if (!page.items.length) { <p>No hay clientes en esta página para los filtros aplicados.</p> }
+    @else { <div class="table-scroll"><table><caption class="visually-hidden">Clientes registrados</caption><thead><tr><th>Nombre</th><th>Correo</th><th>Código</th><th>Rol</th><th>Cuenta</th><th>Acciones</th></tr></thead><tbody>
+      @for (user of page.items; track user.idUsuario) { <tr><td>{{ user.nombres }} {{ user.apellidoPat }} {{ user.apellidoMat }}</td><td>{{ user.correo }}</td><td>{{ user.cliente.cod_cl }}</td><td>{{ user.rol.descripcion }}</td><td>{{ user.activo ? 'Activa' : 'Inactiva' }}</td><td><a [routerLink]="['/admin/clientes', user.idUsuario]" [queryParams]="navigationParams">Detalle y cuenta</a> · <a [routerLink]="['/admin/clientes', user.idUsuario, 'editar']" [queryParams]="navigationParams">Editar</a></td></tr> }
+    </tbody></table></div> }
+    <nav class="actions" aria-label="Paginación"><button (click)="pagina(page.offset - page.limit)" [disabled]="busy() || page.offset === 0">Anterior</button><span>Desde {{ page.items.length ? page.offset + 1 : 0 }} · máximo {{ page.limit }} por página</span><button (click)="pagina(page.offset + page.limit)" [disabled]="busy() || page.offset + page.limit >= page.total">Siguiente</button></nav>
+  }
+</app-cu07-layout>

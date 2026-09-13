@@ -1,0 +1,32 @@
+<app-cu05-layout title="Detalle de usuario interno" [error]="error()">
+  @if (loading()) { <p role="status">Cargando detalle…</p> }
+  @if (success()) { <p class="notice success" role="status">{{ success() }}</p> }
+  @if (usuario(); as user) {
+    <dl>
+      <dt>Identificador</dt><dd>{{ user.idUsuario }}</dd><dt>Nombres</dt><dd>{{ user.nombres || 'Sin nombres registrados' }}</dd>
+      <dt>Apellidos</dt><dd>{{ user.apellidoPat }} {{ user.apellidoMat }}</dd><dt>CI</dt><dd>{{ user.ci }}</dd>
+      <dt>Sexo</dt><dd>{{ user.sexo }}</dd><dt>Fecha de nacimiento</dt><dd>{{ user.fechaNac }}</dd>
+      <dt>Correo</dt><dd>{{ user.correo }}</dd><dt>Teléfono</dt><dd>{{ user.telefono }}</dd><dt>Dirección</dt><dd>{{ user.direccion }}</dd>
+      <dt>Tipo</dt><dd>{{ user.tipo === 'E' ? 'Empleado' : 'Administrador' }}</dd><dt>Rol</dt><dd>{{ user.rol.descripcion }} ({{ user.nroRol }})</dd>
+      <dt>Estado</dt><dd>{{ user.activo ? 'Activo' : 'Inactivo' }}</dd>
+      @if (user.empleado; as employee) {
+        <dt>Código de empleado</dt><dd>{{ employee.cod_emp }}</dd><dt>Cargo</dt><dd>{{ employee.cargo }}</dd>
+        <dt>Sucursal</dt><dd>@if (sucursal(); as branch) { {{ branch.nombre }} (#{{ branch.nro }}) — {{ branch.direccion }} · {{ branch.estado }} } @else { Sucursal #{{ employee.nroSuc }}: datos no disponibles. }</dd>
+        <dt>Ciudad</dt><dd>{{ sucursal()?.ciudad?.nombre || 'No disponible' }}</dd>
+      }
+      @if (user.admin; as admin) { <dt>Código de administrador</dt><dd>{{ admin.cod_adm }}</dd> }
+    </dl>
+    <div class="actions">
+      @if (user.tipo === 'E') { <a [routerLink]="['/admin/empleados', user.idUsuario, 'editar']">Editar empleado</a> }
+      <button (click)="confirmar.set(true)" [disabled]="busy() || confirmar()">{{ user.activo ? 'Desactivar usuario' : 'Activar usuario' }}</button>
+    </div>
+    @if (confirmar()) {
+      <div class="notice" role="group" aria-label="Confirmar cambio de estado">
+        <p>¿Confirmas {{ user.activo ? 'desactivar' : 'activar' }} a {{ user.nombres || user.correo }}?</p>
+        @if (user.activo) { <p>Se cerrarán sus sesiones y se invalidarán los enlaces de recuperación pendientes. No se eliminará el usuario.</p> }
+        <button (click)="cambiarEstado()" [disabled]="busy()">{{ busy() ? 'Guardando…' : 'Confirmar' }}</button>
+        <button (click)="confirmar.set(false)" [disabled]="busy()">Cancelar</button>
+      </div>
+    }
+  } @else if (!loading()) { <button (click)="load()">Reintentar</button> }
+</app-cu05-layout>

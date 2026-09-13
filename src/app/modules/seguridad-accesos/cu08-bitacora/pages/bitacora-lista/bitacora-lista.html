@@ -1,0 +1,17 @@
+<app-cu08-layout title="Consultar bitácora" [error]="error()">
+  <app-bitacora-filtros (aplicar)="aplicar($event)" />
+  @if (busy()) { <p role="status">Cargando bitácora…</p> }
+  @if (error()) { <button type="button" class="button" (click)="load()" [disabled]="busy()">Reintentar</button> }
+  @if (result(); as data) {
+    <p role="status">{{ data.total }} registros · orden: fecha descendente, ID descendente.</p>
+    @if (data.items.length === 0) { <p>No hay registros en esta página.</p> }
+    @else {
+      <div class="table-scroll"><table><thead><tr><th>ID</th><th>Fecha UTC (ISO original)</th><th>Acción</th><th>ID del actor</th><th>Consulta</th></tr></thead><tbody>
+      @for (item of data.items; track item.id) {
+        <tr><td>{{ item.id }}</td><td><time [attr.datetime]="item.fecha">{{ item.fecha }}</time></td><td>{{ item.accion ?? 'Acción no reconocida' }}</td><td>{{ item.usuario_id ?? 'Sin identificación registrada' }}</td><td><a [routerLink]="['/admin/bitacora', item.id]">Ver detalle</a></td></tr>
+      }
+      </tbody></table></div>
+    }
+    <nav aria-label="Paginación"><button type="button" (click)="pagina(data.offset - data.limit < 0 ? 0 : data.offset - data.limit)" [disabled]="busy() || data.offset === 0">Anterior</button><button type="button" (click)="pagina(data.offset + data.limit)" [disabled]="busy() || data.offset + data.limit >= data.total">Siguiente</button></nav>
+  }
+</app-cu08-layout>

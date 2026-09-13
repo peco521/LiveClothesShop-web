@@ -1,0 +1,22 @@
+<p>Código de cliente: <strong>{{ cliente().cliente.cod_cl }}</strong> · Rol: <strong>{{ cliente().rol.descripcion }}</strong> ({{ cliente().nroRol }})</p>
+<p>Cuenta: {{ cliente().activo ? 'Activa' : 'Inactiva' }} · Estado del perfil de cliente (solo lectura): {{ cliente().cliente.estado }}</p>
+<p class="privacy-note">El estado del perfil es el valor almacenado y es independiente de la activación de la cuenta. No se modifica desde este formulario.</p>
+<p id="correo-aviso" class="notice">Si cambias el correo, se invalidarán los enlaces de recuperación pendientes. Las sesiones existentes no se revocan por este cambio.</p>
+@if (cliente().nombres === null) { <p>Este registro no tiene nombres guardados. Puedes mantener el campo vacío sin modificarlo.</p> }
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <fieldset [disabled]="busy()"><legend>Datos personales del cliente</legend>
+    <div class="form-grid">
+      @for (field of fields; track field.name) {
+        <div class="field"><label [for]="'cliente-' + field.name">{{ field.label }}</label>
+          <input [id]="'cliente-' + field.name" [type]="field.type" [formControlName]="field.name" [attr.maxlength]="field.max"
+            [attr.aria-invalid]="form.controls[field.name].touched && form.controls[field.name].invalid"
+            [attr.aria-describedby]="'error-' + field.name + (field.name === 'correo' ? ' correo-aviso' : '')" />
+          <app-field-error [control]="form.controls[field.name]" [errorId]="'error-' + field.name" />
+        </div>
+      }
+      <div class="field"><label for="cliente-sexo">Sexo</label><select id="cliente-sexo" formControlName="sexo" aria-describedby="error-sexo"><option value="">Seleccionar</option><option value="M">Masculino</option><option value="F">Femenino</option></select><app-field-error [control]="form.controls.sexo" errorId="error-sexo" /></div>
+    </div>
+    <button type="submit" [disabled]="busy()">{{ busy() ? 'Guardando…' : 'Guardar cambios' }}</button>
+  </fieldset>
+  @if (notice()) { <p role="status">{{ notice() }}</p> }
+</form>

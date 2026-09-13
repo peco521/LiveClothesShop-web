@@ -1,0 +1,69 @@
+<section aria-labelledby="dashboard-title">
+  @if (checking()) {
+    <p class="notice" role="status">Verificando tu sesión…</p>
+  } @else if (error()) {
+    <h1 id="dashboard-title">Panel administrativo</h1>
+    <p class="notice error" role="alert">{{ error() }}</p>
+    <button class="button primary dashboard-action" type="button" (click)="verify()">Volver a verificar</button>
+    <p class="form-footer"><a routerLink="/login">Ir a iniciar sesión</a></p>
+  } @else if (auth.session(); as session) {
+    <p class="eyebrow">LiveClothesShop · Administración</p>
+    <h1 id="dashboard-title">Hola, {{ session.usuario.nombres || 'bienvenido/a' }}</h1>
+    <p class="description">Sesión iniciada correctamente como {{ session.usuario.correo }}.</p>
+    <div class="module-grid">
+      @if (session.permisos.includes('CU05')) {
+        <a class="module-card" routerLink="/admin/usuarios">
+          <span class="module-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false"><path d="M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20"/><circle cx="10" cy="8" r="3"/><path d="M16 11a3 3 0 1 0 0-6M17.5 15.2A3.5 3.5 0 0 1 20 18.5V20"/></svg>
+          </span>
+          <span class="module-name">Usuarios y empleados</span>
+          <span class="module-hint">Gestionar cuentas internas</span>
+        </a>
+      }
+      @if (session.permisos.includes('CU06')) {
+        <a class="module-card" routerLink="/admin/roles">
+          <span class="module-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg>
+          </span>
+          <span class="module-name">Roles y permisos</span>
+          <span class="module-hint">Gestionar accesos</span>
+        </a>
+      }
+      @if (session.permisos.includes('CU07')) {
+        <a class="module-card" routerLink="/admin/clientes">
+          <span class="module-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 20v-1.5A3.5 3.5 0 0 1 7 15h4a3.5 3.5 0 0 1 3.5 3.5V20M16 5v6M13 8h6"/></svg>
+          </span>
+          <span class="module-name">Clientes</span>
+          <span class="module-hint">Gestionar cuentas de clientes</span>
+        </a>
+      }
+      @if (session.permisos.includes('CU08')) {
+        <a class="module-card" routerLink="/admin/bitacora">
+          <span class="module-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+          </span>
+          <span class="module-name">Bitácora</span>
+          <span class="module-hint">Consultar eventos de auditoría</span>
+        </a>
+      }
+      @if (session.permisos.includes('CU09')) {
+        <a class="module-card" routerLink="/admin/sucursales">
+          <span class="module-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false"><path d="M4 10h16l-1-5H5l-1 5Z"/><path d="M5 10v10h14V10M3 10h18M8 20v-5h4v5M8 8V5M12 8V5M16 8V5"/></svg>
+          </span>
+          <span class="module-name">Sucursales y ciudades</span>
+          <span class="module-hint">Gestionar organización</span>
+        </a>
+      }
+    </div>
+    @if (!session.permisos.includes('CU05') && !session.permisos.includes('CU06') && !session.permisos.includes('CU07') && !session.permisos.includes('CU08') && !session.permisos.includes('CU09')) {
+      <p class="notice" role="status">Tu cuenta no tiene módulos administrativos asignados. Si necesitas acceso, contacta a un administrador.</p>
+    }
+    <p class="privacy-note">La visibilidad del menú no sustituye la autorización: cada operación se valida en el backend con tu sesión y tus permisos.</p>
+  } @else {
+    <h1 id="dashboard-title">Panel administrativo</h1>
+    <p class="notice" role="status">Inicia sesión para acceder a tu cuenta.</p>
+    <a class="button primary dashboard-action" routerLink="/login">Iniciar sesión</a>
+  }
+</section>

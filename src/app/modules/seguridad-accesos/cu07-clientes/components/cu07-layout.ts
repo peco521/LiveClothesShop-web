@@ -1,0 +1,21 @@
+import { Component, inject, input } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { clienteNavigationParams } from '../routes/cliente-navigation';
+
+@Component({ selector: 'app-cu07-layout', imports: [RouterLink],
+  template: `<section aria-labelledby="cu07-title">
+    <nav aria-label="Administración"><a routerLink="/acceso">Mi acceso</a> · <a routerLink="/admin/clientes" [queryParams]="navigationParams">Clientes</a></nav>
+    <h1 id="cu07-title">{{ title() }}</h1>
+    @if (error()) { <div class="notice error" role="alert"><p>{{ error() }}</p><a routerLink="/login">Iniciar sesión</a> · <a routerLink="/acceso">Volver a mi acceso</a></div> }
+    <ng-content />
+  </section>`,
+  styles: `:host { display: block; max-width: 1080px; margin: 32px auto; padding: 20px; }
+    section { background: var(--paper); padding: clamp(16px, 4vw, 40px); border: 1px solid var(--line); border-radius: 12px; }
+    nav { line-height: 1.8; } h1 { font-size: 1.7rem; }`,
+})
+export class Cu07Layout {
+  private readonly route = inject(ActivatedRoute);
+  get navigationParams() { return clienteNavigationParams(this.route.snapshot.queryParamMap); }
+  readonly title = input.required<string>();
+  readonly error = input('');
+}

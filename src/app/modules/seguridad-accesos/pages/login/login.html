@@ -1,0 +1,28 @@
+<app-auth-layout title="Qué bueno verte de nuevo" description="Inicia sesión y vuelve a tu espacio en LiveClothesShop.">
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="busy()">
+    <fieldset [disabled]="busy()">
+      <legend class="visually-hidden">Credenciales de inicio de sesión</legend>
+      <div class="field">
+        <label for="correo">Correo electrónico</label>
+        <input id="correo" type="email" formControlName="correo" autocomplete="username" required maxlength="100"
+          placeholder="tu@correo.com" aria-describedby="correo-error"
+          [attr.aria-invalid]="form.controls.correo.touched && form.controls.correo.invalid" />
+        <app-field-error [control]="form.controls.correo" errorId="correo-error" />
+      </div>
+      <div class="field">
+        <label for="contrasena">Contraseña</label>
+        <input id="contrasena" type="password" formControlName="contrasena" autocomplete="current-password"
+          required maxlength="128" aria-describedby="contrasena-error"
+          [attr.aria-invalid]="form.controls.contrasena.touched && form.controls.contrasena.invalid" />
+        <app-field-error [control]="form.controls.contrasena" errorId="contrasena-error" />
+      </div>
+      @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+      <button class="button primary" type="submit" [disabled]="busy()">
+        {{ busy() ? 'Iniciando sesión…' : 'Iniciar sesión' }} <span aria-hidden="true">→</span>
+      </button>
+    </fieldset>
+  </form>
+  <p class="form-footer"><a routerLink="/olvide-contrasena">¿Olvidaste tu contraseña?</a></p>
+  <p class="form-footer">¿Es tu primera visita? <a routerLink="/registro">Crea tu cuenta</a></p>
+  <p class="privacy-note">Tu acceso es personal. Nunca te pediremos compartir tu contraseña.</p>
+</app-auth-layout>

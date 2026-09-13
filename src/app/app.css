@@ -1,0 +1,13 @@
+:host { display: flex; min-height: 100dvh; flex-direction: column; }
+.site-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; width: min(1240px, 100%); padding: 26px 40px; margin: auto; }
+.brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; font-size: 1.1rem; font-weight: 700; letter-spacing: -.035em; }
+.brand-mark { background: var(--ink); color: white; padding: 11px 9px; font-size: .8rem; border-radius: 5px; letter-spacing: -.08em; }
+.brand-light { font-weight: 400; }
+nav { display: flex; gap: 24px; font-size: .85rem; }
+nav a { text-decoration: none; padding: 8px 0; border-bottom: 2px solid transparent; }
+nav a.active { border-color: var(--accent); }
+main { flex: 1; padding: 22px 32px 40px; }
+.site-footer { display: flex; justify-content: space-between; gap: 20px; padding: 22px 40px; color: var(--muted); font-size: .75rem; border-top: 1px solid var(--line); }
+.skip-link { position: absolute; left: 10px; top: -80px; padding: 12px; background: white; z-index: 2; }
+.skip-link:focus { top: 10px; }
+@media (max-width: 600px) { .site-header { padding: 18px 20px; flex-wrap: wrap; gap: 12px; } nav { gap: 20px; } main { padding: 10px 14px 28px; } .site-footer { padding: 20px; flex-wrap: wrap; } }

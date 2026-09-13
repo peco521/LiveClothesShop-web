@@ -1,0 +1,43 @@
+<form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="busy()" autocomplete="off">
+  <fieldset [disabled]="busy()">
+    <legend class="visually-hidden">Datos del empleado</legend>
+    <div class="form-grid">
+      @for (field of fields; track field.name) {
+        <div class="field">
+          <label [for]="field.name">{{ field.label }}</label>
+          <input [id]="field.name" [type]="field.type" [formControlName]="field.name" [attr.maxlength]="field.max" required
+            [attr.aria-invalid]="form.controls[field.name].touched && form.controls[field.name].invalid" [attr.aria-describedby]="field.name + '-error'" />
+          <app-field-error [control]="form.controls[field.name]" [errorId]="field.name + '-error'" />
+        </div>
+      }
+      <div class="field"><label for="sexo">Sexo</label>
+        <select id="sexo" formControlName="sexo" required aria-describedby="sexo-error"><option value="">Selecciona</option><option value="M">M</option><option value="F">F</option></select>
+        <app-field-error [control]="form.controls.sexo" errorId="sexo-error" />
+      </div>
+      <div class="field"><label for="nroRol">Rol existente</label>
+        <select id="nroRol" formControlName="nroRol" required aria-describedby="rol-error"><option value="">Selecciona un rol</option>
+          @for (role of opciones().roles; track role.nro) { <option [value]="role.nro">{{ role.descripcion }} ({{ role.nro }})</option> }
+        </select><app-field-error [control]="form.controls.nroRol" errorId="rol-error" />
+      </div>
+      <div class="field"><label for="ciudad">Filtrar sucursales por ciudad</label>
+        <select id="ciudad" formControlName="ciudad" (change)="cambiarCiudad()"><option [ngValue]="null">Todas las ciudades</option>
+          @for (city of opciones().ciudades; track city.id) { <option [ngValue]="city.id">{{ city.nombre }}</option> }
+        </select>
+      </div>
+      <div class="field"><label for="nroSuc">Sucursal</label>
+        <select id="nroSuc" formControlName="nroSuc" required aria-describedby="sucursal-error"><option [ngValue]="null">Selecciona una sucursal</option>
+          @for (branch of sucursalesVisibles(); track branch.nro) { <option [ngValue]="branch.nro">{{ branch.nombre }} — {{ branch.ciudad.nombre }} ({{ branch.estado }})</option> }
+        </select><app-field-error [control]="form.controls.nroSuc" errorId="sucursal-error" />
+      </div>
+      @if (!editando()) {
+        <div class="field full-width"><label for="contrasena">Contraseña inicial</label>
+          <input id="contrasena" type="password" formControlName="contrasena" autocomplete="new-password" required minlength="12" maxlength="128" aria-describedby="password-error" />
+          <app-field-error [control]="form.controls.contrasena" errorId="password-error" />
+          <small>Entre 12 y 128 caracteres. No se mostrará en el detalle.</small>
+        </div>
+      }
+    </div>
+    @if (!opciones().roles.length || !opciones().sucursales.length) { <p role="status">Se requiere un rol y una sucursal existentes para guardar.</p> }
+    <button class="button primary" type="submit" [disabled]="busy() || !opciones().roles.length || !opciones().sucursales.length">{{ busy() ? 'Guardando…' : editando() ? 'Guardar cambios' : 'Crear empleado' }}</button>
+  </fieldset>
+</form>

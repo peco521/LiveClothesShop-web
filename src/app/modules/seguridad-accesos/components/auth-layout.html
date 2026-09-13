@@ -1,0 +1,23 @@
+<div class="auth-layout">
+  <aside class="editorial" aria-label="LiveClothesShop, moda a tu manera">
+    <p class="edition">LIVE CLOTHES / EVERYDAY STYLE</p>
+    <div class="fashion-art" aria-hidden="true">
+      <div class="arch"></div>
+      <svg viewBox="0 0 240 280" class="garment">
+        <path d="M77 48 101 34Q120 55 139 34L163 48 211 96 179 128 158 108 165 246Q120 257 75 246L82 108 61 128 29 96Z" fill="currentColor" />
+        <path d="M101 34Q120 76 139 34M120 64V245M82 108 77 48M158 108 163 48" fill="none" stroke="#e1c7a9" stroke-width="2" />
+        <path d="M90 139H109V162H90ZM132 139H151V162H132Z" fill="none" stroke="#e1c7a9" stroke-width="2" />
+      </svg>
+      <span class="art-caption">Hecho para ser tú.</span>
+    </div>
+    <h2>Tu estilo.<br /><em>A tu manera.</em></h2>
+    <p>Un espacio para conectar con la moda y hacerla parte de tu día.</p>
+    <span class="editorial-footer">LiveClothesShop <span aria-hidden="true">✦</span> Moda que va contigo</span>
+  </aside>
+  <section class="form-panel" aria-labelledby="page-title">
+    <p class="eyebrow">{{ eyebrow() }}</p>
+    <h1 id="page-title">{{ title() }}</h1>
+    <p class="description">{{ description() }}</p>
+    <ng-content />
+  </section>
+</div>

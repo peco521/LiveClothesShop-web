@@ -1,0 +1,8 @@
+<app-cu07-layout title="Editar cliente" [error]="error()">
+  @if (loading()) { <p role="status">Cargando cliente…</p> }
+  @if (error()) { <button (click)="load()" [disabled]="loading() || busy()">Volver a consultar cliente</button> }
+  @if (cliente(); as user) {
+    <app-cliente-formulario [cliente]="user" [busy]="busy()" (guardar)="guardar($event)" />
+    <p><a [routerLink]="['/admin/clientes', user.idUsuario]" [queryParams]="navigationParams">Volver al detalle</a></p>
+  }
+</app-cu07-layout>

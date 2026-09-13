@@ -1,0 +1,13 @@
+<form [formGroup]="form" (ngSubmit)="enviar()" autocomplete="off">
+  <p id="fecha-ayuda">Fechas ISO con segundos y zona obligatoria: 2026-09-12T12:30:45.123456Z o 2026-09-12T08:30:45-04:00. Hasta 6 decimales; límites inclusivos. No se asume la zona del dispositivo.</p>
+  <p>Los filtros se conservan solo mientras permanezcas en este listado; se reinician al salir.</p>
+  <div class="filters">
+    <div><label for="accion">Acción</label><select id="accion" formControlName="accion"><option value="">Todas</option>@for (accion of acciones; track accion) { <option [value]="accion">{{ accion }}</option> }</select></div>
+    <div><label for="usuario-id">ID del actor (coincidencia exacta)</label><input id="usuario-id" formControlName="usuario_id" maxlength="100" aria-describedby="usuario-error"><app-field-error [control]="form.controls.usuario_id" errorId="usuario-error" /></div>
+    <div><label for="desde">Desde</label><input id="desde" type="text" formControlName="desde" aria-describedby="fecha-ayuda desde-error" placeholder="2026-09-12T00:00:00Z"><app-field-error [control]="form.controls.desde" errorId="desde-error" /></div>
+    <div><label for="hasta">Hasta</label><input id="hasta" type="text" formControlName="hasta" aria-describedby="fecha-ayuda hasta-error" placeholder="2026-09-12T23:59:59.999999Z"><app-field-error [control]="form.controls.hasta" errorId="hasta-error" /></div>
+    <div><label for="limit">Registros por página</label><input id="limit" type="number" formControlName="limit" min="1" max="100" step="1" aria-describedby="limit-error"><app-field-error [control]="form.controls.limit" errorId="limit-error" /></div>
+  </div>
+  @if (form.hasError('rango') && form.touched) { <p class="field-error" role="alert">Desde debe ser anterior o igual a Hasta, considerando zona y microsegundos.</p> }
+  <button class="button primary" type="submit">Aplicar filtros</button>
+</form>

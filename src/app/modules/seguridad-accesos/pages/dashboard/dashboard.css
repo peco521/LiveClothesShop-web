@@ -1,0 +1,12 @@
+:host { display: block; }
+.eyebrow { font-size: .68rem; letter-spacing: .18em; font-weight: 700; color: var(--accent); margin: 0 0 14px; text-transform: uppercase; }
+h1 { margin: 0; font-size: clamp(1.9rem, 3vw, 2.5rem); letter-spacing: -.04em; line-height: 1.15; }
+.description { color: var(--muted); line-height: 1.6; margin: 15px 0 30px; overflow-wrap: anywhere; }
+.module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin: 0 0 28px; }
+.module-card { display: flex; flex-direction: column; gap: 6px; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); text-decoration: none; }
+.module-card:hover { border-color: var(--accent); }
+.module-icon { display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 5px; border-radius: 50%; background: #eef2e9; color: var(--accent); }
+.module-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.module-name { font-size: 1rem; font-weight: 700; letter-spacing: -.02em; }
+.module-hint { font-size: .8rem; color: var(--muted); }
+.dashboard-action { max-width: 320px; }
