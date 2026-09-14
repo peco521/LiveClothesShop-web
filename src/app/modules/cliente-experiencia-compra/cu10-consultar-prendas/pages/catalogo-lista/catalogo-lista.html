@@ -1,0 +1,35 @@
+<app-cu10-layout title="Catálogo" [error]="error()">
+  <form [formGroup]="form" (ngSubmit)="aplicar()"><fieldset><legend>Buscar y filtrar prendas</legend><div class="form-grid">
+    <div class="field"><label for="catalogo-buscar">Nombre, marca o categoría</label><input id="catalogo-buscar" formControlName="q" maxlength="100" /></div>
+    <div class="field"><label for="f-categoria">Categoría</label><select id="f-categoria" formControlName="idCat"><option value="">Todas</option>@for (item of facetas()['categorias']?.items ?? []; track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></div>
+    <div class="field"><label for="f-marca">Marca</label><select id="f-marca" formControlName="idMarca"><option value="">Todas</option>@for (item of facetas()['marcas']?.items ?? []; track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></div>
+    <div class="field"><label for="f-coleccion">Colección</label><select id="f-coleccion" formControlName="idCol"><option value="">Todas</option>@for (item of facetas()['colecciones']?.items ?? []; track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></div>
+    <div class="field"><label for="f-temporada">Temporada</label><select id="f-temporada" formControlName="idTemp"><option value="">Todas</option>@for (item of facetas()['temporadas']?.items ?? []; track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></div>
+    <div class="field"><label for="f-talla">Talla</label><select id="f-talla" formControlName="idTalla"><option value="">Todas</option>@for (item of facetas()['tallas']?.items ?? []; track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></div>
+    <div class="field"><label for="f-color">Color</label><select id="f-color" formControlName="idColor"><option value="">Todos</option>@for (item of facetas()['colores']?.items ?? []; track item.id) { <option [value]="item.id">{{ item.nombre }}</option> }</select></div>
+    <div class="field"><label for="f-min">Precio mínimo</label><input id="f-min" type="number" formControlName="minPrecio" min="0" step="0.01" /></div>
+    <div class="field"><label for="f-max">Precio máximo</label><input id="f-max" type="number" formControlName="maxPrecio" min="0" step="0.01" /></div>
+    <div class="field"><label for="f-orden">Orden</label><select id="f-orden" formControlName="sort"><option value="nombre_asc">Nombre A–Z</option><option value="nombre_desc">Nombre Z–A</option><option value="precio_asc">Menor precio</option><option value="precio_desc">Mayor precio</option></select></div>
+    <div class="field"><label for="f-limite">Resultados por página</label><input id="f-limite" type="number" formControlName="limit" min="1" max="100" required /></div>
+    <div class="field"><label for="f-disponibles"><input id="f-disponibles" type="checkbox" formControlName="soloDisponibles" /> Solo disponibles</label></div>
+  </div><button type="submit">Aplicar filtros</button> <button type="button" (click)="limpiar()">Limpiar</button></fieldset></form>
+  @if (form.touched && form.invalid) { <p class="field-error" role="alert">Revisa los filtros: la búsqueda admite hasta 100 caracteres, los precios no pueden ser negativos y el tamaño de página debe ser un entero entre 1 y 100.</p> }
+  @if (busy()) { <p role="status">Cargando prendas…</p> }
+  @if (error()) { <button (click)="load()" [disabled]="busy()">Reintentar</button> }
+  @if (result(); as page) {
+    <p role="status">{{ page.total }} prendas encontradas.</p>
+    @if (!page.items.length) { <p>No hay prendas para los filtros aplicados.</p> }
+    @else { <div class="grid">
+      @for (item of page.items; track item.idProd) { <article class="card">
+        @if (item.imagen) { <img [src]="item.imagen" [alt]="item.descripcion" loading="lazy" /> }
+        <h2>{{ item.descripcion }}</h2>
+        <p>{{ item.marca.nombre }} · {{ item.categoria.descripcion }}</p>
+        @if (item.promocion) { <p class="badge">Promoción: {{ item.promocion.nombre }}</p> }
+        <p>@if (item.precioMin !== null) { Desde {{ item.precioMin }} @if (item.precioMax !== null && item.precioMax !== item.precioMin) { hasta {{ item.precioMax }} } } @else { Precio a consultar }</p>
+        <p><span class="badge">{{ item.disponible ? 'Disponible' : 'Agotado' }}</span> <span class="badge">{{ item.totalVariantes }} variantes</span></p>
+        <a [routerLink]="['/tienda/prendas', item.idProd]">Ver detalle</a>
+      </article> }
+    </div> }
+    <nav class="actions" aria-label="Paginación"><button (click)="pagina(page.offset - page.limit)" [disabled]="busy() || page.offset === 0">Anterior</button><span>Desde {{ page.items.length ? page.offset + 1 : 0 }} · máximo {{ page.limit }} por página</span><button (click)="pagina(page.offset + page.limit)" [disabled]="busy() || page.offset + page.limit >= page.total">Siguiente</button></nav>
+  }
+</app-cu10-layout>

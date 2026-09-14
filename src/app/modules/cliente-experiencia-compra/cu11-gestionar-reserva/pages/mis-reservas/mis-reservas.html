@@ -1,0 +1,16 @@
+<app-cu11-layout title="Mis reservas" [error]="error()">
+  <p><a routerLink="/tienda/reservas/nueva">Nueva reserva</a></p>
+  <form [formGroup]="form" (ngSubmit)="aplicar()"><fieldset><legend>Filtrar por estado</legend>
+    <div class="field"><label for="reserva-estado">Estado</label><select id="reserva-estado" formControlName="estado"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="confirmada">Confirmada</option><option value="atendida">Atendida</option><option value="cancelada">Cancelada</option></select></div>
+  <button type="submit">Aplicar</button></fieldset></form>
+  @if (busy()) { <p role="status">Cargando reservas…</p> }
+  @if (error()) { <button (click)="load()" [disabled]="busy()">Reintentar</button> }
+  @if (result(); as page) {
+    <p role="status">{{ page.total }} reservas encontradas.</p>
+    @if (!page.items.length) { <p>No tienes reservas registradas.</p> }
+    @else { <div class="table-scroll"><table><caption class="visually-hidden">Mis reservas</caption><thead><tr><th>Número</th><th>Fecha</th><th>Hora</th><th>Sucursal</th><th>Prendas</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+      @for (reserva of page.items; track reserva.nroReserva) { <tr><td>{{ reserva.nroReserva }}</td><td>{{ reserva.fechaReserva }}</td><td>{{ reserva.horaAtencion }}</td><td>{{ reserva.sucursal.nombre }} · {{ reserva.sucursal.ciudad }}</td><td>{{ reserva.totalUnidades }}</td><td><span class="badge">{{ reserva.estado }}</span>@if (reserva.vencida) { <span class="badge">Vencida</span> }</td><td><a [routerLink]="['/tienda/reservas', reserva.nroReserva]">Ver detalle</a></td></tr> }
+    </tbody></table></div> }
+    <nav class="actions" aria-label="Paginación"><button (click)="pagina(page.offset - page.limit)" [disabled]="busy() || page.offset === 0">Anterior</button><span>Desde {{ page.items.length ? page.offset + 1 : 0 }} · máximo {{ page.limit }} por página</span><button (click)="pagina(page.offset + page.limit)" [disabled]="busy() || page.offset + page.limit >= page.total">Siguiente</button></nav>
+  }
+</app-cu11-layout>

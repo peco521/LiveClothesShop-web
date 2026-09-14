@@ -1,0 +1,22 @@
+<app-cu11-layout title="Nueva reserva" [error]="error()">
+  <form [formGroup]="form" (ngSubmit)="guardar()"><fieldset><legend>Datos de la reserva</legend><div class="form-grid">
+    <div class="field"><label for="reserva-sucursal">Sucursal donde probarás las prendas</label><select id="reserva-sucursal" formControlName="nroSuc"><option [value]="0">Selecciona…</option>@for (sucursal of sucursales(); track sucursal.nro) { <option [value]="sucursal.nro">{{ sucursal.nombre }} · {{ sucursal.ciudad }}</option> }</select></div>
+    <div class="field"><label for="reserva-fecha">Fecha</label><input id="reserva-fecha" type="date" formControlName="fechaReserva" [min]="minima" /></div>
+    <div class="field"><label for="reserva-hora">Hora aproximada</label><input id="reserva-hora" type="time" formControlName="horaAtencion" /></div>
+  </div>
+  @if (horarios(); as info) {
+    @if (info.rangos.length) { <p role="status">Atiende: @for (rango of info.rangos; track rango.horaIni) { {{ rango.horaIni }}–{{ rango.horaFin }} }.</p> }
+    @else { <p role="status">Esta sucursal no tiene horario registrado.</p> }
+  }
+  </fieldset>
+  <fieldset formArrayName="items"><legend>Prendas a reservar</legend>
+    @if (!items.length) { <p>Todavía no agregaste prendas. Usa el botón para añadir variantes por su identificador.</p> }
+    <div class="table-scroll"><table><caption class="visually-hidden">Prendas de la reserva</caption><thead><tr><th>Variante</th><th>Cantidad</th><th></th></tr></thead><tbody>
+      @for (grupo of items.controls; track $index; let i = $index) { <tr [formGroupName]="i"><td><input formControlName="idVar" maxlength="15" aria-label="Identificador de variante" /></td><td><input type="number" formControlName="cantidad" min="1" step="1" aria-label="Cantidad" /></td><td><button type="button" (click)="quitar(i)">Quitar</button></td></tr> }
+    </tbody></table></div>
+    <button type="button" (click)="agregar()">Añadir prenda</button>
+  </fieldset>
+  @if (form.touched && (form.invalid || !items.length)) { <p class="field-error" role="alert">Selecciona sucursal, fecha y hora válidas, y añade al menos una prenda con cantidad mayor a cero.</p> }
+  <button type="submit" [disabled]="busy()">{{ busy() ? 'Reservando…' : 'Confirmar reserva' }}</button></form>
+  <p><a routerLink="/tienda/reservas">Volver a mis reservas</a> · <a routerLink="/tienda">Volver al catálogo</a></p>
+</app-cu11-layout>

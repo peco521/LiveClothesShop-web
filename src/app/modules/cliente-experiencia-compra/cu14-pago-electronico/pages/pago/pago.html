@@ -1,0 +1,14 @@
+<app-cu14-layout title="Pago" [error]="error()">
+  <p role="status">Entorno de prueba/simulación: no ingreses datos financieros reales. Solo eliges el medio de pago; el monto lo determina la venta.</p>
+  @if (!nroVenta()) { <p class="field-error" role="alert">Falta la venta a pagar. Vuelve a tu compra preparada.</p><p><a routerLink="/tienda/carrito">Volver al carrito</a></p> }
+  @else {
+    <p>Vas a pagar la compra número <strong>{{ nroVenta() }}</strong>.</p>
+    <form [formGroup]="form" (ngSubmit)="pagar()"><fieldset><legend>Método de pago</legend><div class="form-grid">
+      <div class="field"><label for="pago-metodo">Medio</label><select id="pago-metodo" formControlName="metodo"><option value="tarjeta">Tarjeta</option><option value="QR">QR</option><option value="transferencia">Transferencia</option></select></div>
+    </div></fieldset>
+    <div class="sandbox"><p><strong>Simulación académica:</strong> el resultado lo genera una pasarela de prueba.</p>
+      <div class="field"><label for="pago-escenario">Resultado simulado</label><select id="pago-escenario" formControlName="escenario"><option value="aprobado">Aprobado</option><option value="rechazado">Rechazado</option><option value="timeout">Sin respuesta (pendiente)</option></select></div>
+    </div>
+    <button type="submit" [disabled]="busy()">{{ busy() ? 'Procesando…' : 'Realizar pago' }}</button></form>
+  }
+</app-cu14-layout>
