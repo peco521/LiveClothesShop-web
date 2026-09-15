@@ -1,0 +1,15 @@
+<app-cu13-layout title="Compra preparada" [error]="error()">
+  @if (busy() && !venta()) { <p role="status">Cargando compra…</p> }
+  @if (error() && !venta()) { <button (click)="load()" [disabled]="busy()">Reintentar</button> }
+  @if (venta(); as compra) {
+    <p>Compra número <strong>{{ compra.nroVenta }}</strong> · <span class="badge">{{ compra.estado }}</span></p>
+    <p>{{ compra.sucursal.nombre }} · {{ compra.sucursal.ciudad }}@if (compra.nit) { · NIT {{ compra.nit }}}</p>
+    <div class="table-scroll"><table><caption class="visually-hidden">Detalle de la compra</caption><thead><tr><th>Prenda</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr></thead><tbody>
+      @for (item of compra.items; track item.idDetalleVenta) { <tr><td>{{ item.producto }} ({{ item.sku }})</td><td>{{ item.cantidad }}</td><td>{{ item.precioUnitario }}</td><td>{{ item.subtotalBruto }}</td></tr> }
+    </tbody></table></div>
+    <p class="total">Descuento: {{ compra.descAplicado }} · Total: {{ compra.total }}</p>
+    <p role="status">Compra preparada para realizar el pago. El siguiente paso será realizar el pago electrónico.</p>
+    <p><a [routerLink]="['/tienda/pago/nueva']" [queryParams]="{ nroVenta: compra.nroVenta }">Realizar pago</a></p>
+    <p><a routerLink="/tienda/carrito">Volver al carrito</a> · <a routerLink="/tienda">Volver al catálogo</a></p>
+  }
+</app-cu13-layout>

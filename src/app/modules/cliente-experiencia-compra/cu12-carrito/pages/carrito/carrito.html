@@ -1,0 +1,23 @@
+<app-cu12-layout title="Carrito" [error]="error()">
+  @if (busy() && !carrito()) { <p role="status">Cargando carrito…</p> }
+  @if (error() && !carrito()) { <button (click)="load()" [disabled]="busy()">Reintentar</button> }
+  @if (carrito(); as cart) {
+    @if (!cart.items.length) { <p>No tienes productos en tu carrito.</p><p><a routerLink="/tienda">Explorar el catálogo</a></p> }
+    @else {
+      @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
+      <div class="table-scroll"><table><caption class="visually-hidden">Productos en el carrito</caption><thead><tr><th>Prenda</th><th>Variante</th><th>Precio</th><th>Cantidad</th><th>Subtotal</th><th></th></tr></thead><tbody>
+        @for (item of cart.items; track item.idDetalleCarro) { <tr>
+          <td>@if (item.imagen) { <img class="thumb" [src]="item.imagen" [alt]="item.producto" loading="lazy" /> } {{ item.producto }}@if (item.promocion) { <br /><span>Promoción: {{ item.promocion.nombre }}</span> }</td>
+          <td>Talla {{ item.talla.descripcion }} · @for (color of item.colores; track color.idColor) { {{ color.descripcion }} } @empty { Sin color }</td>
+          <td>{{ item.precio }}</td>
+          <td><span class="qty"><button type="button" (click)="cambiar(item, item.cantidad - 1)" [disabled]="busy() || item.cantidad <= 1">−</button><input type="number" [ngModel]="cantidades[item.idDetalleCarro]" (ngModelChange)="cantidades[item.idDetalleCarro] = $event" (change)="cambiar(item, cantidades[item.idDetalleCarro])" min="1" step="1" [attr.aria-label]="'Cantidad de ' + item.producto" /><button type="button" (click)="cambiar(item, item.cantidad + 1)" [disabled]="busy()">+</button></span>
+          @if (!item.disponible) { <br /><span role="alert">No disponible actualmente (quedan {{ item.cantidadDisponible }}).</span> }</td>
+          <td>{{ item.subtotal }}</td>
+          <td><button type="button" (click)="quitar(item.idDetalleCarro)" [disabled]="busy()">Eliminar</button></td>
+        </tr> }
+      </tbody></table></div>
+      <p class="total">Subtotal: {{ cart.subtotal }} ({{ cart.cantidadItems }} prendas)</p>
+      <p><a routerLink="/tienda/finalizar-compra">Finalizar compra</a> · <a routerLink="/tienda">Seguir explorando</a></p>
+    }
+  }
+</app-cu12-layout>

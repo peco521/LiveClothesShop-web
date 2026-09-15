@@ -1,0 +1,20 @@
+<app-cu14-layout title="Estado del pago" [error]="error()">
+  @if (busy() && !pago()) { <p role="status">Cargando pago…</p> }
+  @if (error() && !pago()) { <button (click)="load()" [disabled]="busy()">Reintentar</button> }
+  @if (pago(); as resultado) {
+    <p>Pago número <strong>{{ resultado.idPago }}</strong> · <span class="badge">{{ resultado.estado }}</span></p>
+    <p>Método: {{ resultado.metodo }} · Monto: {{ resultado.monto }}@if (resultado.referencia) { · Referencia {{ resultado.referencia }}}</p>
+    @if (resultado.estado === 'aprobado') {
+      <p role="status">Compra completada. Tu pago fue aprobado y el inventario quedó actualizado.</p>
+      <p><a routerLink="/tienda">Volver al catálogo</a></p>
+    }
+    @if (resultado.estado === 'rechazado') {
+      <p role="status">Pago rechazado. Tu carrito sigue disponible para intentarlo nuevamente.</p>
+      <div class="actions"><a routerLink="/tienda/carrito">Volver al carrito</a> <a routerLink="/tienda/finalizar-compra">Finalizar compra nuevamente</a></div>
+    }
+    @if (resultado.estado === 'pendiente') {
+      <p role="status">Pago pendiente: aún no hay certeza del resultado. Puedes consultar su estado.</p>
+      <div class="actions"><button (click)="consultar()" [disabled]="busy()">{{ busy() ? 'Consultando…' : 'Consultar estado' }}</button></div>
+    }
+  }
+</app-cu14-layout>

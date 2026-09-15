@@ -1,0 +1,20 @@
+<app-cu11-layout title="Detalle de reserva" [error]="error()">
+  @if (busy() && !item()) { <p role="status">Cargando reserva…</p> }
+  @if (error() && !item()) { <button (click)="load()" [disabled]="busy()">Reintentar</button> }
+  @if (item(); as reserva) {
+    <p>Reserva número <strong>{{ reserva.nroReserva }}</strong> · <span class="badge">{{ reserva.estado }}</span>@if (reserva.vencida) { <span class="badge">Vencida</span> }</p>
+    <p>{{ reserva.fechaReserva }} · {{ reserva.horaAtencion }} · {{ reserva.sucursal.nombre }} · {{ reserva.sucursal.ciudad }}</p>
+    <div class="table-scroll"><table><caption class="visually-hidden">Prendas reservadas</caption><thead><tr><th>Prenda</th><th>Código</th><th>Variante</th><th>Cantidad</th></tr></thead><tbody>
+      @for (detalle of reserva.items; track detalle.idDetalleRes) { <tr><td>{{ detalle.producto }}</td><td>{{ detalle.sku }}</td><td>{{ detalle.idVar }}</td><td>{{ detalle.cantidad }}</td></tr> }
+    </tbody></table></div>
+    <p>Total de prendas: {{ reserva.totalUnidades }}</p>
+    @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
+    @if (cancelable) {
+      <div class="actions">
+        @if (!confirmar()) { <button (click)="confirmar.set(true)" [disabled]="busy()">Cancelar reserva</button> }
+        @else { <button (click)="cancelar()" [disabled]="busy()">{{ busy() ? 'Cancelando…' : 'Confirmar cancelación' }}</button><button (click)="confirmar.set(false)" [disabled]="busy()">Volver</button> }
+      </div>
+    }
+    <p><a routerLink="/tienda/reservas">Volver a mis reservas</a></p>
+  }
+</app-cu11-layout>

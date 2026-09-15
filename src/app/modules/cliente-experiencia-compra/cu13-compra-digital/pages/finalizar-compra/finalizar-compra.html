@@ -1,0 +1,18 @@
+<app-cu13-layout title="Finalizar compra" [error]="error()">
+  @if (carrito(); as cart) {
+    @if (!cart.items.length) { <p>No tienes productos en tu carrito para finalizar la compra.</p><p><a routerLink="/tienda">Explorar el catálogo</a></p> }
+    @else {
+      <h2>Resumen del carrito</h2>
+      <div class="table-scroll"><table><caption class="visually-hidden">Resumen del carrito</caption><thead><tr><th>Prenda</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>
+        @for (item of cart.items; track item.idDetalleCarro) { <tr><td>{{ item.producto }} (Talla {{ item.talla.descripcion }})</td><td>{{ item.cantidad }}</td><td>{{ item.precio }}</td><td>{{ item.subtotal }}</td></tr> }
+      </tbody></table></div>
+      <p>Subtotal del carrito: {{ cart.subtotal }}. Los descuentos y el total final se calculan al confirmar, según la promoción vigente.</p>
+      <form [formGroup]="form" (ngSubmit)="confirmar()"><fieldset><legend>Datos de la compra</legend><div class="form-grid">
+        <div class="field"><label for="compra-sucursal">Sucursal de atención</label><select id="compra-sucursal" formControlName="nroSuc"><option [value]="0">Selecciona…</option>@for (sucursal of sucursales(); track sucursal.nro) { <option [value]="sucursal.nro">{{ sucursal.nombre }} · {{ sucursal.ciudad }}</option> }</select></div>
+        <div class="field"><label for="compra-nit">NIT (opcional)</label><input id="compra-nit" formControlName="nit" maxlength="30" /></div>
+      </div></fieldset>
+      @if (form.touched && form.invalid) { <p class="field-error" role="alert">Selecciona una sucursal válida. El NIT admite hasta 30 caracteres.</p> }
+      <button type="submit" [disabled]="busy()">{{ busy() ? 'Preparando…' : 'Confirmar compra' }}</button></form>
+    }
+  } @else if (!error()) { <p role="status">Cargando resumen…</p> }
+</app-cu13-layout>
