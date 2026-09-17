@@ -31,6 +31,12 @@ export class ComprasService {
       map(response => ({ venta: detalle(response.body as VentaDetalle), reutilizada: response.status === 200 })),
     );
   }
+  pendiente(): Observable<VentaDetalle | null> {
+    return this.browser(() => this.http.get<VentaDetalle | null>(`${this.base}/pendiente`)).pipe(map(value => value ? detalle(value) : null));
+  }
+  cancelar(nro: number): Observable<VentaDetalle> {
+    return this.browser(() => this.http.post<VentaDetalle>(`${this.base}/${nro}/cancelar`, {})).pipe(map(detalle));
+  }
   detalle(nro: number): Observable<VentaDetalle> {
     return this.browser(() => this.http.get<VentaDetalle>(`${this.base}/${nro}`)).pipe(map(detalle));
   }

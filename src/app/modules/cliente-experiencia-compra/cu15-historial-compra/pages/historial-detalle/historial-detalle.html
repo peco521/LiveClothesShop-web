@@ -1,0 +1,51 @@
+<section class="history-panel" aria-labelledby="detail-title" [attr.aria-busy]="busy()">
+  <nav class="breadcrumbs" aria-label="Ruta de navegación"><a routerLink="/tienda/historial-compras" queryParamsHandling="preserve">Historial de compras</a><span aria-hidden="true"> / </span><span>Detalle</span></nav>
+  <header class="page-heading"><h1 id="detail-title">Detalle de compra</h1></header>
+  @if (busy()) { <p class="notice" role="status">Cargando detalle de compra…</p> }
+  @if (error()) {
+    <div class="notice error" role="alert">
+      <p>{{ error() }}</p>
+      @if (loginRequired()) { <a routerLink="/login">Iniciar sesión</a> }
+      @else if (retryable()) { <button type="button" class="button secondary compact" (click)="load()" [disabled]="busy()">Reintentar</button> }
+    </div>
+  }
+  @if (compra(); as venta) {
+    <div class="purchase-heading">
+      <div><h2>Compra #{{ venta.nroVenta }}</h2><time class="muted" [attr.datetime]="venta.fechaHora">{{ venta.fechaHora | date:'dd/MM/yyyy · HH:mm' }}</time></div>
+      <app-compra-estados [venta]="venta.estado" [pago]="venta.estadoPago" />
+    </div>
+    <dl class="metadata">
+      <div><dt>Sucursal</dt><dd>{{ venta.sucursal.nombre }} · {{ venta.sucursal.ciudad }}</dd></div>
+      <div><dt>NIT</dt><dd>{{ venta.nit || 'No registrado' }}</dd></div>
+      @if (venta.nroReserva) { <div><dt>Reserva</dt><dd>#{{ venta.nroReserva }}</dd></div> }
+    </dl>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Productos de la compra">
+      <table>
+        <caption>Productos de la compra</caption>
+        <thead><tr><th scope="col">Prenda</th><th scope="col">Cantidad</th><th scope="col" class="amount">Precio unitario</th><th scope="col" class="amount">Subtotal bruto</th></tr></thead>
+        <tbody>
+          @for (item of venta.items; track item.idDetalleVenta) {
+            <tr><td>{{ item.producto }}<small class="muted sku">{{ item.sku }}</small></td><td>{{ item.cantidad }}</td><td class="amount">{{ item.precioUnitario | number:'1.2-2' }}</td><td class="amount">{{ item.subtotalBruto | number:'1.2-2' }}</td></tr>
+          } @empty { <tr><td colspan="4">Sin productos disponibles en el registro.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+    <dl class="totals">
+      <div><dt>Subtotal bruto</dt><dd>{{ venta.brutoTotal | number:'1.2-2' }}</dd></div>
+      <div><dt>Descuento aplicado</dt><dd>{{ venta.descAplicado | number:'1.2-2' }}</dd></div>
+      <div class="grand-total"><dt>Total</dt><dd>{{ venta.total | number:'1.2-2' }}</dd></div>
+    </dl>
+    <section class="payment-panel" aria-labelledby="payment-title">
+      <h2 id="payment-title">Información del pago</h2>
+      @if (venta.pago; as pago) {
+        <dl class="metadata">
+          <div><dt>Método</dt><dd>{{ metodo(pago.metodo) }}</dd></div>
+          <div><dt>Monto</dt><dd>{{ pago.monto | number:'1.2-2' }}</dd></div>
+          <div><dt>Fecha</dt><dd><time [attr.datetime]="pago.fechaHora">{{ pago.fechaHora | date:'dd/MM/yyyy · HH:mm' }}</time></dd></div>
+          <div><dt>Referencia</dt><dd>{{ pago.referencia || 'No registrada' }}</dd></div>
+        </dl>
+      } @else { <p class="muted">No hay un pago registrado para esta compra.</p> }
+    </section>
+  }
+  <p class="back-link"><a routerLink="/tienda/historial-compras" queryParamsHandling="preserve">← Volver al historial</a></p>
+</section>

@@ -16,10 +16,10 @@ describe('CU07 servicio y privacidad', () => {
   afterEach(() => { http.verify(); vi.restoreAllMocks(); });
   it('lista solo filtros permitidos con cookie y sin transfer cache', () => {
     let result: unknown;
-    service.listar({ offset: 20, limit: 10, q: ' Ana ', activo: false }).subscribe(value => result = value);
+    service.listar({ offset: 20, limit: 10, q: ' Ana ' }).subscribe(value => result = value);
     const req = http.expectOne(r => r.url === '/api/admin/clientes');
-    expect(req.request.params.keys().sort()).toEqual(['activo', 'limit', 'offset', 'q']);
-    expect(req.request.params.get('q')).toBe('Ana'); expect(req.request.params.get('activo')).toBe('false');
+    expect(req.request.params.keys().sort()).toEqual(['limit', 'offset', 'q']);
+    expect(req.request.params.get('q')).toBe('Ana'); expect(req.request.params.has('activo')).toBe(false);
     expect(req.request.params.get('offset')).toBe('20'); expect(req.request.params.get('limit')).toBe('10');
     expect(req.request.withCredentials).toBe(true); expect(req.request.transferCache).toBe(false);
     req.flush({ ...list, token: 'forbidden', items: [{ ...customer, hash: 'forbidden', contrasena: 'forbidden', cliente: { ...customer.cliente, proporciones: 'forbidden' } }] });
@@ -48,11 +48,12 @@ describe('CU07 servicio y privacidad', () => {
     expect(req.request.headers.get('X-CSRF-Protection')).toBe('1'); expect(req.request.transferCache).toBe(false);
     req.flush(customer); expect(storage).not.toHaveBeenCalled();
   });
-  it.each([true, false])('cambia estado de cuenta con booleano %s', active => {
-    service.estado(customer.idUsuario, active).subscribe();
-    const req = http.expectOne('/api/admin/clientes/cliente-1/estado-cuenta');
-    expect(req.request.method).toBe('PATCH'); expect(req.request.body).toEqual({ activo: active });
-    expect(req.request.headers.get('X-CSRF-Protection')).toBe('1'); req.flush({ ...customer, activo: active });
+  it('no expone cambio de activación y descarta activo del detalle', () => {
+    let result: unknown;
+    service.detalle(customer.idUsuario).subscribe(value => result = value);
+    http.expectOne('/api/admin/clientes/cliente-1').flush({ ...customer, activo: true });
+    expect(result).toEqual(customer);
+    expect(service).not.toHaveProperty('estado');
   });
   it.each([401, 403, 404, 409, 422])('propaga HTTP %s sin éxito falso', status => {
     const failed = vi.fn(); service.editar('cliente-1', { telefono: '123' }).subscribe({ error: failed });
@@ -69,7 +70,7 @@ describe('CU07 servicio SSR', () => {
     TestBed.configureTestingModule({ providers: [{ provide: PLATFORM_ID, useValue: 'server' }, provideHttpClient(), provideHttpClientTesting()] });
     const service = TestBed.inject(ClientesService);
     service.listar({ offset: 0, limit: 20 }).subscribe(); service.detalle('cliente-1').subscribe();
-    service.editar('cliente-1', { telefono: '123' }).subscribe(); service.estado('cliente-1', false).subscribe();
+    service.editar('cliente-1', { telefono: '123' }).subscribe();
     TestBed.inject(HttpTestingController).expectNone(() => true);
   });
 });

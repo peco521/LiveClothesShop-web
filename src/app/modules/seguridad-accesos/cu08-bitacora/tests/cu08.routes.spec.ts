@@ -42,7 +42,10 @@ describe('CU08 rutas, UI, cancelación y privacidad', () => {
     const rows = harness.routeNativeElement!.querySelectorAll('tbody tr');
     expect(rows[0].textContent).toContain(registro.id); expect(rows[1].textContent).toContain('2');
     expect(harness.routeNativeElement?.querySelector(`a[href="/admin/bitacora/${registro.id}"]`)).toBeTruthy();
-    expect(harness.routeNativeElement?.textContent).toContain('Fecha UTC (ISO original)');
+    expect(harness.routeNativeElement?.textContent).toContain('Fecha (UTC)');
+    expect(Array.from(harness.routeNativeElement!.querySelectorAll('th')).map(th => th.textContent)).toEqual(['ID', 'Fecha (UTC)', 'Acción', 'ID del usuario', 'IP']);
+    expect(rows[0].querySelector('td:last-child')?.textContent).toBe(registro.ip);
+    expect(harness.routeNativeElement?.textContent).not.toContain('Consulta de solo lectura');
     expect(harness.routeNativeElement?.textContent).toContain(registro.fecha);
     expect(harness.routeNativeElement?.textContent).toContain('Sin identificación registrada');
     expect(harness.routeNativeElement?.textContent).not.toContain('Editar');

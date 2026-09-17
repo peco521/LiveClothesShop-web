@@ -5,7 +5,7 @@ import { FuncionDetalle, mismosPermisos, PermisosDetalle } from '../models/rol.m
   template: `<section aria-labelledby="permisos-title">
     <h2 id="permisos-title">Funciones del rol</h2>
     <p>Guardar reemplaza el conjunto completo de permisos. No se crean funciones desde esta pantalla.</p>
-    <p>Debe conservarse al menos un usuario activo con CU06. El servidor verifica esta regla al guardar.</p>
+    <p>Debe conservarse al menos un usuario interno con CU06. El servidor verifica esta regla al guardar.</p>
     @if (actual().esRolCliente) {
       <p class="notice" role="status">Este es el rol cliente: no puede recibir funciones. La selección está deshabilitada; el servidor aplica esta protección.</p>
     }

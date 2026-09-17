@@ -3,12 +3,12 @@
   @if (busy()) { <p role="status">Cargando bitácora…</p> }
   @if (error()) { <button type="button" class="button" (click)="load()" [disabled]="busy()">Reintentar</button> }
   @if (result(); as data) {
-    <p role="status">{{ data.total }} registros · orden: fecha descendente, ID descendente.</p>
+    <p role="status">{{ data.total }} registros</p>
     @if (data.items.length === 0) { <p>No hay registros en esta página.</p> }
     @else {
-      <div class="table-scroll"><table><thead><tr><th>ID</th><th>Fecha UTC (ISO original)</th><th>Acción</th><th>ID del actor</th><th>Consulta</th></tr></thead><tbody>
+      <div class="table-scroll"><table><thead><tr><th>ID</th><th>Fecha (UTC)</th><th>Acción</th><th>ID del usuario</th><th>IP</th></tr></thead><tbody>
       @for (item of data.items; track item.id) {
-        <tr><td>{{ item.id }}</td><td><time [attr.datetime]="item.fecha">{{ item.fecha }}</time></td><td>{{ item.accion ?? 'Acción no reconocida' }}</td><td>{{ item.usuario_id ?? 'Sin identificación registrada' }}</td><td><a [routerLink]="['/admin/bitacora', item.id]">Ver detalle</a></td></tr>
+        <tr><td><a [routerLink]="['/admin/bitacora', item.id]" [attr.aria-label]="'Ver detalle del registro ' + item.id">{{ item.id }}</a></td><td><time [attr.datetime]="item.fecha">{{ item.fecha }}</time></td><td>{{ item.accion ?? 'Acción no reconocida' }}</td><td>{{ item.usuario_id ?? 'Sin identificación registrada' }}</td><td>{{ item.ip ?? 'No registrada' }}</td></tr>
       }
       </tbody></table></div>
     }

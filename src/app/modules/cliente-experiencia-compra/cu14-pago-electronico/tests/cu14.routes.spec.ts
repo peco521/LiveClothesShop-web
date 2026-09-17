@@ -19,7 +19,7 @@ import { pago, pendiente, rechazado } from './pago.fixtures';
 describe('CU14 pago, estados y entorno de prueba', () => {
   let activeHarness: RouterTestingHarness | undefined;
   const auth = { restore: vi.fn(), session: signal<AuthResponse | null>(clienteSession) };
-  const service = { pagar: vi.fn(), detalle: vi.fn(), procesar: vi.fn() };
+  const service = { pagar: vi.fn(), detalle: vi.fn(), procesar: vi.fn(), reconciliar: vi.fn(), configuracion: vi.fn() };
   const carrito = { obtener: vi.fn(), estado: signal({ idCarrito: null, items: [], cantidadItems: 0, subtotal: 0 }) };
   beforeEach(() => {
     activeHarness = undefined;
@@ -28,6 +28,8 @@ describe('CU14 pago, estados y entorno de prueba', () => {
     service.pagar.mockReset().mockReturnValue(of({ pago, reutilizado: false }));
     service.detalle.mockReset().mockReturnValue(of(pago));
     service.procesar.mockReset().mockReturnValue(of(pago));
+    service.reconciliar.mockReset().mockReturnValue(of(pago));
+    service.configuracion.mockReset().mockReturnValue(of({ proveedor: 'mock', simulacion: true, disponible: true, moneda: null }));
     TestBed.configureTestingModule({ providers: [provideRouter(routes), { provide: AuthService, useValue: auth },
       { provide: PagosService, useValue: service }, { provide: CarritoService, useValue: carrito }] });
   });
@@ -72,7 +74,22 @@ describe('CU14 pago, estados y entorno de prueba', () => {
     const { harness, page } = await open('/tienda/pago/3', EstadoPagoPage);
     expect(texto(harness)).toContain('Pago pendiente');
     await page.consultar(); await harness.fixture.whenStable();
-    expect(service.procesar).toHaveBeenCalledWith(3);
+    expect(service.reconciliar).toHaveBeenCalledWith(3);
+    expect(service.procesar).not.toHaveBeenCalled();
+  });
+  it('Stripe no envía escenario ni muestra QR/transferencia simulados', async () => {
+    service.configuracion.mockReturnValue(of({ proveedor: 'stripe', simulacion: false, disponible: true, moneda: 'usd' }));
+    const { harness, page } = await open('/tienda/pago/nueva?nroVenta=11', PagoPage);
+    expect(texto(harness)).toContain('Stripe Checkout');
+    expect(texto(harness)).not.toContain('Resultado simulado');
+    expect(texto(harness)).not.toContain('Transferencia');
+    page.pagar(); await harness.fixture.whenStable();
+    expect(service.pagar).toHaveBeenCalledWith({ nroVenta: 11, metodo: 'tarjeta' });
+  });
+  it('no permite pagar cuando la pasarela está deshabilitada', async () => {
+    service.configuracion.mockReturnValue(of({ proveedor: 'mock', simulacion: false, disponible: false, moneda: null }));
+    const { page } = await open('/tienda/pago/nueva?nroVenta=11', PagoPage);
+    page.pagar(); expect(service.pagar).not.toHaveBeenCalled();
   });
   it('error funcional ante fallo', async () => {
     service.detalle.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));

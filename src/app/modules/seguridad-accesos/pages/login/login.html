@@ -1,4 +1,4 @@
-<app-auth-layout title="Qué bueno verte de nuevo" description="Inicia sesión y vuelve a tu espacio en LiveClothesShop.">
+<app-auth-layout title="Qué bueno verte de nuevo" description="Inicia sesión como cliente y vuelve a tu espacio en LiveClothesShop.">
   <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="busy()">
     <fieldset [disabled]="busy()">
       <legend class="visually-hidden">Credenciales de inicio de sesión</legend>
@@ -25,4 +25,5 @@
   <p class="form-footer"><a routerLink="/olvide-contrasena">¿Olvidaste tu contraseña?</a></p>
   <p class="form-footer">¿Es tu primera visita? <a routerLink="/registro">Crea tu cuenta</a></p>
   <p class="privacy-note">Tu acceso es personal. Nunca te pediremos compartir tu contraseña.</p>
+  <p class="form-footer"><a routerLink="/admin/login">Acceso para administradores y empleados</a></p>
 </app-auth-layout>

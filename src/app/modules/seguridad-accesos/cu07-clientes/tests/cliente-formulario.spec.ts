@@ -14,7 +14,7 @@ describe('CU07 formulario personal', () => {
     expect(component.form.getRawValue().correo).toBe(customer.correo);
     const html = fixture.nativeElement as HTMLElement;
     expect(html.textContent).toContain('CL001'); expect(html.textContent).toContain('publico-custom');
-    expect(html.textContent).toContain('Cuenta: Activa'); expect(html.textContent).toContain('solo lectura): inactivo');
+    expect(html.textContent).not.toContain('Cuenta:'); expect(html.textContent).toContain('solo lectura): inactivo');
     expect(html.textContent).toContain('se invalidarán los enlaces de recuperación');
     for (const field of ['contrasena', 'tipo', 'nroRol', 'activo', 'cod_cl', 'estado', 'proporciones']) expect(component.form.get(field)).toBeNull();
     expect(html.querySelector('input[type=password]')).toBeNull();

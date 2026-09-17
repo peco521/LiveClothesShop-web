@@ -9,6 +9,7 @@ import { CarritoService } from '../../../cu12-carrito/services/carrito.service';
 import { SucursalCliente } from '../../../cu11-gestionar-reserva/models/reserva.models';
 import { ReservasService } from '../../../cu11-gestionar-reserva/services/reservas.service';
 import { ComprasService } from '../../services/compras.service';
+import { VentaDetalle } from '../../models/compra.models';
 import { compraError } from '../../services/compra-error';
 
 @Component({ selector: 'app-finalizar-compra', imports: [Cu13Layout, ReactiveFormsModule, RouterLink], templateUrl: './finalizar-compra.html',
@@ -24,16 +25,20 @@ export class FinalizarCompraPage {
   readonly busy = signal(false); readonly error = signal('');
   readonly carrito = signal<CarritoDetalle | null>(null);
   readonly sucursales = signal<SucursalCliente[]>([]);
+  readonly pendiente = signal<VentaDetalle | null>(null);
   readonly form = inject(NonNullableFormBuilder).group({
     nroSuc: [0, [Validators.required, Validators.min(1)]],
     nit: ['', Validators.maxLength(30)],
   });
   constructor() {
-    this.carritoService.obtener().pipe(takeUntilDestroyed()).subscribe({ next: value => this.carrito.set(value) });
-    this.reservasService.sucursales().pipe(takeUntilDestroyed()).subscribe({ next: rows => this.sucursales.set(rows) });
+    this.compras.pendiente().pipe(takeUntilDestroyed()).subscribe({
+      next: value => this.pendiente.set(value), error: (error: unknown) => this.error.set(compraError(error)),
+    });
+    this.carritoService.obtener().pipe(takeUntilDestroyed()).subscribe({ next: value => this.carrito.set(value), error: (error: unknown) => this.error.set(compraError(error)) });
+    this.reservasService.sucursales().pipe(takeUntilDestroyed()).subscribe({ next: rows => this.sucursales.set(rows), error: (error: unknown) => this.error.set(compraError(error)) });
   }
   confirmar(): void {
-    if (this.form.invalid || this.busy()) { this.form.markAllAsTouched(); return; }
+    if (this.form.invalid || this.busy() || this.pendiente()) { this.form.markAllAsTouched(); return; }
     const value = this.form.getRawValue();
     this.busy.set(true); this.error.set('');
     this.request?.unsubscribe();

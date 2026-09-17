@@ -18,14 +18,13 @@ export class UsuariosListaPage {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly result = signal<UsuariosListado | null>(null);
-  readonly form = inject(NonNullableFormBuilder).group({ q: [''], tipo: ['' as '' | 'A' | 'E'], activo: [''], limit: [20] });
+  readonly form = inject(NonNullableFormBuilder).group({ q: [''], tipo: ['' as '' | 'A' | 'E'], limit: [20] });
   private filters: UsuariosFiltros = { offset: 0, limit: 20 };
   constructor() { this.load(0); }
   aplicar(): void {
     if (this.busy()) return;
     const value = this.form.getRawValue();
-    this.filters = { offset: 0, limit: value.limit, q: value.q, ...(value.tipo ? { tipo: value.tipo } : {}),
-      ...(value.activo !== '' ? { activo: value.activo === 'true' } : {}) };
+    this.filters = { offset: 0, limit: value.limit, q: value.q, ...(value.tipo ? { tipo: value.tipo } : {}) };
     this.load(0);
   }
   load(offset = this.filters.offset): void {

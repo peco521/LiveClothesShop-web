@@ -5,7 +5,7 @@
     <div class="field"><label for="reserva-hora">Hora aproximada</label><input id="reserva-hora" type="time" formControlName="horaAtencion" /></div>
   </div>
   @if (horarios(); as info) {
-    @if (info.rangos.length) { <p role="status">Atiende: @for (rango of info.rangos; track rango.horaIni) { {{ rango.horaIni }}–{{ rango.horaFin }} }.</p> }
+    @if (info.rangos.length) { <p role="status">Atiende: @for (rango of info.rangos; track $index) { {{ dayNames(rango.dias) }}: {{ rango.horaIni }}–{{ rango.horaFin }}; }.</p> }
     @else { <p role="status">Esta sucursal no tiene horario registrado.</p> }
   }
   </fieldset>

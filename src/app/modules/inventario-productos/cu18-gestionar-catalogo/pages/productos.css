@@ -1,0 +1,5 @@
+.variant-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }.variant-heading h3 { font-size:1rem; }
+.variant { border:1px solid var(--line); padding:20px; border-radius:12px; margin:20px 0; background:var(--paper); }.variant legend { font-size:.9rem; font-weight:600; padding:0 8px; }
+.colors-label { font-size:.81rem; font-weight:600; }.color-options { display:flex; flex-wrap:wrap; gap:8px; }.color-choice { display:flex; gap:8px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:10px 12px; cursor:pointer; }
+.color-choice.selected { background:#edf3e9; border-color:#b8cfae; }.color-choice input { width:16px; height:16px; min-height:16px; padding:0; margin:0; accent-color:var(--accent); }.toolbar form input { flex:1; }.toolbar form select { width:auto; }
+.image-preview { width:150px; height:150px; object-fit:contain; background:#fff; border:1px solid var(--line); border-radius:10px; }

@@ -5,6 +5,10 @@ export const ACCIONES = [
   'rol_creado', 'rol_actualizado', 'permisos_rol_actualizados',
   'cliente_actualizado', 'cliente_activado', 'cliente_desactivado',
   'ciudad_creada', 'ciudad_actualizada', 'sucursal_creada', 'sucursal_actualizada', 'sucursal_estado_actualizado',
+  'reserva_creada', 'reserva_cancelada', 'reserva_vencida',
+  'carrito_item_agregado', 'carrito_item_actualizado', 'carrito_item_eliminado',
+  'venta_registrada', 'pago_iniciado', 'pago_aprobado', 'pago_rechazado', 'venta_anulada',
+  'catalogo_guardado', 'catalogo_eliminado', 'proveedor_guardado', 'proveedor_eliminado', 'inventario_movimiento_registrado',
 ] as const;
 export type Accion = typeof ACCIONES[number];
 export function esAccion(value: unknown): value is Accion {
@@ -15,10 +19,10 @@ export interface BitacoraFiltros {
   offset: number; limit: number;
 }
 export interface BitacoraResumen {
-  id: string; usuario_id: string | null; accion: Accion | null; fecha: string;
+  id: string; usuario_id: string | null; accion: Accion | null; fecha: string; ip: string | null;
 }
 export interface BitacoraDetalle extends BitacoraResumen {
-  ip: string | null; detalles: { resultado: 'exito' | 'rechazado' } | null;
+  detalles: { resultado: 'exito' | 'rechazado' } | null;
 }
 export interface BitacoraListado {
   items: BitacoraResumen[]; total: number; offset: number; limit: number;

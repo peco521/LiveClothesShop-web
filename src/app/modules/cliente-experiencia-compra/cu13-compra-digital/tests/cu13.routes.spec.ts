@@ -22,7 +22,7 @@ describe('CU13 finalizar compra y venta preparada', () => {
   const auth = { restore: vi.fn(), session: signal<AuthResponse | null>(clienteSession) };
   const carrito = { obtener: vi.fn(), estado: signal(carritoResumen) };
   const reservas = { sucursales: vi.fn() };
-  const service = { preparar: vi.fn(), detalle: vi.fn() };
+  const service = { preparar: vi.fn(), detalle: vi.fn(), pendiente: vi.fn(), cancelar: vi.fn() };
   beforeEach(() => {
     activeHarness = undefined;
     auth.restore.mockReset().mockReturnValue(of(clienteSession)); auth.session.set(clienteSession);
@@ -30,6 +30,8 @@ describe('CU13 finalizar compra y venta preparada', () => {
     reservas.sucursales.mockReset().mockReturnValue(of(sucursales));
     service.preparar.mockReset().mockReturnValue(of({ venta, reutilizada: false }));
     service.detalle.mockReset().mockReturnValue(of(venta));
+    service.pendiente.mockReset().mockReturnValue(of(null));
+    service.cancelar.mockReset().mockReturnValue(of({ ...venta, estado: 'anulada' }));
     TestBed.configureTestingModule({ providers: [provideRouter(routes), { provide: AuthService, useValue: auth },
       { provide: CarritoService, useValue: carrito }, { provide: ReservasService, useValue: reservas },
       { provide: ComprasService, useValue: service }] });
@@ -51,6 +53,20 @@ describe('CU13 finalizar compra y venta preparada', () => {
     page.confirmar(); await harness.fixture.whenStable();
     expect(service.preparar).toHaveBeenCalledWith({ nroSuc: 1, nit: '123' });
     expect(TestBed.inject(Router).url).toContain('/tienda/finalizar-compra/11');
+  });
+  it('permite recuperar una compra pendiente al volver del carrito', async () => {
+    service.pendiente.mockReturnValue(of(venta));
+    const { harness, page } = await open('/tienda/finalizar-compra', FinalizarCompraPage);
+    expect(texto(harness)).toContain('Ver compra pendiente');
+    page.form.controls.nroSuc.setValue(1); page.confirmar();
+    expect(service.preparar).not.toHaveBeenCalled();
+  });
+  it('cancelación requiere confirmación y devuelve compra anulada', async () => {
+    const { harness, page } = await open('/tienda/finalizar-compra/11', CompraPreparadaPage);
+    page.cancelar(); expect(service.cancelar).not.toHaveBeenCalled();
+    page.confirmarCancelacion.set(true); page.cancelar(); harness.detectChanges();
+    expect(service.cancelar).toHaveBeenCalledWith(11);
+    expect(texto(harness)).toContain('Compra anulada');
   });
   it('disponibilidad insuficiente funcional', async () => {
     service.preparar.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 409,

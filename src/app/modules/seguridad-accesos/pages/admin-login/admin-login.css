@@ -1,0 +1,14 @@
+:host { display: block; }
+.admin-access { display: grid; grid-template-columns: .9fr 1.1fr; overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: var(--paper); }
+.access-intro { display: flex; flex-direction: column; padding: 46px 38px; background: var(--ink); color: #f7f4eb; }
+.eyebrow { font-size: .7rem; letter-spacing: .16em; font-weight: 700; margin: 0 0 20px; }
+.access-emblem { display: grid; place-items: center; width: 105px; height: 105px; margin: 32px 0 36px; border: 1px solid #959c86; border-radius: 24px; font-size: 2rem; font-weight: 700; }
+.access-intro h2 { margin: 0 0 22px; font-size: clamp(2rem, 3.5vw, 3.3rem); line-height: 1.12; letter-spacing: -.04em; }
+.access-intro h2 em { font-family: Georgia, serif; font-weight: 400; }
+.access-intro > p:not(.eyebrow) { max-width: 320px; margin: 0; color: #d5d9ca; line-height: 1.8; }
+.intro-footer { margin-top: auto; padding-top: 50px; font-size: .75rem; color: #d5d9ca; }
+.access-form { padding: 46px 48px; }
+.access-form .eyebrow { color: var(--accent); }
+h1 { margin: 0 0 18px; font-size: clamp(1.8rem, 3vw, 2.6rem); line-height: 1.15; letter-spacing: -.035em; }
+.description { color: var(--muted); line-height: 1.7; margin: 0 0 30px; }
+@media (max-width: 760px) { .admin-access { grid-template-columns: 1fr; } .access-intro { padding: 28px; } .access-emblem, .intro-footer { display: none; } .access-intro h2 { font-size: 2rem; } .access-form { padding: 30px 26px; } }

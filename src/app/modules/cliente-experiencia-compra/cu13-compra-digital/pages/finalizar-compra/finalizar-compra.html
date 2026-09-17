@@ -1,4 +1,8 @@
 <app-cu13-layout title="Finalizar compra" [error]="error()">
+  @if (pendiente(); as compra) {
+    <p role="status">Tienes una compra pendiente número {{ compra.nroVenta }}. Continúa con ella o cancélala antes de editar tu carrito.</p>
+    <p><a [routerLink]="['/tienda/finalizar-compra', compra.nroVenta]">Ver compra pendiente</a></p>
+  }
   @if (carrito(); as cart) {
     @if (!cart.items.length) { <p>No tienes productos en tu carrito para finalizar la compra.</p><p><a routerLink="/tienda">Explorar el catálogo</a></p> }
     @else {
@@ -12,7 +16,7 @@
         <div class="field"><label for="compra-nit">NIT (opcional)</label><input id="compra-nit" formControlName="nit" maxlength="30" /></div>
       </div></fieldset>
       @if (form.touched && form.invalid) { <p class="field-error" role="alert">Selecciona una sucursal válida. El NIT admite hasta 30 caracteres.</p> }
-      <button type="submit" [disabled]="busy()">{{ busy() ? 'Preparando…' : 'Confirmar compra' }}</button></form>
+      <button type="submit" [disabled]="busy() || !!pendiente()">{{ busy() ? 'Preparando…' : 'Confirmar compra' }}</button></form>
     }
   } @else if (!error()) { <p role="status">Cargando resumen…</p> }
 </app-cu13-layout>

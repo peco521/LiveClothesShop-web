@@ -1,21 +1,14 @@
 <app-cu07-layout title="Detalle del cliente" [error]="error()">
   @if (loading()) { <p role="status">Cargando cliente…</p> }
-  @if (error()) { <button (click)="load()" [disabled]="loading() || busy()">Reintentar</button> }
+  @if (error()) { <button (click)="load()" [disabled]="loading()">Reintentar</button> }
   @if (cliente(); as user) {
     <dl><dt>Código de cliente</dt><dd>{{ user.cliente.cod_cl }}</dd><dt>Nombres</dt><dd>{{ user.nombres ?? 'Sin registrar' }}</dd>
       <dt>Apellido paterno</dt><dd>{{ user.apellidoPat }}</dd><dt>Apellido materno</dt><dd>{{ user.apellidoMat }}</dd><dt>CI</dt><dd>{{ user.ci }}</dd><dt>Sexo</dt><dd>{{ user.sexo }}</dd>
       <dt>Correo</dt><dd>{{ user.correo }}</dd><dt>Teléfono</dt><dd>{{ user.telefono }}</dd><dt>Dirección</dt><dd>{{ user.direccion }}</dd><dt>Fecha de nacimiento</dt><dd>{{ user.fechaNac }}</dd>
       <dt>Rol (solo lectura)</dt><dd>{{ user.rol.descripcion }} ({{ user.nroRol }})</dd>
-      <dt>Estado de la cuenta</dt><dd>{{ user.activo ? 'Activa' : 'Inactiva' }}</dd><dt>Estado del perfil de cliente (solo lectura)</dt><dd>{{ user.cliente.estado }}</dd>
+      <dt>Estado del perfil de cliente (solo lectura)</dt><dd>{{ user.cliente.estado }}</dd>
     </dl>
-    <p class="privacy-note">El estado del perfil muestra el valor almacenado. Es independiente de la activación de la cuenta y no se modifica desde esta pantalla.</p>
-    <div class="actions"><a [routerLink]="['/admin/clientes', user.idUsuario, 'editar']" [queryParams]="navigationParams">Editar datos personales</a>
-      <button (click)="confirmar.set(true)" [disabled]="busy() || confirmar()">{{ user.activo ? 'Desactivar cuenta' : 'Activar cuenta' }}</button></div>
-    @if (confirmar()) {
-      <section aria-label="Confirmar cambio de cuenta"><p>{{ user.activo ? '¿Desactivar esta cuenta? Se revocarán sus sesiones y se invalidarán sus recuperaciones pendientes.' : '¿Activar esta cuenta? No se restaurarán sesiones ni enlaces de recuperación anteriores.' }}</p>
-        <button (click)="cambiarEstado()" [disabled]="busy()">{{ busy() ? 'Guardando…' : 'Confirmar' }}</button> <button (click)="confirmar.set(false)" [disabled]="busy()">Cancelar</button>
-      </section>
-    }
+    <p class="privacy-note">El estado del perfil muestra la clasificación comercial almacenada y no se modifica desde esta pantalla.</p>
+    <div class="actions"><a [routerLink]="['/admin/clientes', user.idUsuario, 'editar']" [queryParams]="navigationParams">Editar datos personales</a></div>
   }
-  @if (success()) { <p class="notice success" role="status">{{ success() }}</p> }
 </app-cu07-layout>

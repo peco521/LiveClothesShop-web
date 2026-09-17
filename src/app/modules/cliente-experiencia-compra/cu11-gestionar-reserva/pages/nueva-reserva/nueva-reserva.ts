@@ -26,6 +26,7 @@ export class NuevaReservaPage {
   readonly sucursales = signal<SucursalCliente[]>([]);
   readonly horarios = signal<HorariosSucursal | null>(null);
   readonly minima = hoy();
+  dayNames(days?: number[]): string { const names = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']; return (days ?? [1, 2, 3, 4, 5, 6, 7]).map(day => names[day - 1]).join(', '); }
   private readonly builder = inject(NonNullableFormBuilder);
   readonly form = this.builder.group({
     nroSuc: [0, [Validators.required, Validators.min(1)]],

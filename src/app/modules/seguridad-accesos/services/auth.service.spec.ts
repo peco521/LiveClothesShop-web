@@ -69,13 +69,27 @@ describe('AuthService + interceptor HTTP', () => {
   it('login envía solo correo y contraseña; conserva únicamente respuesta pública', () => {
     const local = vi.spyOn(Storage.prototype, 'setItem');
     service.login({ correo: ' ANA@EXAMPLE.COM ', contrasena: 'Secreta de prueba' }).subscribe();
-    const req = http.expectOne('/api/auth/login');
+    const req = http.expectOne('/api/auth/login/cliente');
     expect(req.request.body).toEqual({ correo: 'ana@example.com', contrasena: 'Secreta de prueba' });
     expect(req.request.withCredentials).toBe(true);
     expect(req.request.headers.get('X-CSRF-Protection')).toBe('1');
     req.flush({ ...session, token: 'no-retener', contrasena: 'no-retener', digest: 'no-retener' });
     expect(service.session()).toEqual(session);
     expect(local).not.toHaveBeenCalled();
+  });
+
+  it('login interno conserva tipo y usa endpoint separado', () => {
+    const internal = { ...session, usuario: { ...session.usuario, tipo: 'A' as const },
+      rol: { nro: 'A', descripcion: 'Administrador' } };
+    service.login({ correo: 'admin@example.com', contrasena: 'Anterior123*' }, 'admin').subscribe();
+    const req = http.expectOne('/api/auth/login/admin');
+    expect(req.request.headers.get('X-CSRF-Protection')).toBe('1');
+    req.flush(internal);
+    expect(service.session()).toEqual(internal);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    service.logout().subscribe();
+    http.expectOne('/api/auth/logout').flush(null);
+    expect(navigate).toHaveBeenCalledWith('/admin/login');
   });
 
   it('restaura sesión desde me sin CSRF en GET y sin transfer cache', () => {
@@ -91,7 +105,7 @@ describe('AuthService + interceptor HTTP', () => {
 
   it('una sesión vencida/rechazada limpia el estado público', () => {
     service.login({ correo: 'ana@example.com', contrasena: 'Prueba' }).subscribe();
-    http.expectOne('/api/auth/login').flush(session);
+    http.expectOne('/api/auth/login/cliente').flush(session);
     let restored: AuthResponse | null | undefined;
     service.restore().subscribe(value => restored = value);
     http.expectOne('/api/auth/me').flush({}, { status: 401, statusText: 'Unauthorized' });
@@ -110,7 +124,7 @@ describe('AuthService + interceptor HTTP', () => {
   it('propaga login rechazado sin retener credenciales', () => {
     const rejected = vi.fn();
     service.login({ correo: 'ana@example.com', contrasena: 'Prueba' }).subscribe({ error: rejected });
-    http.expectOne('/api/auth/login').flush({}, { status: 401, statusText: 'Unauthorized' });
+    http.expectOne('/api/auth/login/cliente').flush({}, { status: 401, statusText: 'Unauthorized' });
     expect(rejected).toHaveBeenCalledOnce();
     expect(service.session()).toBeNull();
   });
@@ -119,7 +133,7 @@ describe('AuthService + interceptor HTTP', () => {
     service.restore().subscribe();
     const restore = http.expectOne('/api/auth/me');
     service.login({ correo: 'ana@example.com', contrasena: 'Prueba' }).subscribe();
-    http.expectOne('/api/auth/login').flush(session);
+    http.expectOne('/api/auth/login/cliente').flush(session);
     restore.flush({}, { status: 401, statusText: 'Unauthorized' });
     expect(service.session()).toEqual(session);
   });
@@ -191,7 +205,7 @@ describe('AuthService + interceptor HTTP', () => {
     service.logout().subscribe();
     const logout = http.expectOne('/api/auth/logout');
     service.login({ correo: 'ana@example.com', contrasena: 'Prueba' }).subscribe();
-    http.expectOne('/api/auth/login').flush(session);
+    http.expectOne('/api/auth/login/cliente').flush(session);
     logout.flush(null, { status: 204, statusText: 'No Content' });
     expect(service.session()).toEqual(session);
     expect(navigate).not.toHaveBeenCalled();

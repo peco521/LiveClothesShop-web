@@ -49,7 +49,7 @@ export class ReservasService {
   }
   horarios(nro: number): Observable<HorariosSucursal> {
     return this.browser(() => this.http.get<HorariosSucursal>(`${this.base}/sucursales/${nro}/horarios`)).pipe(
-      map(value => ({ nroSuc: value.nroSuc, rangos: (value.rangos ?? []).map(r => ({ horaIni: r.horaIni, horaFin: r.horaFin })) })),
+      map(value => ({ nroSuc: value.nroSuc, rangos: (value.rangos ?? []).map(r => ({ horaIni: r.horaIni, horaFin: r.horaFin, ...(r.dias ? { dias: [...r.dias] } : {}) })) })),
     );
   }
 }

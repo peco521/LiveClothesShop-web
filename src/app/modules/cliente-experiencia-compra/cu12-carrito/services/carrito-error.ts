@@ -11,6 +11,7 @@ export function carritoError(error: unknown): string {
       return 'El producto ya no está en tu carrito.';
     }
     if (error.status === 409) {
+      if (error.error?.error?.code === 'compra_pendiente') return 'Cancela la compra pendiente antes de editar el carrito.';
       if (error.error?.error?.code === 'disponibilidad_insuficiente') return 'No hay disponibilidad suficiente para esa cantidad.';
       return 'Existe un conflicto de datos. Vuelve a consultar tu carrito antes de continuar.';
     }

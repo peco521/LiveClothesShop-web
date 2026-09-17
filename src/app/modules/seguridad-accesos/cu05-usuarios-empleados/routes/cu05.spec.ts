@@ -25,15 +25,15 @@ import { UsuariosService } from '../services/usuarios.service';
 
 const input: EmpleadoCrear = { ci: '123', nombres: 'Ana', apellidoPat: 'Pérez', apellidoMat: 'Gómez', sexo: 'F',
   correo: 'empleado@example.com', telefono: '70000000', direccion: 'Calle de prueba', fechaNac: '2000-01-01',
-  nroRol: 'laboral', cod_emp: 'EMP001', cargo: 'Cajero', nroSuc: 1, contrasena: 'Solo una frase ficticia 123' };
+  nroRol: 'laboral', cargo: 'Cajero', nroSuc: 1, contrasena: 'Solo una frase ficticia 123' };
 const employee: UsuarioDetalle = { idUsuario: 'empleado-1', ci: input.ci, nombres: input.nombres,
   apellidoPat: input.apellidoPat, apellidoMat: input.apellidoMat, sexo: input.sexo, correo: input.correo,
   telefono: input.telefono, direccion: input.direccion, fechaNac: input.fechaNac, nroRol: input.nroRol,
-  tipo: 'E', activo: true, rol: { nro: 'laboral', descripcion: 'Empleado' },
+  tipo: 'E', rol: { nro: 'laboral', descripcion: 'Empleado' },
   empleado: { cod_emp: 'EMP001', cargo: 'Cajero', nroSuc: 1 }, admin: null };
 const administrator: UsuarioDetalle = { ...employee, idUsuario: 'admin-1', tipo: 'A', empleado: null,
   admin: { cod_adm: 'ADM001' }, nroRol: 'gestor', rol: { nro: 'gestor', descripcion: 'Gestor' } };
-const options: EmpleadoOpciones = { roles: [employee.rol, administrator.rol], ciudades: [{ id: 1, nombre: 'Santa Cruz' }, { id: 2, nombre: 'La Paz' }],
+const options: EmpleadoOpciones = { proximoCodigo: 'Emp-000001', roles: [employee.rol, administrator.rol], ciudades: [{ id: 1, nombre: 'Santa Cruz' }, { id: 2, nombre: 'La Paz' }],
   sucursales: [{ nro: 1, nombre: 'Sucursal Central', direccion: 'Calle Central', estado: 'activo', idCiud: 1, ciudad: { id: 1, nombre: 'Santa Cruz' } },
     { nro: 2, nombre: 'Sucursal Norte', direccion: 'Calle Norte', estado: 'inactivo', idCiud: 2, ciudad: { id: 2, nombre: 'La Paz' } }] };
 const session: AuthResponse = { usuario: { idUsuario: 'admin-1', nombres: 'Admin', correo: 'admin@example.com' },
@@ -51,11 +51,11 @@ describe('CU05 servicio HTTP y privacidad', () => {
 
   it('lista con paginación, filtros, cookie y sin transfer cache', () => {
     let result: unknown;
-    service.listar({ offset: 20, limit: 10, q: ' Ana ', tipo: 'E', activo: false }).subscribe(value => result = value);
+    service.listar({ offset: 20, limit: 10, q: ' Ana ', tipo: 'E' }).subscribe(value => result = value);
     const req = http.expectOne(request => request.url === '/api/admin/usuarios');
     expect(req.request.params.get('offset')).toBe('20'); expect(req.request.params.get('limit')).toBe('10');
     expect(req.request.params.get('q')).toBe('Ana'); expect(req.request.params.get('tipo')).toBe('E');
-    expect(req.request.params.get('activo')).toBe('false'); expect(req.request.withCredentials).toBe(true);
+    expect(req.request.params.has('activo')).toBe(false); expect(req.request.withCredentials).toBe(true);
     expect(req.request.transferCache).toBe(false);
     req.flush({ ...list, items: [{ ...employee, hash: 'forbidden-hash', contrasena: 'forbidden-value' }] });
     expect(JSON.stringify(result)).not.toContain('forbidden');
@@ -80,12 +80,12 @@ describe('CU05 servicio HTTP y privacidad', () => {
     req.flush(employee);
   });
 
-  it('consulta detalle y cambia estado con booleano explícito', () => {
-    service.detalle('user/id').subscribe(); http.expectOne('/api/admin/usuarios/user%2Fid').flush(employee);
-    service.estado(employee.idUsuario, false).subscribe();
-    const req = http.expectOne('/api/admin/usuarios/empleado-1/estado');
-    expect(req.request.method).toBe('PATCH'); expect(req.request.body).toEqual({ activo: false });
-    expect(req.request.headers.get('X-CSRF-Protection')).toBe('1'); req.flush({ ...employee, activo: false });
+  it('consulta detalle sin exponer estado de activación', () => {
+    let result: unknown;
+    service.detalle('user/id').subscribe(value => result = value);
+    http.expectOne('/api/admin/usuarios/user%2Fid').flush({ ...employee, activo: true });
+    expect(result).toEqual(employee);
+    expect(service).not.toHaveProperty('estado');
   });
 
   it('consulta opciones existentes y filtra sucursales por ciudad', () => {
@@ -94,6 +94,7 @@ describe('CU05 servicio HTTP y privacidad', () => {
     http.expectOne('/api/admin/usuarios/roles').flush(options.roles);
     http.expectOne('/api/admin/empleados/ciudades').flush(options.ciudades);
     http.expectOne('/api/admin/empleados/sucursales').flush(options.sucursales);
+    http.expectOne('/api/admin/empleados/proximo-codigo').flush({ cod_emp: options.proximoCodigo });
     expect(result).toEqual(options);
     service.sucursales(2).subscribe(); http.expectOne('/api/admin/empleados/sucursales?idCiud=2').flush([]);
   });
@@ -110,7 +111,7 @@ describe('CU05 SSR', () => {
     TestBed.configureTestingModule({ providers: [{ provide: PLATFORM_ID, useValue: 'server' }, provideHttpClient(), provideHttpClientTesting()] });
     const service = TestBed.inject(UsuariosService);
     service.listar({ offset: 0, limit: 20 }).subscribe(); service.detalle('1').subscribe();
-    service.crear(input).subscribe(); service.editar('1', { cargo: 'Otro' }).subscribe(); service.estado('1', false).subscribe(); service.opciones().subscribe();
+    service.crear(input).subscribe(); service.editar('1', { cargo: 'Otro' }).subscribe(); service.opciones().subscribe();
     TestBed.inject(HttpTestingController).expectNone(() => true);
     expect(serverRoutes[0]).toEqual({ path: 'admin/**', renderMode: RenderMode.Client });
   });
@@ -143,6 +144,9 @@ describe('CU05 formulario reutilizable', () => {
     const fixture = form(); const component = fixture.componentInstance; const save = vi.fn(); component.guardar.subscribe(save);
     component.form.patchValue(input); component.submit(); fixture.detectChanges();
     expect(save).toHaveBeenCalledExactlyOnceWith(input);
+    const code = fixture.nativeElement.querySelector('#cod_emp') as HTMLInputElement;
+    expect(code.readOnly).toBe(true); expect(code.value).toBe('Emp-000001');
+    expect(save.mock.calls[0][0]).not.toHaveProperty('cod_emp');
     expect(component.form.controls.contrasena.value).toBe('');
     expect(fixture.nativeElement.textContent).not.toContain(input.contrasena);
     expect(fixture.nativeElement.innerHTML).not.toContain(input.contrasena);
@@ -151,6 +155,8 @@ describe('CU05 formulario reutilizable', () => {
     const fixture = form(true); const component = fixture.componentInstance; const save = vi.fn(); component.guardar.subscribe(save);
     expect(component.form.controls.nroSuc.value).toBe(1); expect(component.form.controls.nroRol.value).toBe('laboral');
     expect(fixture.nativeElement.querySelector('input[type=password]')).toBeNull();
+    const code = fixture.nativeElement.querySelector('#cod_emp') as HTMLInputElement;
+    expect(code.readOnly).toBe(true); expect(code.value).toBe(employee.empleado!.cod_emp);
     component.form.controls.cargo.setValue('Encargado'); component.submit();
     expect(save).toHaveBeenCalledOnce(); expect(save.mock.calls[0][0].cargo).toBe('Encargado');
     expect(save.mock.calls[0][0].contrasena).toBeUndefined();
@@ -167,7 +173,7 @@ describe('CU05 formulario reutilizable', () => {
     component.form.patchValue({ ...input, nroRol: 'missing', nroSuc: 999 }); component.submit(); expect(save).not.toHaveBeenCalled();
     component.form.patchValue(input); fixture.componentRef.setInput('busy', true); fixture.detectChanges(); component.submit(); expect(save).not.toHaveBeenCalled();
   });
-  it.each([['ci', 101], ['nombres', 101], ['apellidoPat', 51], ['apellidoMat', 51], ['correo', 101], ['telefono', 21], ['direccion', 151], ['cod_emp', 11], ['cargo', 51]] as const)('limita %s conforme al contrato', (key, length) => {
+  it.each([['ci', 101], ['nombres', 101], ['apellidoPat', 51], ['apellidoMat', 51], ['correo', 101], ['telefono', 21], ['direccion', 151], ['cargo', 51]] as const)('limita %s conforme al contrato', (key, length) => {
     const fixture = form(); fixture.componentInstance.form.controls[key].setValue('x'.repeat(length));
     expect(fixture.componentInstance.form.controls[key].hasError('maxlength')).toBe(true);
   });
@@ -175,13 +181,12 @@ describe('CU05 formulario reutilizable', () => {
 
 describe('CU05 páginas y navegación protegida', () => {
   const auth = { restore: vi.fn(), session: signal<AuthResponse | null>(session) };
-  const service = { listar: vi.fn(), detalle: vi.fn(), opciones: vi.fn(), sucursales: vi.fn(), crear: vi.fn(), editar: vi.fn(), estado: vi.fn() };
+  const service = { listar: vi.fn(), detalle: vi.fn(), opciones: vi.fn(), sucursales: vi.fn(), crear: vi.fn(), editar: vi.fn() };
   beforeEach(() => {
     auth.restore.mockReset().mockReturnValue(of(session)); auth.session.set(session);
     service.listar.mockReset().mockReturnValue(of(list)); service.detalle.mockReset().mockReturnValue(of(employee));
     service.opciones.mockReset().mockReturnValue(of(options)); service.sucursales.mockReset().mockReturnValue(of(options.sucursales));
     service.crear.mockReset().mockReturnValue(of(employee)); service.editar.mockReset().mockReturnValue(of(employee));
-    service.estado.mockReset().mockReturnValue(of({ ...employee, activo: false }));
     TestBed.configureTestingModule({ providers: [provideRouter(routes), { provide: AuthService, useValue: auth }, { provide: UsuariosService, useValue: service }] });
   });
   afterEach(() => vi.restoreAllMocks());
@@ -196,15 +201,20 @@ describe('CU05 páginas y navegación protegida', () => {
   it('lista A/E, muestra detalle para ambos y edición solo E', async () => {
     const { harness } = await open('/admin/usuarios', UsuariosListaPage);
     expect(harness.routeNativeElement?.textContent).toContain('2 usuarios internos');
+    expect(Array.from(harness.routeNativeElement!.querySelectorAll('thead th')).map(th => th.textContent)).toEqual(['Nombre', 'CI', 'Correo', 'Código', 'Tipo', 'Rol', 'Acciones']);
+    const rows = harness.routeNativeElement!.querySelectorAll('tbody tr');
+    expect(rows[0].querySelectorAll('td')[1].textContent).toBe(administrator.ci);
+    expect(rows[0].querySelectorAll('td')[3].textContent).toBe(administrator.admin!.cod_adm);
+    expect(rows[1].querySelectorAll('td')[3].textContent).toBe(employee.empleado!.cod_emp);
     expect(harness.routeNativeElement?.querySelector('a[href="/admin/empleados/empleado-1/editar"]')).toBeTruthy();
     expect(harness.routeNativeElement?.querySelector('a[href="/admin/empleados/admin-1/editar"]')).toBeNull();
     expect(harness.routeNativeElement?.querySelector('a[href="/admin/usuarios/admin-1"]')).toBeTruthy();
   });
   it('envía filtros y pagina sin perder filtros aplicados', async () => {
     const { page } = await open('/admin/usuarios', UsuariosListaPage);
-    page.form.patchValue({ q: 'Ana', tipo: 'E', activo: 'false', limit: 10 }); page.aplicar();
-    expect(service.listar).toHaveBeenLastCalledWith({ offset: 0, limit: 10, q: 'Ana', tipo: 'E', activo: false });
-    page.load(10); expect(service.listar).toHaveBeenLastCalledWith({ offset: 10, limit: 10, q: 'Ana', tipo: 'E', activo: false });
+    page.form.patchValue({ q: 'Ana', tipo: 'E', limit: 10 }); page.aplicar();
+    expect(service.listar).toHaveBeenLastCalledWith({ offset: 0, limit: 10, q: 'Ana', tipo: 'E' });
+    page.load(10); expect(service.listar).toHaveBeenLastCalledWith({ offset: 10, limit: 10, q: 'Ana', tipo: 'E' });
   });
   it('muestra listado vacío y bloquea paginación sin resultados', async () => {
     service.listar.mockReturnValue(of({ ...list, total: 0, items: [] }));
@@ -241,31 +251,24 @@ describe('CU05 páginas y navegación protegida', () => {
     expect(harness.routeNativeElement?.textContent).toContain('Calle Central');
     expect(harness.routeNativeElement?.innerHTML).not.toContain(input.contrasena);
   });
-  it('detalle A muestra su perfil y permite confirmar cambio de estado', async () => {
-    service.detalle.mockReturnValue(of(administrator)); service.estado.mockReturnValue(of({ ...administrator, activo: false }));
-    const { harness, page } = await open('/admin/usuarios/admin-1', UsuarioDetallePage);
+  it('detalle A muestra su perfil sin acciones de activación', async () => {
+    service.detalle.mockReturnValue(of(administrator));
+    const { harness } = await open('/admin/usuarios/admin-1', UsuarioDetallePage);
     expect(harness.routeNativeElement?.textContent).toContain('ADM001');
     expect(harness.routeNativeElement?.querySelector('a[href$="/editar"]')).toBeNull();
-    page.cambiarEstado(); expect(service.estado).not.toHaveBeenCalled();
-    page.confirmar.set(true); page.cambiarEstado(); harness.detectChanges();
-    expect(service.estado).toHaveBeenCalledExactlyOnceWith('admin-1', false); expect(page.usuario()?.activo).toBe(false);
+    expect(harness.routeNativeElement?.textContent).not.toContain('Activar usuario');
+    expect(harness.routeNativeElement?.textContent).not.toContain('Desactivar usuario');
   });
-  it('activa empleado inactivo y evita solicitudes duplicadas', async () => {
-    service.detalle.mockReturnValue(of({ ...employee, activo: false })); const pending = new Subject<UsuarioDetalle>(); service.estado.mockReturnValue(pending);
-    const { page } = await open('/admin/usuarios/empleado-1', UsuarioDetallePage);
-    page.confirmar.set(true); page.cambiarEstado(); page.cambiarEstado();
-    expect(service.estado).toHaveBeenCalledExactlyOnceWith('empleado-1', true);
-    pending.next(employee); pending.complete(); expect(page.usuario()?.activo).toBe(true); expect(page.confirmar()).toBe(false);
-  });
-  it('cambiar de usuario cancela respuesta de estado pendiente para no sobrescribir otro detalle', async () => {
-    const pending = new Subject<UsuarioDetalle>(); service.estado.mockReturnValue(pending);
-    const { harness, page } = await open('/admin/usuarios/empleado-1', UsuarioDetallePage);
-    page.confirmar.set(true); page.cambiarEstado();
+
+  it('cambiar de usuario cancela la carga anterior', async () => {
+    const pending = new Subject<UsuarioDetalle>(); service.detalle.mockReturnValue(pending);
+    const { harness } = await open('/admin/usuarios/empleado-1', UsuarioDetallePage);
     service.detalle.mockReturnValue(of(administrator));
     await harness.navigateByUrl('/admin/usuarios/admin-1', AdminLayout); harness.detectChanges();
     const next = harness.fixture.debugElement.query(By.directive(UsuarioDetallePage))!.componentInstance as UsuarioDetallePage;
-    pending.next({ ...employee, activo: false }); pending.complete();
-    expect(next.usuario()?.idUsuario).toBe('admin-1'); expect(next.busy()).toBe(false);
+    expect(pending.observed).toBe(false);
+    pending.next(employee); pending.complete();
+    expect(next.usuario()?.idUsuario).toBe('admin-1');
   });
   it.each([401, 403, 409, 422])('listado muestra error HTTP %s sin datos ni mensajes sensibles', async status => {
     service.listar.mockReturnValue(throwError(() => new HttpErrorResponse({ status, error: { error: { message: 'secret-marker' } } })));
@@ -285,16 +288,11 @@ describe('CU05 páginas y navegación protegida', () => {
     expect(page.error()).toBeTruthy(); expect(TestBed.inject(Router).url).toBe('/admin/empleados/empleado-1/editar');
     if ([401, 403].includes(status)) expect(page.usuario()).toBeNull();
   });
-  it.each([401, 403, 409, 422])('cambio de estado maneja HTTP %s sin éxito falso', async status => {
-    service.estado.mockReturnValue(throwError(() => new HttpErrorResponse({ status })));
-    const { page } = await open('/admin/usuarios/empleado-1', UsuarioDetallePage); page.confirmar.set(true); page.cambiarEstado();
-    expect(page.error()).toBeTruthy(); expect(page.success()).toBe('');
-    if ([401, 403].includes(status)) expect(page.usuario()).toBeNull(); else expect(page.usuario()?.activo).toBe(true);
-  });
+
   it.each(['/admin/usuarios', '/admin/empleados/nuevo', '/admin/empleados/empleado-1/editar', '/admin/usuarios/empleado-1'])('protege acceso directo sin sesión: %s', async path => {
     auth.restore.mockReturnValue(of(null)); auth.session.set(null);
     const harness = await RouterTestingHarness.create(); await harness.navigateByUrl(path);
-    expect(TestBed.inject(Router).url).toBe('/login'); expect(service.listar).not.toHaveBeenCalled(); expect(service.detalle).not.toHaveBeenCalled(); expect(service.opciones).not.toHaveBeenCalled();
+    expect(TestBed.inject(Router).url).toBe('/admin/login'); expect(service.listar).not.toHaveBeenCalled(); expect(service.detalle).not.toHaveBeenCalled(); expect(service.opciones).not.toHaveBeenCalled();
   });
   it('SuperAdmin sin CU05 no obtiene bypass ni carga datos', async () => {
     const denied = { ...session, rol: { nro: 'superadmin', descripcion: 'SuperAdmin' }, permisos: ['CU06'] };
@@ -305,7 +303,7 @@ describe('CU05 páginas y navegación protegida', () => {
   it.each([401, 403, 503])('guard maneja error de restauración HTTP %s', async status => {
     auth.restore.mockReturnValue(throwError(() => new HttpErrorResponse({ status })));
     const harness = await RouterTestingHarness.create(); await harness.navigateByUrl('/admin/usuarios');
-    expect(TestBed.inject(Router).url).toBe(status === 401 ? '/login' : `/acceso?motivo=${status === 403 ? 'sin-permiso' : 'verificacion'}`);
+    expect(TestBed.inject(Router).url).toBe(status === 401 ? '/admin/login' : '/acceso?motivo=verificacion');
     expect(service.listar).not.toHaveBeenCalled();
   });
   it.each([true, false])('enlace panel depende de CU05: %s', async allowed => {

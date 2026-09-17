@@ -10,7 +10,7 @@ function detalle(value: ClienteDetalle): ClienteDetalle {
   return { idUsuario: value.idUsuario, ci: value.ci, nombres: value.nombres,
     apellidoPat: value.apellidoPat, apellidoMat: value.apellidoMat, sexo: value.sexo,
     correo: value.correo, telefono: value.telefono, direccion: value.direccion, fechaNac: value.fechaNac,
-    tipo: value.tipo, activo: value.activo, nroRol: value.nroRol,
+    tipo: value.tipo, nroRol: value.nroRol,
     rol: { nro: value.rol.nro, descripcion: value.rol.descripcion },
     cliente: { cod_cl: value.cliente.cod_cl, estado: value.cliente.estado } };
 }
@@ -26,7 +26,6 @@ export class ClientesService {
   listar(filters: ClientesFiltros): Observable<ClientesListado> {
     let params = new HttpParams().set('offset', filters.offset).set('limit', filters.limit);
     if (filters.q?.trim()) params = params.set('q', filters.q.trim());
-    if (filters.activo !== undefined) params = params.set('activo', filters.activo);
     return this.browser(() => this.http.get<ClientesListado>(this.base, { params })).pipe(
       map(value => ({ items: value.items.map(detalle), total: value.total, offset: value.offset, limit: value.limit })),
     );
@@ -42,8 +41,5 @@ export class ClientesService {
     if (body.correo !== undefined) body.correo = body.correo.toLowerCase();
     if (input.sexo !== undefined) body.sexo = input.sexo;
     return this.browser(() => this.http.patch<ClienteDetalle>(`${this.base}/${encodeURIComponent(id)}`, body)).pipe(map(detalle));
-  }
-  estado(id: string, activo: boolean): Observable<ClienteDetalle> {
-    return this.browser(() => this.http.patch<ClienteDetalle>(`${this.base}/${encodeURIComponent(id)}/estado-cuenta`, { activo })).pipe(map(detalle));
   }
 }

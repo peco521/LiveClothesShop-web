@@ -1,0 +1,54 @@
+<section class="history-panel" aria-labelledby="history-title" [attr.aria-busy]="busy()">
+  <nav class="breadcrumbs" aria-label="Ruta de navegación"><a routerLink="/tienda">Catálogo</a><span aria-hidden="true"> / </span><span>Historial de compras</span></nav>
+  <header class="page-heading">
+    <h1 id="history-title">Historial de compras</h1>
+    <p class="muted">Consulta tus compras y revisa el detalle de cada una, de la más reciente a la más antigua.</p>
+  </header>
+  @if (busy()) { <p class="notice" role="status">Cargando historial de compras…</p> }
+  @if (error()) {
+    <div class="notice error" role="alert">
+      <p>{{ error() }}</p>
+      @if (loginRequired()) { <a routerLink="/login">Iniciar sesión</a> }
+      @else if (retryable()) { <button type="button" class="button secondary compact" (click)="load()" [disabled]="busy()">Reintentar</button> }
+    </div>
+  }
+  @if (result(); as page) {
+    @if (page.total === 0) {
+      <div class="empty-state" role="status">
+        <h2>Aún no tienes compras</h2>
+        <p>No existen compras en tu historial.</p>
+        <a class="button primary compact" routerLink="/tienda">Explorar prendas</a>
+      </div>
+    } @else {
+      <p class="muted" role="status">{{ page.total }} {{ page.total === 1 ? 'compra registrada' : 'compras registradas' }}</p>
+      @if (page.items.length === 0) {
+        <div class="empty-state"><p>No hay compras en esta página.</p><button type="button" class="button secondary compact" (click)="pagina(0)">Volver a la primera página</button></div>
+      } @else {
+        <div class="purchase-list">
+          @for (compra of page.items; track compra.nroVenta) {
+            <article class="purchase-card" [attr.aria-labelledby]="'purchase-' + compra.nroVenta">
+              <div class="purchase-heading">
+                <div><h2 [id]="'purchase-' + compra.nroVenta">Compra #{{ compra.nroVenta }}</h2><time class="muted" [attr.datetime]="compra.fechaHora">{{ compra.fechaHora | date:'dd/MM/yyyy · HH:mm' }}</time></div>
+                <app-compra-estados [venta]="compra.estado" [pago]="compra.estadoPago" />
+              </div>
+              <ul class="products">
+                @for (producto of compra.productos; track $index) {
+                  <li><span>{{ producto.producto }} <small class="muted">({{ producto.sku }})</small></span><span class="quantity">× {{ producto.cantidad }}</span></li>
+                } @empty { <li class="muted">Sin productos disponibles en el registro.</li> }
+              </ul>
+              <div class="purchase-footer">
+                <p>Monto total <strong>{{ compra.monto | number:'1.2-2' }}</strong></p>
+                <a class="button secondary compact" [routerLink]="['/tienda/historial-compras', compra.nroVenta]" [queryParams]="{ offset: page.offset, limit: page.limit }" [attr.aria-label]="'Ver detalle de la compra ' + compra.nroVenta">Ver detalle <span aria-hidden="true">→</span></a>
+              </div>
+            </article>
+          }
+        </div>
+      }
+      <nav class="pagination" aria-label="Paginación del historial">
+        <button type="button" class="button secondary compact" (click)="pagina(page.offset - page.limit)" [disabled]="busy() || page.offset === 0">Anterior</button>
+        <span class="muted">{{ page.items.length ? page.offset + 1 : 0 }}–{{ page.items.length ? page.offset + page.items.length : 0 }} de {{ page.total }}</span>
+        <button type="button" class="button secondary compact" (click)="pagina(page.offset + page.limit)" [disabled]="busy() || page.offset + page.limit >= page.total">Siguiente</button>
+      </nav>
+    }
+  }
+</section>

@@ -12,10 +12,13 @@ export function pagoError(error: unknown): string {
     if (error.status === 409) {
       const code = error.error?.error?.code;
       if (code === 'disponibilidad_insuficiente') return 'Ya no hay disponibilidad suficiente en la sucursal para completar el pago.';
+      if (code === 'venta_no_cancelable') return 'El pago ya fue confirmado. Consulta su estado; no se canceló la compra.';
+      if (code === 'carrito_modificado') return 'El carrito cambió. Consulta el estado y cancela la compra pendiente.';
       if (code === 'venta_no_pagable') return 'La venta ya no puede pagarse.';
       if (code === 'carrito_no_disponible') return 'El carrito de esta venta ya no está activo.';
       return 'Existe un conflicto. Vuelve a consultar el estado del pago antes de continuar.';
     }
+    if (error.status === 503) return error.error?.error?.code === 'reembolso_pendiente' ? 'El reembolso está pendiente. Consulta nuevamente su estado.' : 'La pasarela no está disponible. Consulta el estado antes de reintentar.';
     if (error.status === 422) return 'El método de pago o los datos enviados no son válidos.';
     if (error.status === 0) return 'No se pudo conectar con el servidor. Comprueba tu conexión.';
   }

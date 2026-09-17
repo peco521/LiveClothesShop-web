@@ -21,7 +21,7 @@ export class ClientesListaPage {
   private query = '';
   private filters: ClientesFiltros = { offset: 0, limit: 20 };
   readonly busy = signal(false); readonly error = signal(''); readonly result = signal<ClientesListado | null>(null);
-  readonly form = inject(NonNullableFormBuilder).group({ q: ['', Validators.maxLength(100)], activo: [''],
+  readonly form = inject(NonNullableFormBuilder).group({ q: ['', Validators.maxLength(100)],
     limit: [20, [Validators.required, Validators.min(1), Validators.max(100), (control: AbstractControl) => Number.isInteger(control.value) ? null : { integer: true }]] });
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(params => {
@@ -31,12 +31,10 @@ export class ClientesListaPage {
         return;
       }
       const offset = Number(params.get('offset') ?? 0), limit = Number(params.get('limit') ?? 20);
-      const active = params.get('activo');
       this.filters = { offset: Number.isSafeInteger(offset) && offset >= 0 ? offset : 0,
         limit: Number.isInteger(limit) && limit >= 1 && limit <= 100 ? limit : 20,
-        q: this.query,
-        ...(active === 'true' || active === 'false' ? { activo: active === 'true' } : {}) };
-      this.form.reset({ q: this.filters.q ?? '', activo: active === 'true' || active === 'false' ? active : '', limit: this.filters.limit });
+        q: this.query };
+      this.form.reset({ q: this.filters.q ?? '', limit: this.filters.limit });
       this.load();
     });
   }
@@ -44,16 +42,15 @@ export class ClientesListaPage {
   aplicar(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     const value = this.form.getRawValue();
-    this.navigate({ offset: 0, limit: value.limit, q: value.q.trim(), ...(value.activo !== '' ? { activo: value.activo === 'true' } : {}) });
+    this.navigate({ offset: 0, limit: value.limit, q: value.q.trim() });
   }
   pagina(offset: number): void { if (!this.busy()) this.navigate({ ...this.filters, offset: Math.max(0, offset) }); }
   private navigate(filters: ClientesFiltros): void {
     if (JSON.stringify(filters) === JSON.stringify(this.filters)) { if (!this.busy()) this.load(); return; }
     this.query = filters.q ?? '';
-    const samePage = filters.offset === this.filters.offset && filters.limit === this.filters.limit && filters.activo === this.filters.activo;
+    const samePage = filters.offset === this.filters.offset && filters.limit === this.filters.limit;
     if (samePage) { this.filters = filters; this.load(); return; }
-    const queryParams = { offset: filters.offset, limit: filters.limit,
-      ...(filters.activo !== undefined ? { activo: filters.activo } : {}) };
+    const queryParams = { offset: filters.offset, limit: filters.limit };
     void this.router.navigate([], { relativeTo: this.route, queryParams });
   }
   load(): void {

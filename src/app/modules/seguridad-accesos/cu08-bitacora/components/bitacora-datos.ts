@@ -3,7 +3,7 @@ import { BitacoraDetalle } from '../models/bitacora.models';
 
 @Component({ selector: 'app-bitacora-datos', template: `<dl>
   <dt>ID del evento</dt><dd>{{ registro().id }}</dd>
-  <dt>Fecha UTC (ISO original)</dt><dd><time [attr.datetime]="registro().fecha">{{ registro().fecha }}</time></dd>
+  <dt>Fecha (UTC)</dt><dd><time [attr.datetime]="registro().fecha">{{ registro().fecha }}</time></dd>
   <dt>Acción</dt><dd>{{ registro().accion ?? 'Acción no reconocida' }}</dd>
   <dt>ID del actor</dt><dd>{{ registro().usuario_id ?? 'Sin identificación registrada' }}</dd>
   <dt>IP</dt><dd>{{ registro().ip ?? 'Sin dirección válida registrada' }}</dd>

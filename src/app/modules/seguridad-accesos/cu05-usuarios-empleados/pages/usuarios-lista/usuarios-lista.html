@@ -5,7 +5,6 @@
       <div class="form-grid">
         <div class="field"><label for="buscar">Nombre, apellidos, correo o CI</label><input id="buscar" formControlName="q" maxlength="100" /></div>
         <div class="field"><label for="tipo">Tipo</label><select id="tipo" formControlName="tipo"><option value="">Todos</option><option value="A">Administrador</option><option value="E">Empleado</option></select></div>
-        <div class="field"><label for="estado">Estado</label><select id="estado" formControlName="activo"><option value="">Todos</option><option value="true">Activo</option><option value="false">Inactivo</option></select></div>
         <div class="field"><label for="limite">Resultados por página</label><select id="limite" formControlName="limit"><option [ngValue]="10">10</option><option [ngValue]="20">20</option><option [ngValue]="50">50</option><option [ngValue]="100">100</option></select></div>
       </div><button type="submit" [disabled]="busy()">Aplicar filtros</button>
     </fieldset>
@@ -16,10 +15,10 @@
     <p role="status">{{ page.total }} usuarios internos encontrados.</p>
     @if (!page.items.length) { <p>No hay usuarios para estos filtros.</p> }
     @else {
-      <div class="table-scroll"><table><caption class="visually-hidden">Usuarios internos</caption><thead><tr><th>Nombre</th><th>Correo</th><th>Tipo</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+      <div class="table-scroll"><table><caption class="visually-hidden">Usuarios internos</caption><thead><tr><th scope="col">Nombre</th><th scope="col">CI</th><th scope="col">Correo</th><th scope="col">Código</th><th scope="col">Tipo</th><th scope="col">Rol</th><th scope="col">Acciones</th></tr></thead><tbody>
         @for (user of page.items; track user.idUsuario) {
-          <tr><td>{{ user.nombres }} {{ user.apellidoPat }} {{ user.apellidoMat }}</td><td>{{ user.correo }}</td><td>{{ user.tipo === 'E' ? 'Empleado' : 'Administrador' }}</td><td>{{ user.rol.descripcion }}</td><td>{{ user.activo ? 'Activo' : 'Inactivo' }}</td>
-            <td><a [routerLink]="['/admin/usuarios', user.idUsuario]">Detalle y estado</a>
+          <tr><td>{{ user.nombres }} {{ user.apellidoPat }} {{ user.apellidoMat }}</td><td>{{ user.ci }}</td><td>{{ user.correo }}</td><td>{{ user.empleado?.cod_emp ?? user.admin?.cod_adm ?? 'No registrado' }}</td><td>{{ user.tipo === 'E' ? 'Empleado' : 'Administrador' }}</td><td>{{ user.rol.descripcion }}</td>
+            <td><a [routerLink]="['/admin/usuarios', user.idUsuario]">Detalle</a>
               @if (user.tipo === 'E') { · <a [routerLink]="['/admin/empleados', user.idUsuario, 'editar']">Editar</a> }
             </td></tr>
         }

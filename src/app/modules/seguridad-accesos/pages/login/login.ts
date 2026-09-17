@@ -6,6 +6,7 @@ import { finalize } from 'rxjs';
 import { AuthLayout } from '../../components/auth-layout';
 import { FieldError } from '../../components/field-error';
 import { normalizedEmail, notBlank } from '../../models/auth.validation';
+import { isClienteSession } from '../../models/session-type';
 import { authError } from '../../services/auth-error';
 import { AuthService } from '../../services/auth.service';
 
@@ -30,7 +31,7 @@ export class LoginPage {
     afterNextRender(() => {
       this.auth.restore().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (session) => {
-          if (session && !this.busy() && this.auth.session() === session) void this.router.navigateByUrl('/admin');
+          if (session && isClienteSession(session) && !this.busy() && this.auth.session() === session) void this.router.navigateByUrl('/tienda');
         },
         // A failed restoration must not prevent a fresh login.
         error: () => {},
@@ -47,7 +48,7 @@ export class LoginPage {
       takeUntilDestroyed(this.destroyRef),
       finalize(() => { this.busy.set(false); this.form.controls.contrasena.reset(); }),
     ).subscribe({
-      next: () => { void this.router.navigateByUrl('/admin'); },
+      next: () => { void this.router.navigateByUrl('/tienda'); },
       error: (error: unknown) => this.error.set(authError(error, 'login')),
     });
   }

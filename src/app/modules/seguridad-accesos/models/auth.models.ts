@@ -23,7 +23,7 @@ export interface LoginRequest {
 }
 
 export interface AuthResponse {
-  usuario: { idUsuario: string; nombres: string | null; correo: string };
+  usuario: { idUsuario: string; tipo?: 'A' | 'C' | 'E'; nombres: string | null; correo: string };
   rol: { nro: string; descripcion: string };
   permisos: string[];
   expiraEn: string;

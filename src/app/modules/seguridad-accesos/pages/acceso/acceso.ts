@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthLayout } from '../../components/auth-layout';
 import { authError } from '../../services/auth-error';
+import { isClienteSession } from '../../models/session-type';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -26,7 +27,11 @@ import { AuthService } from '../../services/auth.service';
           <p class="user-email">{{ session.usuario.correo }}</p>
         </div>
         <p class="privacy-note">Tu cuenta está lista. Esta es la confirmación de acceso de la versión actual de la tienda.</p>
-        <a class="button primary" routerLink="/admin">Ir al panel administrativo</a>
+        @if (isCliente(session)) {
+          <a class="button primary" routerLink="/tienda">Ir a la tienda</a>
+        } @else {
+          <a class="button primary" routerLink="/admin">Ir al panel administrativo</a>
+        }
       } @else {
         <p class="notice" role="status">Inicia sesión para acceder a tu cuenta.</p>
         <a class="button primary" routerLink="/login">Iniciar sesión</a>
@@ -35,6 +40,7 @@ import { AuthService } from '../../services/auth.service';
   `,
 })
 export class AccesoPage {
+  readonly isCliente = isClienteSession;
   readonly motivo = inject(ActivatedRoute).snapshot.queryParamMap.get('motivo');
   readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);

@@ -23,12 +23,12 @@ import { customer, list, session } from './cliente.fixtures';
 describe('CU07 páginas, navegación y permisos', () => {
   let activeHarness: RouterTestingHarness | undefined;
   const auth = { restore: vi.fn(), session: signal<AuthResponse | null>(session) };
-  const service = { listar: vi.fn(), detalle: vi.fn(), editar: vi.fn(), estado: vi.fn() };
+  const service = { listar: vi.fn(), detalle: vi.fn(), editar: vi.fn() };
   beforeEach(() => {
     activeHarness = undefined;
     auth.restore.mockReset().mockReturnValue(of(session)); auth.session.set(session);
     service.listar.mockReset().mockReturnValue(of(list)); service.detalle.mockReset().mockReturnValue(of(customer));
-    service.editar.mockReset().mockReturnValue(of(customer)); service.estado.mockReset().mockReturnValue(of({ ...customer, activo: false }));
+    service.editar.mockReset().mockReturnValue(of(customer));
     TestBed.configureTestingModule({ providers: [provideRouter(routes), { provide: AuthService, useValue: auth }, { provide: ClientesService, useValue: service }] });
   });
   afterEach(() => vi.restoreAllMocks());
@@ -49,23 +49,23 @@ describe('CU07 páginas, navegación y permisos', () => {
     expect(harness.routeNativeElement?.textContent).not.toContain('Crear cliente');
   });
   it('conserva búsqueda solo al paginar y la reinicia al volver del detalle', async () => {
-    const { harness, page } = await open('/admin/clientes?offset=10&limit=10&activo=false', ClientesListaPage);
-    expect(service.listar).toHaveBeenLastCalledWith({ offset: 10, limit: 10, q: '', activo: false });
+    const { harness, page } = await open('/admin/clientes?offset=10&limit=10', ClientesListaPage);
+    expect(service.listar).toHaveBeenLastCalledWith({ offset: 10, limit: 10, q: '' });
     page.form.controls.q.setValue('Ana'); page.aplicar(); await harness.fixture.whenStable();
     page.pagina(20); await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toContain('offset=20');
-    expect(service.listar).toHaveBeenLastCalledWith({ offset: 20, limit: 10, q: 'Ana', activo: false });
+    expect(service.listar).toHaveBeenLastCalledWith({ offset: 20, limit: 10, q: 'Ana' });
     expect(TestBed.inject(Router).url).not.toContain('q=');
-    await harness.navigateByUrl('/admin/clientes/cliente-1?offset=20&limit=10&activo=false', AdminLayout); harness.detectChanges();
+    await harness.navigateByUrl('/admin/clientes/cliente-1?offset=20&limit=10', AdminLayout); harness.detectChanges();
     const link = harness.routeNativeElement?.querySelector('a[href^="/admin/clientes?"]') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toContain('offset=20');
     await harness.navigateByUrl(link.getAttribute('href')!, AdminLayout);
-    expect(service.listar).toHaveBeenLastCalledWith({ offset: 20, limit: 10, q: '', activo: false });
+    expect(service.listar).toHaveBeenLastCalledWith({ offset: 20, limit: 10, q: '' });
   });
   it('aplica búsqueda y filtros nuevos reiniciando offset', async () => {
     const { harness, page } = await open('/admin/clientes?offset=20', ClientesListaPage);
-    page.form.patchValue({ q: ' Nueva ', activo: 'true', limit: 10 }); page.aplicar(); await harness.fixture.whenStable();
-    expect(service.listar).toHaveBeenLastCalledWith({ offset: 0, limit: 10, q: 'Nueva', activo: true });
+    page.form.patchValue({ q: ' Nueva ', limit: 10 }); page.aplicar(); await harness.fixture.whenStable();
+    expect(service.listar).toHaveBeenLastCalledWith({ offset: 0, limit: 10, q: 'Nueva' });
   });
   it.each(['private-search@example.com', '987654321'])('q=%s nunca se persiste en navegación, enlaces o storage', async query => {
     const { harness, page } = await open('/admin/clientes', ClientesListaPage);
@@ -73,13 +73,13 @@ describe('CU07 páginas, navegación y permisos', () => {
     const navigation = vi.spyOn(router, 'navigate');
     const storage = vi.spyOn(Storage.prototype, 'setItem');
     const push = vi.spyOn(history, 'pushState'); const replace = vi.spyOn(history, 'replaceState');
-    page.form.patchValue({ q: query, limit: 10, activo: 'false' }); page.aplicar(); await harness.fixture.whenStable();
+    page.form.patchValue({ q: query, limit: 10 }); page.aplicar(); await harness.fixture.whenStable();
     page.pagina(10); await harness.fixture.whenStable(); harness.detectChanges();
-    expect(service.listar).toHaveBeenLastCalledWith({ offset: 10, limit: 10, activo: false, q: query });
+    expect(service.listar).toHaveBeenLastCalledWith({ offset: 10, limit: 10, q: query });
     expect(router.url).not.toContain('q='); expect(router.url).not.toContain(query);
     for (const [commands, extras] of navigation.mock.calls) {
       expect(JSON.stringify(commands)).not.toContain(query);
-      expect(Object.keys(extras?.queryParams ?? {}).every(key => ['offset', 'limit', 'activo'].includes(key))).toBe(true);
+      expect(Object.keys(extras?.queryParams ?? {}).every(key => ['offset', 'limit'].includes(key))).toBe(true);
       expect(extras?.state).toBeUndefined();
       expect(JSON.stringify(extras?.queryParams)).not.toContain(query);
     }
@@ -88,10 +88,10 @@ describe('CU07 páginas, navegación y permisos', () => {
     for (const link of harness.routeNativeElement!.querySelectorAll('a')) expect(link.getAttribute('href')).not.toContain(query);
   });
   it('ignora y retira q de un enlace antiguo sin usarlo para buscar', async () => {
-    const { page } = await open('/admin/clientes?offset=10&limit=10&q=legacy-marker&activo=false', ClientesListaPage);
-    expect(TestBed.inject(Router).url).toBe('/admin/clientes?offset=10&limit=10&activo=false');
+    const { page } = await open('/admin/clientes?offset=10&limit=10&q=legacy-marker', ClientesListaPage);
+    expect(TestBed.inject(Router).url).toBe('/admin/clientes?offset=10&limit=10');
     expect(page.form.controls.q.value).toBe('');
-    expect(service.listar).toHaveBeenLastCalledWith({ offset: 10, limit: 10, q: '', activo: false });
+    expect(service.listar).toHaveBeenLastCalledWith({ offset: 10, limit: 10, q: '' });
     expect(JSON.stringify(service.listar.mock.calls)).not.toContain('legacy-marker');
   });
   it('los enlaces desde detalle/edición no propagan q heredado', async () => {
@@ -131,25 +131,22 @@ describe('CU07 páginas, navegación y permisos', () => {
     await harness.navigateByUrl('/admin/clientes/cliente-1', AdminLayout);
     expect(pending.observed).toBe(false);
   });
-  it('cancelar confirmación no envía cambio de cuenta', async () => {
-    const { page } = await open('/admin/clientes/cliente-1', ClienteDetallePage);
-    page.confirmar.set(true); page.confirmar.set(false); page.cambiarEstado(); expect(service.estado).not.toHaveBeenCalled();
+  it('detalle no muestra acciones de activación de cuenta', async () => {
+    const { harness } = await open('/admin/clientes/cliente-1', ClienteDetallePage);
+    const text = harness.routeNativeElement?.textContent;
+    expect(text).not.toContain('Activar cuenta');
+    expect(text).not.toContain('Desactivar cuenta');
+    expect(text).not.toContain('Estado de la cuenta');
   });
-  it('detalle separa cuenta activa y estado perfil inactivo y nombres null', async () => {
+  it('detalle muestra estado comercial y nombres null', async () => {
     service.detalle.mockReturnValue(of({ ...customer, nombres: null }));
     const { harness } = await open('/admin/clientes/cliente-1', ClienteDetallePage);
     const text = harness.routeNativeElement?.textContent;
-    expect(text).toContain('Sin registrar'); expect(text).toContain('Estado de la cuenta'); expect(text).toContain('Activa');
+    expect(text).toContain('Sin registrar');
     expect(text).toContain('Estado del perfil de cliente (solo lectura)'); expect(text).toContain('inactivo');
     expect(text).toContain('CL001'); expect(text).toContain('publico-custom');
   });
-  it.each([true, false])('confirmación y doble envío cuenta activa=%s', async active => {
-    service.detalle.mockReturnValue(of({ ...customer, activo: active })); const pending = new Subject<ClienteDetalle>(); service.estado.mockReturnValue(pending);
-    const { page } = await open('/admin/clientes/cliente-1', ClienteDetallePage);
-    page.cambiarEstado(); expect(service.estado).not.toHaveBeenCalled(); page.confirmar.set(true); page.cambiarEstado(); page.cambiarEstado();
-    expect(service.estado).toHaveBeenCalledExactlyOnceWith('cliente-1', !active);
-    pending.next({ ...customer, activo: !active }); pending.complete(); expect(page.cliente()?.activo).toBe(!active); expect(page.success()).toBeTruthy();
-  });
+
   it('edición preserva filtros al volver al detalle y bloquea vacíos/doble envío', async () => {
     const pending = new Subject<ClienteDetalle>(); service.editar.mockReturnValue(pending);
     const { harness, page } = await open('/admin/clientes/cliente-1/editar?q=Ana&offset=20', ClienteEditarPage);
@@ -169,14 +166,7 @@ describe('CU07 páginas, navegación y permisos', () => {
     expect(pending.observed).toBe(false); pending.next(customer);
     expect(next.cliente()?.idUsuario).toBe('cliente-2');
   });
-  it('navegar cancela mutación de cuenta y no sobrescribe otro detalle', async () => {
-    const pending = new Subject<ClienteDetalle>(); service.estado.mockReturnValue(pending);
-    const { harness, page } = await open('/admin/clientes/cliente-1', ClienteDetallePage);
-    page.confirmar.set(true); page.cambiarEstado(); service.detalle.mockReturnValue(of({ ...customer, idUsuario: 'cliente-2' }));
-    await harness.navigateByUrl('/admin/clientes/cliente-2', AdminLayout); harness.detectChanges();
-    const next = harness.fixture.debugElement.query(By.directive(ClienteDetallePage))!.componentInstance as ClienteDetallePage;
-    pending.next({ ...customer, activo: false }); expect(next.cliente()?.idUsuario).toBe('cliente-2'); expect(next.busy()).toBe(false); expect(pending.observed).toBe(false);
-  });
+
   it('navegar cancela edición pendiente sin redirección tardía', async () => {
     const pending = new Subject<ClienteDetalle>(); service.editar.mockReturnValue(pending);
     const { harness, page } = await open('/admin/clientes/cliente-1/editar', ClienteEditarPage); page.guardar({ telefono: '123' });
@@ -196,12 +186,10 @@ describe('CU07 páginas, navegación y permisos', () => {
   });
   it.each([401, 403, 404, 409, 422])('mutaciones manejan HTTP %s sin éxito falso', async status => {
     const failure = throwError(() => new HttpErrorResponse({ status, error: { error: { code: status === 409 ? 'correo_duplicado' : 'datos_invalidos', message: 'private-marker' } } }));
-    service.editar.mockReturnValue(failure); service.estado.mockReturnValue(failure);
+    service.editar.mockReturnValue(failure);
     const edit = await open('/admin/clientes/cliente-1/editar', ClienteEditarPage); edit.page.guardar({ telefono: '123' });
     expect(edit.page.error()).toBeTruthy(); expect(TestBed.inject(Router).url).toContain('/editar');
     expect(!!edit.page.cliente()).toBe(![401, 403, 404].includes(status));
-    const detail = await open('/admin/clientes/cliente-1', ClienteDetallePage); detail.page.confirmar.set(true); detail.page.cambiarEstado();
-    expect(detail.page.success()).toBe(''); expect(detail.page.error()).toBeTruthy(); expect(detail.page.error()).not.toContain('private-marker');
   });
   it('perfil incoherente retira formulario; correo duplicado conserva datos', async () => {
     service.editar.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: { error: { code: 'perfil_incoherente' } } })));

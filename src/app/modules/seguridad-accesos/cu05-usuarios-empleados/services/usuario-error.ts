@@ -11,7 +11,7 @@ export function usuarioError(error: unknown): string {
       case 403: return 'No tienes autorización para esta operación o el origen de la solicitud no está permitido.';
       case 404: return 'No se encontró el usuario interno o empleado solicitado.';
       case 409:
-        if (error.error?.error?.code === 'ultimo_usuario_cu06') return 'Debe conservar al menos un usuario activo con permiso CU06. No puedes desactivar o cambiar el rol del último usuario con ese acceso.';
+        if (error.error?.error?.code === 'ultimo_usuario_cu06') return 'Debe conservar al menos un usuario interno con permiso CU06. Asigna ese acceso a otro usuario antes de cambiar el rol.';
         return error.error?.error?.code === 'correo_duplicado'
         ? 'El correo ya está registrado. Utiliza otro correo.'
         : 'Existe un conflicto de datos o un perfil incoherente. Revisa el registro antes de continuar.';

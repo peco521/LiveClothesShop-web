@@ -282,7 +282,7 @@ describe('CU06 páginas, rutas y actualización de acceso', () => {
     service.reemplazarPermisos.mockReturnValue(throwError(() => rejected(status, 'ultimo_usuario_cu06'))); page.guardar([]);
     expect(page.error()).toBeTruthy(); expect(page.success()).toBe(''); expect(auth.restore.mock.calls.length).toBe(before);
     if ([401, 403].includes(status)) expect(page.permisos()).toBeNull(); else expect(page.permisos()).toEqual(assigned);
-    if (status === 409) expect(page.error()).toContain('usuario activo con permiso CU06');
+    if (status === 409) expect(page.error()).toContain('usuario interno con permiso CU06');
   });
   it.each(['/admin/roles', '/admin/roles/nuevo', '/admin/roles/Gestor/editar', '/admin/roles/Gestor'])('guard protege URL directa %s', async path => {
     auth.restore.mockReturnValue(of(null)); auth.session.set(null);
@@ -335,8 +335,8 @@ describe('CU06 páginas, rutas y actualización de acceso', () => {
 describe('Errores seguros CU06 y continuidad CU05', () => {
   it('distingue conflictos sin renderizar mensaje arbitrario', () => {
     expect(rolError(rejected(409, 'rol_duplicado'))).toContain('identificador del rol ya existe');
-    expect(rolError(rejected(409, 'ultimo_usuario_cu06'))).toContain('usuario activo con permiso CU06');
-    expect(usuarioError(rejected(409, 'ultimo_usuario_cu06'))).toContain('último usuario');
+    expect(rolError(rejected(409, 'ultimo_usuario_cu06'))).toContain('usuario interno con permiso CU06');
+    expect(usuarioError(rejected(409, 'ultimo_usuario_cu06'))).toContain('usuario interno');
     for (const error of [rejected(422), rejected(500), new Error('private-marker')]) expect(rolError(error)).not.toContain('private-marker');
   });
 });

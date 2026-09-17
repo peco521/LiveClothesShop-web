@@ -13,4 +13,5 @@ export interface PagoDetalle {
   referencia: string | null;
   nroVenta: number;
   estadoVenta: string;
+  checkoutUrl?: string | null;
 }

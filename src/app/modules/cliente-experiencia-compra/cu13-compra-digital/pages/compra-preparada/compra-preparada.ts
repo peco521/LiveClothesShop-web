@@ -15,12 +15,21 @@ export class CompraPreparadaPage {
   private readonly route = inject(ActivatedRoute);
   private readonly destroy = inject(DestroyRef);
   readonly busy = signal(false); readonly error = signal(''); readonly venta = signal<VentaDetalle | null>(null);
+  readonly confirmarCancelacion = signal(false);
   readonly nro = signal(0);
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe(params => {
       const nro = Number(params.get('nro') ?? 0);
       this.nro.set(Number.isInteger(nro) && nro >= 1 ? nro : 0);
       this.load();
+    });
+  }
+  cancelar(): void {
+    if (!this.nro() || this.busy() || !this.confirmarCancelacion()) return;
+    this.busy.set(true); this.error.set('');
+    this.service.cancelar(this.nro()).pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false))).subscribe({
+      next: value => { this.venta.set(value); this.confirmarCancelacion.set(false); },
+      error: (error: unknown) => this.error.set(compraError(error)),
     });
   }
   load(): void {

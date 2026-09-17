@@ -3,6 +3,7 @@
   @if (error() && !pago()) { <button (click)="load()" [disabled]="busy()">Reintentar</button> }
   @if (pago(); as resultado) {
     <p>Pago número <strong>{{ resultado.idPago }}</strong> · <span class="badge">{{ resultado.estado }}</span></p>
+    <p>Compra número <strong>{{ resultado.nroVenta }}</strong>.</p>
     <p>Método: {{ resultado.metodo }} · Monto: {{ resultado.monto }}@if (resultado.referencia) { · Referencia {{ resultado.referencia }}}</p>
     @if (resultado.estado === 'aprobado') {
       <p role="status">Compra completada. Tu pago fue aprobado y el inventario quedó actualizado.</p>
@@ -14,6 +15,13 @@
     }
     @if (resultado.estado === 'pendiente') {
       <p role="status">Pago pendiente: aún no hay certeza del resultado. Puedes consultar su estado.</p>
+      <p>Si saliste de Stripe sin pagar, puedes cancelar la compra y volver a editar tu carrito.</p>
+      <button (click)="confirmarCancelacion.set(true)" [disabled]="busy()">Cancelar compra</button>
+      @if (confirmarCancelacion()) {
+        <p>¿Confirmas cancelar la compra pendiente?</p>
+        <button (click)="cancelar()" [disabled]="busy()">Confirmar cancelación</button>
+        <button (click)="confirmarCancelacion.set(false)" [disabled]="busy()">Volver</button>
+      }
       <div class="actions"><button (click)="consultar()" [disabled]="busy()">{{ busy() ? 'Consultando…' : 'Consultar estado' }}</button></div>
     }
   }

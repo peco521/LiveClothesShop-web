@@ -10,7 +10,6 @@ export interface ClienteDetalle {
   direccion: string;
   fechaNac: string;
   tipo: 'C';
-  activo: boolean;
   nroRol: string;
   rol: { nro: string; descripcion: string };
   cliente: { cod_cl: string; estado: 'frecuente' | 'casual' | 'inactivo' };
@@ -28,5 +27,5 @@ export interface ClienteEditar {
   fechaNac?: string;
 }
 
-export interface ClientesFiltros { offset: number; limit: number; q?: string; activo?: boolean }
+export interface ClientesFiltros { offset: number; limit: number; q?: string }
 export interface ClientesListado { items: ClienteDetalle[]; total: number; offset: number; limit: number }

@@ -27,10 +27,10 @@ const paths = ['/admin/ciudades', '/admin/ciudades/nuevo', '/admin/ciudades/0', 
   '/admin/sucursales', '/admin/sucursales/nuevo', '/admin/sucursales/1', '/admin/sucursales/1/editar'];
 describe('CU09 rutas y páginas', () => {
   const auth = { restore: vi.fn(), session: signal<typeof session | null>(session) };
-  const service = { listar: vi.fn(), detalle: vi.fn(), crear: vi.fn(), editar: vi.fn() };
+  const service = { listar: vi.fn(), detalle: vi.fn(), crear: vi.fn(), editar: vi.fn(), horariosSugeridos: () => of([]) };
   beforeEach(() => {
     auth.restore.mockReset().mockReturnValue(of(session)); auth.session.set(session);
-    service.listar.mockReset().mockImplementation((kind: Entidad) => of(kind === 'ciudades' ? { ...listado, items: [ciudad] } : listado));
+    service.listar.mockReset().mockImplementation((kind: Entidad) => of(kind === 'ciudades' ? { ...listado, items: [ciudad], total: 1 } : listado));
     service.detalle.mockReset().mockImplementation((kind: Entidad) => of(kind === 'ciudades' ? ciudad : sucursal));
     service.crear.mockReset().mockReturnValue(of(sucursal)); service.editar.mockReset().mockReturnValue(of(sucursal));
     TestBed.configureTestingModule({ providers: [provideRouter(routes), { provide: AuthService, useValue: auth }, { provide: OrganizacionService, useValue: service }] });

@@ -8,8 +8,15 @@
       @for (item of compra.items; track item.idDetalleVenta) { <tr><td>{{ item.producto }} ({{ item.sku }})</td><td>{{ item.cantidad }}</td><td>{{ item.precioUnitario }}</td><td>{{ item.subtotalBruto }}</td></tr> }
     </tbody></table></div>
     <p class="total">Descuento: {{ compra.descAplicado }} · Total: {{ compra.total }}</p>
-    <p role="status">Compra preparada para realizar el pago. El siguiente paso será realizar el pago electrónico.</p>
+    @if (compra.estado === 'registrada') { <p role="status">Compra preparada para realizar el pago. El siguiente paso será realizar el pago electrónico.</p>
     <p><a [routerLink]="['/tienda/pago/nueva']" [queryParams]="{ nroVenta: compra.nroVenta }">Realizar pago</a></p>
+    <button (click)="confirmarCancelacion.set(true)" [disabled]="busy()">Cancelar compra</button>
+    @if (confirmarCancelacion()) {
+      <p>¿Confirmas cancelar la compra pendiente?</p>
+      <button (click)="cancelar()" [disabled]="busy()">Confirmar cancelación</button>
+      <button (click)="confirmarCancelacion.set(false)" [disabled]="busy()">Volver</button>
+    }
+    } @else { <p role="status">Compra anulada. Tu carrito sigue disponible.</p> }
     <p><a routerLink="/tienda/carrito">Volver al carrito</a> · <a routerLink="/tienda">Volver al catálogo</a></p>
   }
 </app-cu13-layout>

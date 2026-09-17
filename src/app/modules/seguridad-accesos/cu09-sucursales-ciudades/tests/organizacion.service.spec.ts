@@ -34,16 +34,18 @@ describe('CU09 HTTP aislado', () => {
     const input = { id: -32768, nro: 123, nombre: ' Nueva ', direccion: ' Calle ', estado: 'inactivo', idCiud: 0, empleados: ['forbidden'] };
     service.crear(kind, input as Alta).subscribe(); const create = http.expectOne('/api/admin/' + kind);
     expect(create.request.method).toBe('POST'); expect(create.request.headers.get('X-CSRF-Protection')).toBe('1'); expect(create.request.withCredentials).toBe(true);
-    expect(create.request.body).toEqual(kind === 'ciudades' ? { id: -32768, nombre: 'Nueva' } : { nombre: 'Nueva', direccion: 'Calle', estado: 'inactivo', idCiud: 0 }); create.flush(row);
+    expect(create.request.body).toEqual(kind === 'ciudades' ? { nombre: 'Nueva' } : { nombre: 'Nueva', direccion: 'Calle', estado: 'inactivo', idCiud: 0 }); create.flush(row);
     service.editar(kind, 0, input as Cambios).subscribe(); const edit = http.expectOne('/api/admin/' + kind + '/0');
     expect(edit.request.method).toBe('PATCH'); expect(edit.request.headers.get('X-CSRF-Protection')).toBe('1');
     expect(edit.request.body).toEqual(kind === 'ciudades' ? { nombre: 'Nueva' } : { nombre: 'Nueva', direccion: 'Calle', estado: 'inactivo', idCiud: 0 }); edit.flush(row);
   });
   it('cambio exclusivo de estado no envía nombre, empleados ni DELETE', () => {
+
     service.editar('sucursales', 1, { estado: 'inactivo' }).subscribe(); const req = http.expectOne('/api/admin/sucursales/1');
     expect(req.request.method).toBe('PATCH'); expect(req.request.body).toEqual({ estado: 'inactivo' }); req.flush(sucursal);
   });
   it.each([401, 403, 404, 409, 422, 500])('propaga HTTP %s y ofrece mensaje seguro', status => {
+
     const error = vi.fn(); service.editar('ciudades', 0, { nombre: 'Otra' }).subscribe({ error });
     http.expectOne('/api/admin/ciudades/0').flush({ error: { message: 'private-marker' } }, { status, statusText: 'Failure' });
     expect(error).toHaveBeenCalledOnce(); const message = organizacionError(error.mock.calls[0][0]);
@@ -55,13 +57,27 @@ describe('CU09 HTTP aislado', () => {
   });
 });
 
+describe('CU09 horarios HTTP', () => {
+  it('envía y recibe horarios usando únicamente apertura y cierre', () => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const service = TestBed.inject(OrganizacionService); const http = TestBed.inject(HttpTestingController);
+    const callback = vi.fn(); const horarios = [{ horaIni: '08:00:00', horaFin: '18:00:00', idaten: 12 }];
+    service.editar('sucursales', 1, { horarios }).subscribe(callback);
+    const req = http.expectOne('/api/admin/sucursales/1');
+    expect(req.request.body).toEqual({ horarios: [{ horaIni: '08:00:00', horaFin: '18:00:00' }] });
+    req.flush({ ...sucursal, horarios });
+    expect(callback).toHaveBeenCalledExactlyOnceWith({ ...sucursal, horarios: [{ horaIni: '08:00:00', horaFin: '18:00:00' }] });
+    http.verify();
+  });
+});
+
 describe('CU09 servidor sin HTTP', () => {
   it('ningún método consulta datos ni muta en SSR', () => {
     TestBed.configureTestingModule({ providers: [{ provide: PLATFORM_ID, useValue: 'server' }, provideHttpClient(), provideHttpClientTesting()] });
     const service = TestBed.inject(OrganizacionService); const next = vi.fn();
     for (const kind of ['ciudades', 'sucursales'] as Entidad[]) {
       service.listar(kind, { offset: 0, limit: 20, q: '' }).subscribe(next); service.detalle(kind, 0).subscribe(next);
-      service.crear(kind, { id: 0, nombre: 'Ciudad' }).subscribe(next); service.editar(kind, 0, { nombre: 'Otra' }).subscribe(next);
+      service.crear(kind, { nombre: 'Ciudad' }).subscribe(next); service.editar(kind, 0, { nombre: 'Otra' }).subscribe(next);
     }
     expect(next).not.toHaveBeenCalled(); TestBed.inject(HttpTestingController).expectNone(() => true);
   });

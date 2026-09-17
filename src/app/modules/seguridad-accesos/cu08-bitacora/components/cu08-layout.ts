@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 @Component({ selector: 'app-cu08-layout', imports: [RouterLink],
   template: `<section aria-labelledby="cu08-title">
     <nav aria-label="Administración"><a routerLink="/acceso">Mi acceso</a> · <a routerLink="/admin/bitacora">Bitácora</a></nav>
-    <h1 id="cu08-title">{{ title() }}</h1><p>Consulta de solo lectura.</p>
+    <h1 id="cu08-title">{{ title() }}</h1>
     @if (error()) { <div class="notice error" role="alert"><p>{{ error() }}</p><a routerLink="/login">Iniciar sesión</a> · <a routerLink="/acceso">Volver a mi acceso</a></div> }
     <ng-content />
   </section>`,

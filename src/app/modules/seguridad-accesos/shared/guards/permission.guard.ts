@@ -12,11 +12,11 @@ export function permissionGuard(permission: string): CanActivateFn {
     // Private routes use RenderMode.Client. Fail closed if invoked on the server.
     if (!isPlatformBrowser(inject(PLATFORM_ID))) return false;
     return auth.restore().pipe(
-      map(session => !session ? router.createUrlTree(['/login'])
+      map(session => !session ? router.createUrlTree(['/admin/login'])
         : session.permisos.includes(permission) ? true
         : router.createUrlTree(['/acceso'], { queryParams: { motivo: 'sin-permiso' } })),
       catchError((error: unknown) => of(error instanceof HttpErrorResponse && error.status === 401
-        ? router.createUrlTree(['/login'])
+        ? router.createUrlTree(['/admin/login'])
         : router.createUrlTree(['/acceso'], { queryParams: {
           motivo: error instanceof HttpErrorResponse && error.status === 403 ? 'sin-permiso' : 'verificacion',
         } }))),

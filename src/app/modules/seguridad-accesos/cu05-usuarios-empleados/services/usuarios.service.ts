@@ -10,7 +10,7 @@ function detalle(value: UsuarioDetalle): UsuarioDetalle {
   return { idUsuario: value.idUsuario, ci: value.ci, nombres: value.nombres,
     apellidoPat: value.apellidoPat, apellidoMat: value.apellidoMat, sexo: value.sexo,
     correo: value.correo, telefono: value.telefono, direccion: value.direccion, fechaNac: value.fechaNac,
-    tipo: value.tipo, activo: value.activo, nroRol: value.nroRol,
+    tipo: value.tipo, nroRol: value.nroRol,
     rol: { nro: value.rol.nro, descripcion: value.rol.descripcion },
     empleado: value.empleado ? { cod_emp: value.empleado.cod_emp, cargo: value.empleado.cargo, nroSuc: value.empleado.nroSuc } : null,
     admin: value.admin ? { cod_adm: value.admin.cod_adm } : null };
@@ -18,7 +18,7 @@ function detalle(value: UsuarioDetalle): UsuarioDetalle {
 
 function datos(input: EmpleadoEditar): EmpleadoEditar {
   const body: EmpleadoEditar = {};
-  const textKeys = ['ci', 'nombres', 'apellidoPat', 'apellidoMat', 'correo', 'telefono', 'direccion', 'fechaNac', 'nroRol', 'cod_emp', 'cargo'] as const;
+  const textKeys = ['ci', 'nombres', 'apellidoPat', 'apellidoMat', 'correo', 'telefono', 'direccion', 'fechaNac', 'nroRol', 'cargo'] as const;
   for (const key of textKeys) if (input[key] !== undefined) body[key] = input[key].trim();
   if (body.correo !== undefined) body.correo = body.correo.toLowerCase();
   if (input.sexo !== undefined) body.sexo = input.sexo;
@@ -39,7 +39,6 @@ export class UsuariosService {
     let params = new HttpParams().set('offset', filters.offset).set('limit', filters.limit);
     if (filters.q?.trim()) params = params.set('q', filters.q.trim());
     if (filters.tipo) params = params.set('tipo', filters.tipo);
-    if (filters.activo !== undefined) params = params.set('activo', filters.activo);
     return this.browser(() => this.http.get<UsuariosListado>(`${this.base}/usuarios`, { params })).pipe(
       map(value => ({ items: value.items.map(detalle), total: value.total, offset: value.offset, limit: value.limit })),
     );
@@ -53,9 +52,6 @@ export class UsuariosService {
   editar(id: string, input: EmpleadoEditar): Observable<UsuarioDetalle> {
     return this.browser(() => this.http.patch<UsuarioDetalle>(`${this.base}/empleados/${encodeURIComponent(id)}`, datos(input))).pipe(map(detalle));
   }
-  estado(id: string, activo: boolean): Observable<UsuarioDetalle> {
-    return this.browser(() => this.http.patch<UsuarioDetalle>(`${this.base}/usuarios/${encodeURIComponent(id)}/estado`, { activo })).pipe(map(detalle));
-  }
   roles(): Observable<RolOpcion[]> {
     return this.browser(() => this.http.get<RolOpcion[]>(`${this.base}/usuarios/roles`));
   }
@@ -67,6 +63,7 @@ export class UsuariosService {
     return this.browser(() => this.http.get<SucursalOpcion[]>(`${this.base}/empleados/sucursales`, { params }));
   }
   opciones(): Observable<EmpleadoOpciones> {
-    return forkJoin({ roles: this.roles(), ciudades: this.ciudades(), sucursales: this.sucursales() });
+    return forkJoin({ roles: this.roles(), ciudades: this.ciudades(), sucursales: this.sucursales(),
+      proximoCodigo: this.browser(() => this.http.get<{ cod_emp: string }>(`${this.base}/empleados/proximo-codigo`)).pipe(map(value => value.cod_emp)) });
   }
 }

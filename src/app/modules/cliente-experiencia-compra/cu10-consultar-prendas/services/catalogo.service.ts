@@ -51,8 +51,9 @@ export class CatalogoService {
   detalle(id: string): Observable<ProductoDetalle> {
     return this.browser(() => this.http.get<ProductoDetalle>(`${this.base}/productos/${encodeURIComponent(id)}`)).pipe(map(resumen));
   }
-  faceta(grupo: 'categorias' | 'marcas' | 'colecciones' | 'temporadas' | 'tallas' | 'colores'): Observable<FacetasListado> {
-    return this.browser(() => this.http.get<FacetasListado>(`${this.base}/${grupo}`)).pipe(
+  faceta(grupo: 'categorias' | 'marcas' | 'colecciones' | 'temporadas' | 'tallas' | 'colores', idCat?: number): Observable<FacetasListado> {
+    const params = idCat === undefined ? new HttpParams() : new HttpParams().set('idCat', idCat);
+    return this.browser(() => this.http.get<FacetasListado>(`${this.base}/${grupo}`, { params })).pipe(
       map(value => ({ items: value.items.map(item => ({ id: item.id, nombre: item.nombre })), total: value.total })),
     );
   }

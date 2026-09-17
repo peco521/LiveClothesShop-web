@@ -14,6 +14,8 @@ export function compraError(error: unknown): string {
     if (error.status === 409) {
       const code = error.error?.error?.code;
       if (code === 'disponibilidad_insuficiente') return 'No hay disponibilidad suficiente en la sucursal elegida para una de las prendas.';
+      if (code === 'compra_pendiente' || code === 'carrito_modificado') return 'Continúa o cancela tu compra pendiente antes de cambiar el carrito o sus datos.';
+      if (code === 'venta_no_cancelable') return 'La compra ya fue pagada. Consulta su estado.';
       if (code === 'sucursal_inactiva') return 'La sucursal seleccionada no está disponible.';
       if (code === 'carrito_no_disponible') return 'No tienes un carrito activo para comprar.';
       return 'Existe un conflicto de datos. Vuelve a consultar tu carrito antes de continuar.';

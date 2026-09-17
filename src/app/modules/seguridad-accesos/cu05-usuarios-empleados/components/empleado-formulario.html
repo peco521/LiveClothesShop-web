@@ -14,6 +14,12 @@
         <select id="sexo" formControlName="sexo" required aria-describedby="sexo-error"><option value="">Selecciona</option><option value="M">M</option><option value="F">F</option></select>
         <app-field-error [control]="form.controls.sexo" errorId="sexo-error" />
       </div>
+      <div class="field">
+        <label for="cod_emp">Código de empleado</label>
+        <input id="cod_emp" type="text" readonly aria-describedby="codigo-ayuda"
+          [value]="usuario()?.empleado?.cod_emp ?? opciones().proximoCodigo ?? 'Se genera al guardar'" />
+        <small id="codigo-ayuda">{{ editando() ? 'Código asignado automáticamente. No se puede modificar.' : 'Código previsto. Se asigna automáticamente al guardar y puede cambiar si otro empleado se registra primero.' }}</small>
+      </div>
       <div class="field"><label for="nroRol">Rol existente</label>
         <select id="nroRol" formControlName="nroRol" required aria-describedby="rol-error"><option value="">Selecciona un rol</option>
           @for (role of opciones().roles; track role.nro) { <option [value]="role.nro">{{ role.descripcion }} ({{ role.nro }})</option> }

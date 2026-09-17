@@ -14,6 +14,7 @@ export function resumenDTO(input: unknown): BitacoraResumen {
     || microsegundosISO(row['fecha']) === null) return invalid();
   const actor = row['usuario_id'];
   return { id: row['id'], fecha: row['fecha'], accion: esAccion(row['accion']) ? row['accion'] : null,
+    ip: ipSegura(row['ip']),
     usuario_id: typeof actor === 'string' && actor.length > 0 && [...actor].length <= 100
       && !/[\u0000-\u001f\u007f]/.test(actor) ? actor : null };
 }

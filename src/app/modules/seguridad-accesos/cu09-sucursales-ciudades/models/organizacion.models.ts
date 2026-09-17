@@ -1,12 +1,15 @@
 export type Entidad = 'ciudades' | 'sucursales';
 export type Estado = 'activo' | 'inactivo';
 export interface Ciudad { id: number; nombre: string; }
-export interface Sucursal { nro: number; nombre: string; direccion: string; estado: Estado; idCiud: number; ciudad: Ciudad; }
+export const DIAS_SEMANA = [{ id: 1, nombre: 'Lunes' }, { id: 2, nombre: 'Martes' }, { id: 3, nombre: 'Miércoles' }, { id: 4, nombre: 'Jueves' }, { id: 5, nombre: 'Viernes' }, { id: 6, nombre: 'Sábado' }, { id: 7, nombre: 'Domingo' }];
+export interface HorarioSucursal { horaIni: string; horaFin: string; dias?: number[]; }
+export interface HorarioSugerencia { idAten: number; horaIni: string; horaFin: string; }
+export interface Sucursal { nro: number; nombre: string; direccion: string; estado: Estado; idCiud: number; ciudad: Ciudad; horarios?: HorarioSucursal[]; }
 export type Detalle = Ciudad | Sucursal;
 export interface Listado { items: Detalle[]; total: number; offset: number; limit: number; }
 export interface Filtros { offset: number; limit: number; q: string; idCiud?: number; estado?: Estado; }
-export interface CiudadCrear { id: number; nombre: string; }
-export interface SucursalCrear { nombre: string; direccion: string; estado: Estado; idCiud: number; }
+export interface CiudadCrear { nombre: string; }
+export interface SucursalCrear { nombre: string; direccion: string; estado: Estado; idCiud: number; horarios?: HorarioSucursal[]; }
 export type Cambios = Partial<SucursalCrear>;
 export type Alta = CiudadCrear | SucursalCrear;
 export function esSucursal(value: Detalle): value is Sucursal { return 'nro' in value; }

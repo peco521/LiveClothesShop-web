@@ -3,12 +3,14 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, defer, map, Observable, of, tap, throwError } from 'rxjs';
+import { isInternalSession } from '../models/session-type';
 import { API_BASE_URL } from '../../../core/config/api.config';
 import { AuthResponse, LoginRequest, RegistroRequest, RegistroResponse } from '../models/auth.models';
 
 function publicSession(value: AuthResponse): AuthResponse {
   return {
-    usuario: { idUsuario: value.usuario.idUsuario, nombres: value.usuario.nombres, correo: value.usuario.correo },
+    usuario: { idUsuario: value.usuario.idUsuario, nombres: value.usuario.nombres, correo: value.usuario.correo,
+      ...(value.usuario.tipo !== undefined ? { tipo: value.usuario.tipo } : {}) },
     rol: { nro: value.rol.nro, descripcion: value.rol.descripcion },
     permisos: [...value.permisos],
     expiraEn: value.expiraEn,
@@ -47,11 +49,11 @@ export class AuthService {
     return this.http.post<RegistroResponse>(`${this.base}/registro`, body);
   }
 
-  login(input: LoginRequest): Observable<AuthResponse> {
+  login(input: LoginRequest, portal: 'cliente' | 'admin' = 'cliente'): Observable<AuthResponse> {
     return defer(() => {
       const revision = ++this.revision;
       this.loginRevision = revision;
-      return this.http.post<AuthResponse>(`${this.base}/login`, {
+      return this.http.post<AuthResponse>(`${this.base}/login/${portal}`, {
         correo: input.correo.trim().toLowerCase(), contrasena: input.contrasena,
       }).pipe(
         map(publicSession),
@@ -67,13 +69,15 @@ export class AuthService {
   logout(): Observable<void> {
     return defer(() => {
       const revision = ++this.revision;
+      const session = this.state();
+      const loginUrl = session && isInternalSession(session) ? '/admin/login' : '/login';
       return this.http.post<void>(`${this.base}/logout`, null).pipe(
         tap(() => {
           // Invalidate even /me requests started during logout, but not a newer login.
           if (this.loginRevision <= revision) {
             ++this.revision;
             this.state.set(null);
-            void this.router.navigateByUrl('/login');
+            void this.router.navigateByUrl(loginUrl);
           }
         }),
       );

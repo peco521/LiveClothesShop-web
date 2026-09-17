@@ -3,13 +3,14 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { defer, EMPTY, map, Observable } from 'rxjs';
 import { API_BASE_URL } from '../../../../core/config/api.config';
-import { Alta, Cambios, Ciudad, Detalle, Entidad, Filtros, Listado, Sucursal } from '../models/organizacion.models';
+import { Alta, Cambios, Ciudad, Detalle, Entidad, Filtros, HorarioSugerencia, Listado, Sucursal } from '../models/organizacion.models';
 
 function detalle(kind: Entidad, value: Detalle): Detalle {
   if (kind === 'ciudades') { const city = value as Ciudad; return { id: city.id, nombre: city.nombre }; }
   const branch = value as Sucursal;
   return { nro: branch.nro, nombre: branch.nombre, direccion: branch.direccion, estado: branch.estado,
-    idCiud: branch.idCiud, ciudad: { id: branch.ciudad.id, nombre: branch.ciudad.nombre } };
+    idCiud: branch.idCiud, ciudad: { id: branch.ciudad.id, nombre: branch.ciudad.nombre },
+    ...(branch.horarios !== undefined ? { horarios: branch.horarios.map(h => ({ horaIni: h.horaIni, horaFin: h.horaFin, ...(h.dias ? { dias: [...h.dias] } : {}) })) } : {}) };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -35,12 +36,15 @@ export class OrganizacionService {
     return this.browser(() => this.http.get<Detalle>(`${this.base}/${kind}/${id}`)).pipe(map(value => detalle(kind, value)));
   }
   crear(kind: Entidad, input: Alta): Observable<Detalle> {
-    const body = { ...this.body(kind, input), ...(kind === 'ciudades' ? { id: (input as Ciudad).id } : {}) };
+    const body = this.body(kind, input);
     return this.browser(() => this.http.post<Detalle>(`${this.base}/${kind}`, body)).pipe(map(value => detalle(kind, value)));
   }
   editar(kind: Entidad, id: number, input: Cambios): Observable<Detalle> {
     return this.browser(() => this.http.patch<Detalle>(`${this.base}/${kind}/${id}`, this.body(kind, input)))
       .pipe(map(value => detalle(kind, value)));
+  }
+  horariosSugeridos(): Observable<HorarioSugerencia[]> {
+    return this.browser(() => this.http.get<HorarioSugerencia[]>(`${this.base}/sucursales/horarios-sugeridos`));
   }
   private body(kind: Entidad, input: Cambios): Cambios {
     const body: Cambios = {};
@@ -49,6 +53,7 @@ export class OrganizacionService {
       if (input.direccion !== undefined) body.direccion = input.direccion.trim();
       if (input.idCiud !== undefined) body.idCiud = input.idCiud;
       if (input.estado !== undefined) body.estado = input.estado;
+      if (input.horarios !== undefined) body.horarios = input.horarios.map(h => ({ horaIni: h.horaIni, horaFin: h.horaFin, ...(h.dias ? { dias: [...h.dias] } : {}) }));
     }
     return body;
   }

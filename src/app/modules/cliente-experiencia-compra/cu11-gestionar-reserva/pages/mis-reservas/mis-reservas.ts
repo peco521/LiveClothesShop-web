@@ -26,7 +26,8 @@ export class MisReservasPage {
       const estado = params.get('estado');
       this.filters = { offset: Number.isSafeInteger(offset) && offset >= 0 ? offset : 0,
         limit: Number.isInteger(limit) && limit >= 1 && limit <= 100 ? limit : 20,
-        ...(estado === 'pendiente' || estado === 'confirmada' || estado === 'atendida' || estado === 'cancelada' ? { estado } : {}) };
+        ...(estado === 'pendiente' || estado === 'confirmada' || estado === 'atendida'
+          || estado === 'cancelada' || estado === 'vencida' ? { estado } : {}) };
       this.form.reset({ estado: this.filters.estado ?? '' });
       this.load();
     });

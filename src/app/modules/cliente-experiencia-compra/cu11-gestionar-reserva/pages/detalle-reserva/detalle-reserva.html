@@ -2,7 +2,7 @@
   @if (busy() && !item()) { <p role="status">Cargando reserva…</p> }
   @if (error() && !item()) { <button (click)="load()" [disabled]="busy()">Reintentar</button> }
   @if (item(); as reserva) {
-    <p>Reserva número <strong>{{ reserva.nroReserva }}</strong> · <span class="badge">{{ reserva.estado }}</span>@if (reserva.vencida) { <span class="badge">Vencida</span> }</p>
+    <p>Reserva número <strong>{{ reserva.nroReserva }}</strong> · <span class="badge">{{ reserva.estado }}</span></p>
     <p>{{ reserva.fechaReserva }} · {{ reserva.horaAtencion }} · {{ reserva.sucursal.nombre }} · {{ reserva.sucursal.ciudad }}</p>
     <div class="table-scroll"><table><caption class="visually-hidden">Prendas reservadas</caption><thead><tr><th>Prenda</th><th>Código</th><th>Variante</th><th>Cantidad</th></tr></thead><tbody>
       @for (detalle of reserva.items; track detalle.idDetalleRes) { <tr><td>{{ detalle.producto }}</td><td>{{ detalle.sku }}</td><td>{{ detalle.idVar }}</td><td>{{ detalle.cantidad }}</td></tr> }

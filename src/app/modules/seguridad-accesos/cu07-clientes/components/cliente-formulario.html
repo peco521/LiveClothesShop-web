@@ -1,6 +1,6 @@
 <p>Código de cliente: <strong>{{ cliente().cliente.cod_cl }}</strong> · Rol: <strong>{{ cliente().rol.descripcion }}</strong> ({{ cliente().nroRol }})</p>
-<p>Cuenta: {{ cliente().activo ? 'Activa' : 'Inactiva' }} · Estado del perfil de cliente (solo lectura): {{ cliente().cliente.estado }}</p>
-<p class="privacy-note">El estado del perfil es el valor almacenado y es independiente de la activación de la cuenta. No se modifica desde este formulario.</p>
+<p>Estado del perfil de cliente (solo lectura): {{ cliente().cliente.estado }}</p>
+<p class="privacy-note">El estado del perfil es una clasificación comercial almacenada y no se modifica desde este formulario.</p>
 <p id="correo-aviso" class="notice">Si cambias el correo, se invalidarán los enlaces de recuperación pendientes. Las sesiones existentes no se revocan por este cambio.</p>
 @if (cliente().nombres === null) { <p>Este registro no tiene nombres guardados. Puedes mantener el campo vacío sin modificarlo.</p> }
 <form [formGroup]="form" (ngSubmit)="submit()">

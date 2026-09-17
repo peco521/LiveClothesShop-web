@@ -35,6 +35,10 @@ describe('CU10 servicio y privacidad', () => {
       variantes: [{ ...detail.variantes[0], secreto: 'forbidden' }, detail.variantes[1]] });
     expect(result).toEqual(detail); expect(JSON.stringify(result)).not.toContain('forbidden');
   });
+  it('consulta las marcas de una categoría', () => {
+    service.faceta('marcas', 2).subscribe();
+    http.expectOne('/api/catalogo/marcas?idCat=2').flush(facetas);
+  });
   it('faceta usa allowlist', () => {
     let result: unknown;
     service.faceta('categorias').subscribe(value => result = value);

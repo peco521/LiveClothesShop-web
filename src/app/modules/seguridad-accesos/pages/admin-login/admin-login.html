@@ -1,0 +1,40 @@
+<section class="admin-access" aria-labelledby="admin-login-title">
+  <aside class="access-intro">
+    <p class="eyebrow">LIVE CLOTHES / GESTIÓN</p>
+    <span class="access-emblem" aria-hidden="true">L/C</span>
+    <h2>Todo en orden.<br /><em>Todo a tu alcance.</em></h2>
+    <p>Un espacio para gestionar la tienda, acompañar al equipo y cuidar cada detalle.</p>
+    <span class="intro-footer">LiveClothesShop · Panel administrativo</span>
+  </aside>
+  <div class="access-form">
+    <p class="eyebrow">ADMINISTRADORES Y EMPLEADOS</p>
+    <h1 id="admin-login-title">Bienvenido a tu panel</h1>
+    <p class="description">Ingresa con tu cuenta de trabajo para acceder a las funciones asignadas.</p>
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="busy()">
+      <fieldset [disabled]="busy()">
+        <legend class="visually-hidden">Credenciales de acceso administrativo</legend>
+        <div class="field">
+          <label for="admin-correo">Correo electrónico</label>
+          <input id="admin-correo" type="email" formControlName="correo" autocomplete="username"
+            required maxlength="100" placeholder="tu@correo.com" aria-describedby="admin-correo-error"
+            [attr.aria-invalid]="form.controls.correo.touched && form.controls.correo.invalid" />
+          <app-field-error [control]="form.controls.correo" errorId="admin-correo-error" />
+        </div>
+        <div class="field">
+          <label for="admin-contrasena">Contraseña</label>
+          <input id="admin-contrasena" type="password" formControlName="contrasena" autocomplete="current-password"
+            required maxlength="128" aria-describedby="admin-contrasena-error"
+            [attr.aria-invalid]="form.controls.contrasena.touched && form.controls.contrasena.invalid" />
+          <app-field-error [control]="form.controls.contrasena" errorId="admin-contrasena-error" />
+        </div>
+        @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+        <button class="button primary" type="submit" [disabled]="busy()">
+          {{ busy() ? 'Ingresando…' : 'Acceder al panel' }} <span aria-hidden="true">→</span>
+        </button>
+      </fieldset>
+    </form>
+    <p class="form-footer"><a routerLink="/olvide-contrasena">¿Olvidaste tu contraseña?</a></p>
+    <p class="form-footer"><a routerLink="/login">Ir al acceso de clientes</a></p>
+    <p class="privacy-note">Usa tu cuenta personal. Las funciones disponibles dependen de tus permisos.</p>
+  </div>
+</section>

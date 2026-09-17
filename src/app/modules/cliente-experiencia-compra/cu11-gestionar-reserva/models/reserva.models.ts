@@ -1,4 +1,4 @@
-export type EstadoReserva = 'pendiente' | 'confirmada' | 'atendida' | 'cancelada';
+export type EstadoReserva = 'pendiente' | 'confirmada' | 'atendida' | 'cancelada' | 'vencida';
 
 export interface ReservaItemCrear { idVar: string; cantidad: number }
 export interface ReservaCrear { nroSuc: number; fechaReserva: string; horaAtencion: string; items: ReservaItemCrear[] }
@@ -21,5 +21,5 @@ export interface ReservasListado { items: ReservaDetalle[]; total: number; offse
 export interface ReservasFiltros { offset: number; limit: number; estado?: EstadoReserva }
 
 export interface SucursalCliente { nro: number; nombre: string; direccion: string; ciudad: string }
-export interface HorarioRango { horaIni: string; horaFin: string }
+export interface HorarioRango { horaIni: string; horaFin: string; dias?: number[] }
 export interface HorariosSucursal { nroSuc: number; rangos: HorarioRango[] }

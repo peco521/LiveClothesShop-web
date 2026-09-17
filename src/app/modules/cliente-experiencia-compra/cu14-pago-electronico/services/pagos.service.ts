@@ -9,7 +9,7 @@ function detalle(value: PagoDetalle): PagoDetalle {
   // Explicit allowlist: monto, estado y referencia siempre vienen del servidor.
   return { idPago: value.idPago, metodo: value.metodo, monto: value.monto, estado: value.estado,
     fechaHora: value.fechaHora, referencia: value.referencia, nroVenta: value.nroVenta,
-    estadoVenta: value.estadoVenta };
+    estadoVenta: value.estadoVenta, ...(value.checkoutUrl ? { checkoutUrl: value.checkoutUrl } : {}) };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -19,6 +19,12 @@ export class PagosService {
   private readonly base = `${inject(API_BASE_URL).replace(/\/$/, '')}/cliente/pagos`;
   private browser<T>(request: () => Observable<T>): Observable<T> {
     return defer(() => isPlatformBrowser(this.platform) ? request() : EMPTY);
+  }
+  configuracion(): Observable<{ proveedor: 'mock' | 'stripe'; simulacion: boolean; disponible: boolean; moneda: string | null }> {
+    return this.browser(() => this.http.get<{ proveedor: 'mock' | 'stripe'; simulacion: boolean; disponible: boolean; moneda: string | null }>(`${this.base}/configuracion`));
+  }
+  reconciliar(id: number): Observable<PagoDetalle> {
+    return this.browser(() => this.http.post<PagoDetalle>(`${this.base}/${id}/reconciliar`, {})).pipe(map(detalle));
   }
   pagar(input: PagoCrear): Observable<{ pago: PagoDetalle; reutilizado: boolean }> {
     // Solo venta, método y escenario de simulación: el monto lo fija el servidor.

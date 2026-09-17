@@ -43,7 +43,7 @@ describe('CU02 LoginPage', () => {
     page.form.setValue(data);
     fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     expect(auth.login).toHaveBeenCalledWith(data);
-    expect(TestBed.inject(Router).navigateByUrl).toHaveBeenCalledWith('/admin');
+    expect(TestBed.inject(Router).navigateByUrl).toHaveBeenCalledWith('/tienda');
     expect(page.form.controls.contrasena.value).toBe('');
   });
 

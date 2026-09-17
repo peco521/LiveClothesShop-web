@@ -1,4 +1,8 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { of } from 'rxjs';
+import { BitacoraListaPage } from '../pages/bitacora-lista/bitacora-lista';
+import { BitacoraService } from '../services/bitacora.service';
 import { BitacoraFiltrosComponent } from '../components/bitacora-filtros';
 import { microsegundosISO } from '../models/bitacora-fecha';
 import { ACCIONES, esId } from '../models/bitacora.models';
@@ -13,6 +17,8 @@ describe('CU08 DTO y fechas exactas', () => {
     ] });
     expect(result.items.map(v => v.id)).toEqual([registro.id, '2']);
     expect(result.items[0].fecha).toBe(registro.fecha); expect(JSON.stringify(result)).not.toContain('secret-marker');
+    expect(result.items[0].ip).toBe(registro.ip);
+    expect(listadoDTO({ ...listado, items: [{ ...listado.items[0], ip: 'secret-marker' }] }).items[0].ip).toBeNull();
     expect(detalleDTO({ ...registro, detalles: { resultado: 'exito', rol: 'secret-marker', agregadas: ['secret-marker'], retiradas: { token: 'secret-marker' } } })).toEqual(registro);
   });
   it.each([null, [], 'secret-marker', {}, { resultado: null }, { resultado: ['exito'] }, { resultado: { token: 'secret-marker' } }, { resultado: 'exito secret-marker' }, { resultado: true }])('descarta detalles malformados %j', detalles => {
@@ -24,8 +30,8 @@ describe('CU08 DTO y fechas exactas', () => {
         : accion === 'recuperacion_solicitada' ? resultado !== 'secret-marker' : resultado === 'exito';
       expect(detalleDTO({ ...registro, accion, detalles: { resultado } }).detalles).toEqual(allowed ? { resultado } : null);
     }
-    // The original 18 events plus the five organization events from CU09.
-    expect(ACCIONES).toHaveLength(23);
+    // Security, organization and commerce events supported by the backend.
+    expect(ACCIONES).toHaveLength(39);
   });
   it('desconocida, actor nullable/missing/malformado y propiedades privadas', () => {
     const result = detalleDTO({ ...registro, accion: 'secret-marker', usuario_id: { correo: 'secret-marker' }, usuario: { nombre: 'secret-marker' } });
@@ -55,10 +61,12 @@ describe('CU08 DTO y fechas exactas', () => {
 });
 
 describe('CU08 formulario de filtros', () => {
-  it('ayuda visible, FieldError, rango preciso y validación antes de emitir', () => {
+  it('oculta instrucciones técnicas y conserva la validación de filtros', () => {
     const fixture = TestBed.createComponent(BitacoraFiltrosComponent); fixture.detectChanges();
     const component = fixture.componentInstance, emit = vi.spyOn(component.aplicar, 'emit');
-    expect(fixture.nativeElement.textContent).toContain('zona obligatoria');
+    expect(fixture.nativeElement.textContent).not.toContain('zona obligatoria');
+    expect(fixture.nativeElement.textContent).not.toContain('Los filtros se conservan');
+    expect(fixture.nativeElement.querySelector('[aria-describedby*="fecha-ayuda"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('input[type="datetime-local"]')).toBeNull();
     component.form.patchValue({ desde: '2026-09-12T12:30:45.123457Z', hasta: '2026-09-12T08:30:45.123456-04:00' });
     component.enviar(); fixture.detectChanges(); expect(emit).not.toHaveBeenCalled(); expect(fixture.nativeElement.textContent).toContain('Desde debe ser anterior');
@@ -68,5 +76,32 @@ describe('CU08 formulario de filtros', () => {
     for (const limit of [0, 101, 1.5]) { component.form.patchValue({ limit }); component.enviar(); }
     component.form.patchValue({ limit: 20, desde: '2026-09-12T12:30:45' }); component.enviar();
     expect(emit).not.toHaveBeenCalled();
+  });
+});
+
+describe('CU08 tabla de bitácora', () => {
+  function render(ip: string | null) {
+    TestBed.configureTestingModule({ imports: [BitacoraListaPage], providers: [
+      provideRouter([]), { provide: BitacoraService, useValue: {
+        listar: () => of({ ...listado, items: [{ ...listado.items[0], ip }] }),
+      } },
+    ] });
+    const fixture = TestBed.createComponent(BitacoraListaPage); fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('muestra IP en lugar de Consulta y mantiene el detalle desde el ID', () => {
+    const element = render(registro.ip);
+    expect(Array.from(element.querySelectorAll('th')).map(th => th.textContent)).toEqual(['ID', 'Fecha (UTC)', 'Acción', 'ID del usuario', 'IP']);
+    expect(element.querySelector('tbody td:last-child')?.textContent).toBe(registro.ip);
+    const link = element.querySelector(`tbody a[href="/admin/bitacora/${registro.id}"]`);
+    expect(link?.textContent).toBe(registro.id);
+    for (const text of ['Consulta de solo lectura', 'zona obligatoria', 'Los filtros se conservan', 'orden: fecha descendente']) {
+      expect(element.textContent).not.toContain(text);
+    }
+  });
+
+  it('indica cuando no hay IP registrada', () => {
+    expect(render(null).querySelector('tbody td:last-child')?.textContent).toBe('No registrada');
   });
 });

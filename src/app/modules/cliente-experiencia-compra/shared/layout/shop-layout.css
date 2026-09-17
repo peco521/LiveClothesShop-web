@@ -6,7 +6,7 @@
 .brand { display: inline-flex; gap: 8px; align-items: center; font-weight: 700; text-decoration: none; }
 .brand-mark { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: var(--ink, #111); color: #fff; font-size: 0.8rem; }
 .brand-light { font-weight: 400; }
-.shop-nav { display: flex; gap: 12px; }
+.shop-nav { display: flex; gap: 12px; flex-wrap: wrap; }
 .shop-link { text-decoration: none; padding: 6px 10px; border-radius: 8px; }
 .shop-link.active { outline: 2px solid currentColor; }
 .header-user { margin-left: auto; }

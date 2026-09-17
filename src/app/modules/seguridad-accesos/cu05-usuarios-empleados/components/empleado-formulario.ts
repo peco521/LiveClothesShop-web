@@ -21,7 +21,7 @@ export class EmpleadoFormularioComponent {
     sexo: ['' as '' | 'M' | 'F', Validators.required], correo: ['', [notBlank, normalizedEmail, Validators.maxLength(100)]],
     telefono: ['', [notBlank, Validators.maxLength(20)]], direccion: ['', [notBlank, Validators.maxLength(150)]],
     fechaNac: ['', [Validators.required, pastDate]], nroRol: ['', [notBlank, Validators.maxLength(15)]],
-    cod_emp: ['', [notBlank, Validators.maxLength(10)]], cargo: ['', [notBlank, Validators.maxLength(50)]],
+    cargo: ['', [notBlank, Validators.maxLength(50)]],
     nroSuc: this.fb.control<number | null>(null, Validators.required),
     ciudad: this.fb.control<number | null>(null), contrasena: [''],
   });
@@ -30,7 +30,7 @@ export class EmpleadoFormularioComponent {
     { name: 'apellidoPat', label: 'Apellido paterno', type: 'text', max: 50 }, { name: 'apellidoMat', label: 'Apellido materno', type: 'text', max: 50 },
     { name: 'correo', label: 'Correo electrónico', type: 'email', max: 100 }, { name: 'telefono', label: 'Teléfono', type: 'text', max: 20 },
     { name: 'direccion', label: 'Dirección', type: 'text', max: 150 }, { name: 'fechaNac', label: 'Fecha de nacimiento', type: 'date', max: null },
-    { name: 'cod_emp', label: 'Código de empleado', type: 'text', max: 10 }, { name: 'cargo', label: 'Cargo', type: 'text', max: 50 },
+    { name: 'cargo', label: 'Cargo', type: 'text', max: 50 },
   ] as const;
 
   constructor() {
@@ -40,7 +40,7 @@ export class EmpleadoFormularioComponent {
         this.form.patchValue({ ci: user.ci, nombres: user.nombres ?? '', apellidoPat: user.apellidoPat,
           apellidoMat: user.apellidoMat, sexo: user.sexo, correo: user.correo, telefono: user.telefono,
           direccion: user.direccion, fechaNac: user.fechaNac, nroRol: user.nroRol,
-          cod_emp: user.empleado.cod_emp, cargo: user.empleado.cargo, nroSuc: user.empleado.nroSuc });
+          cargo: user.empleado.cargo, nroSuc: user.empleado.nroSuc });
       }
       this.form.controls.contrasena.setValidators(user ? [] : [notBlank, Validators.minLength(12), Validators.maxLength(128)]);
       this.form.controls.contrasena.reset();
@@ -64,7 +64,7 @@ export class EmpleadoFormularioComponent {
     }
     const body: EmpleadoFormulario = { ci: value.ci, nombres: value.nombres, apellidoPat: value.apellidoPat,
       apellidoMat: value.apellidoMat, sexo: value.sexo, correo: value.correo, telefono: value.telefono,
-      direccion: value.direccion, fechaNac: value.fechaNac, nroRol: value.nroRol, cod_emp: value.cod_emp,
+      direccion: value.direccion, fechaNac: value.fechaNac, nroRol: value.nroRol,
       cargo: value.cargo, nroSuc: value.nroSuc, ...(!this.editando() ? { contrasena: value.contrasena } : {}) };
     this.guardar.emit(body);
     this.form.controls.contrasena.reset();

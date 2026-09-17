@@ -1,0 +1,55 @@
+<h1>Historial de compras</h1>
+<p>Busca al cliente por CI, nombre, apellidos o correo. Los empleados consultan únicamente compras de su sucursal.</p>
+<form [formGroup]="form" (ngSubmit)="search()">
+  <div class="filters">
+    <div class="field"><label for="hist-ci">CI</label><input id="hist-ci" formControlName="ci" maxlength="100"></div>
+    <div class="field"><label for="hist-nombre">Nombre</label><input id="hist-nombre" formControlName="nombre" maxlength="100"></div>
+    <div class="field"><label for="hist-apellidos">Apellidos</label><input id="hist-apellidos" formControlName="apellidos" maxlength="100"></div>
+    <div class="field"><label for="hist-correo">Correo</label><input id="hist-correo" formControlName="correo" maxlength="100"></div>
+  </div>
+  <button class="button primary compact" type="submit" [disabled]="searching()">Buscar clientes</button>
+</form>
+@if (searching()) { <p role="status">Buscando clientes…</p> }
+@if (error()) { <p class="notice error" role="alert">{{ error() }}</p><button class="button secondary compact" type="button" (click)="search()">Reintentar</button> }
+@if (clients(); as result) {
+  <section class="panel" aria-label="Clientes encontrados">
+    <h2>Clientes encontrados ({{ result.total }})</h2>
+    <div class="table-scroll"><table><thead><tr><th>Cliente</th><th>CI</th><th>Correo</th><th>Consulta</th></tr></thead><tbody>
+      @for (client of result.items; track client.idUsuario) { <tr><td>{{ client.nombre }} {{ client.apellidoPat }} {{ client.apellidoMat }}</td><td>{{ client.ci }}</td><td>{{ client.correo }}</td><td><button class="button secondary compact" type="button" (click)="select(client)">Ver historial</button></td></tr> }
+      @empty { <tr><td colspan="4">No se encontraron clientes.</td></tr> }
+    </tbody></table></div>
+    <nav aria-label="Páginas de clientes"><button class="button secondary compact" type="button" [disabled]="searching() || result.offset === 0" (click)="search(result.offset - result.limit)">Anterior</button><button class="button secondary compact" type="button" [disabled]="searching() || result.offset + result.limit >= result.total" (click)="search(result.offset + result.limit)">Siguiente</button></nav>
+  </section>
+}
+@if (selected(); as client) {
+  <section class="panel" aria-label="Compras del cliente">
+    <h2>Compras de {{ client.nombre }} {{ client.apellidoPat }} {{ client.apellidoMat }}</h2>
+    @if (loadingHistory()) { <p role="status">Cargando compras…</p> }
+    @if (historyError()) { <p class="notice error" role="alert">{{ historyError() }}</p><button class="button secondary compact" type="button" (click)="loadHistory()">Reintentar</button> }
+    @if (history(); as result) {
+      @for (purchase of result.items; track purchase.nroVenta) {
+        <div class="panel"><div class="purchase-head"><h3>Compra #{{ purchase.nroVenta }}</h3><app-compra-estados [venta]="purchase.estado" [pago]="purchase.estadoPago" /></div>
+          <p>{{ purchase.fechaHora | date:'dd/MM/yyyy HH:mm' }} · {{ purchase.monto | currency:'USD' }}</p>
+          @for (product of purchase.productos; track $index) { <p>{{ product.producto }} · {{ product.cantidad }} unidades</p> }
+          <button class="button secondary compact" type="button" (click)="loadDetail(purchase.nroVenta)">Ver detalle</button>
+        </div>
+      } @empty { <p>No existen compras en el historial disponible de este cliente.</p> }
+      <nav aria-label="Páginas de compras"><button class="button secondary compact" type="button" [disabled]="loadingHistory() || result.offset === 0" (click)="loadHistory(result.offset - result.limit)">Anterior</button><button class="button secondary compact" type="button" [disabled]="loadingHistory() || result.offset + result.limit >= result.total" (click)="loadHistory(result.offset + result.limit)">Siguiente</button></nav>
+    }
+  </section>
+}
+@if (loadingDetail()) { <p role="status">Cargando detalle…</p> }
+@if (detailError()) { <p class="notice error" role="alert">{{ detailError() }}</p> }
+@if (detail(); as purchase) {
+  <section class="panel" aria-label="Detalle de compra">
+    <h2>Detalle de compra #{{ purchase.nroVenta }}</h2>
+    <p>{{ purchase.fechaHora | date:'dd/MM/yyyy HH:mm' }} · {{ purchase.sucursal.nombre }} · {{ purchase.sucursal.ciudad }}</p>
+    <app-compra-estados [venta]="purchase.estado" [pago]="purchase.estadoPago" />
+    <div class="table-scroll"><table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>
+      @for (item of purchase.items; track item.idDetalleVenta) { <tr><td>{{ item.producto }}<small>{{ item.sku }}</small></td><td>{{ item.cantidad }}</td><td>{{ item.precioUnitario | currency:'USD' }}</td><td>{{ item.subtotalBruto | currency:'USD' }}</td></tr> }
+    </tbody></table></div>
+    <p>Subtotal: {{ purchase.brutoTotal | currency:'USD' }} · Descuento: {{ purchase.descAplicado | currency:'USD' }}</p><p><strong>Total: {{ purchase.total | currency:'USD' }}</strong></p>
+    @if (purchase.pago; as payment) { <p>Pago: {{ payment.metodo }} · {{ payment.estado }} · {{ payment.monto | currency:'USD' }}</p><p>Referencia: {{ payment.referencia || 'No registrada' }}</p> }
+    @else { <p>No hay un pago registrado.</p> }
+  </section>
+}

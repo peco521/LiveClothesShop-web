@@ -1,0 +1,44 @@
+<app-inventario-panel title="Gestionar catálogo de prendas" [catalog]="true" [error]="error()" [success]="success()">
+  <div class="toolbar"><button class="btn primary" (click)="newProduct()" [disabled]="saving()||refsBusy()||missingReferences().length>0">Nueva prenda</button>
+    <form class="search actions" [formGroup]="search" (ngSubmit)="load()"><label class="visually-hidden" for="product-search">Nombre o SKU</label><input id="product-search" formControlName="q" placeholder="Buscar por nombre o SKU" maxlength="100" />
+      <select formControlName="estado" aria-label="Estado de la prenda"><option value="">Todos los estados</option><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select><button class="btn" type="submit" [disabled]="busy()">Buscar</button></form></div>
+  @if(refsError()){<div class="notice error" role="alert"><p>{{refsError()}}</p><button class="btn" (click)="loadReferences()" [disabled]="refsBusy()">Reintentar referencias</button></div>}
+  @else if (!refsBusy() && missingReferences().length) {<p class="notice">Para crear prendas, registra primero: {{missingReferences().join(', ')}}.</p>}
+  @if (editor()) { <form class="editor" [formGroup]="form" (ngSubmit)="save()"><h2>{{editId()?'Editar prenda':'Nueva prenda'}}</h2>
+  @if(imageMessage()){<p class="notice success" role="status">{{imageMessage()}}</p>}
+  <div class="form-grid">
+    <div class="field"><label for="product-id">Código de producto</label><input id="product-id" [value]="editId()??'Se asignará automáticamente al guardar'" readonly /></div>
+    <div class="field"><label for="product-name">Nombre o descripción</label><input id="product-name" formControlName="descripcion" maxlength="100" [attr.aria-invalid]="invalid('descripcion')" />@if(invalid('descripcion')){<p class="field-error">Escribe el nombre de la prenda.</p>}</div>
+    <div class="field"><label for="product-season">Temporada (para elegir colección)</label><select id="product-season" formControlName="idTemp" (change)="seasonChanged()"><option [ngValue]="null">Todas las temporadas</option>@for(season of choices('temporadas');track season.id){<option [ngValue]="season.id">{{season.nombre}}</option>}</select></div>
+    @for(option of options;track option.key){<div class="field"><label [for]="'product-'+option.key">{{option.label}}</label><select [id]="'product-'+option.key" [formControlName]="option.key" [attr.aria-invalid]="invalid(option.key)"><option [ngValue]="null">{{option.key==='idPromo'?'Sin promoción':'Selecciona una opción'}}</option>@for(item of choices(option.group);track item.id){<option [ngValue]="item.id">{{item.nombre}}</option>}</select>@if(invalid(option.key)){<p class="field-error">Selecciona una opción.</p>}</div>}
+    <div class="field"><label for="product-state">Estado</label><select id="product-state" formControlName="estado"><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select></div>
+  </div><div class="variant-heading"><h3>Variantes de la prenda</h3><button class="btn" type="button" (click)="addVariant()" [disabled]="saving()||form.controls.variantes.length>=100">+ Añadir variante</button></div>
+  <div formArrayName="variantes">@for(variant of form.controls.variantes.controls;track variant;let i=$index){<fieldset class="variant" [formGroupName]="i"><legend>Variante {{i+1}}</legend><div class="form-grid">
+    <div class="field"><label [for]="'variant-sku-'+i">SKU</label><input [id]="'variant-sku-'+i" formControlName="sku" maxlength="30" [attr.aria-invalid]="invalid('variantes.'+i+'.sku')" />@if(invalid('variantes.'+i+'.sku')){<p class="field-error">Escribe un SKU único.</p>}</div>
+    <div class="field"><label [for]="'variant-price-'+i">Precio (USD)</label><input [id]="'variant-price-'+i" formControlName="precio" type="number" min="0.01" step="0.01" [attr.aria-invalid]="invalid('variantes.'+i+'.precio')" />@if(invalid('variantes.'+i+'.precio')){<p class="field-error">Ingresa un precio mayor que cero, con hasta dos decimales.</p>}</div>
+    <div class="field"><label [for]="'variant-size-'+i">Talla</label><select [id]="'variant-size-'+i" formControlName="idTalla" [attr.aria-invalid]="invalid('variantes.'+i+'.idTalla')"><option [ngValue]="null">Selecciona una talla</option>@for(size of refs()['tallas']??[];track size.id){<option [ngValue]="size.id">{{size.nombre}}</option>}</select>@if(invalid('variantes.'+i+'.idTalla')){<p class="field-error">Selecciona una talla.</p>}</div>
+    <div class="field"><label [for]="'variant-state-'+i">Estado de la variante</label><select [id]="'variant-state-'+i" formControlName="estado"><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select></div>
+    <div class="field full-width"><span class="colors-label" [id]="'colors-label-'+i">Colores</span><div class="color-options" role="group" [attr.aria-labelledby]="'colors-label-'+i">@for(color of refs()['colores']??[];track color.id){<label class="color-choice" [class.selected]="variant.controls.idColores.value.includes(color.id)"><input type="checkbox" [checked]="variant.controls.idColores.value.includes(color.id)" (change)="toggleColor(i,color.id)" [disabled]="saving()" />{{color.nombre}}</label>}</div>@if(invalid('variantes.'+i+'.idColores')){<p class="field-error">Selecciona al menos un color.</p>}</div>
+    <div class="field full-width">
+      <span>Imagen de la variante (opcional)</span>
+      <div class="actions">
+        <button class="btn" type="button" (click)="imageFile.click()" [disabled]="saving()||uploading()!==null">{{uploading()===i?'Subiendo…':'Subir imagen'}}</button>
+        <input #imageFile type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="uploadImage(i,$event)" [disabled]="saving()||uploading()!==null" />
+        <span class="muted">JPG, PNG o WebP · Hasta 5 MB</span>
+      </div>
+      @if(uploading()===i){<span role="status">Subiendo imagen a Cloudinary…</span>}
+      @if(variant.controls.img.value && variant.controls.img.valid){<img class="image-preview" [src]="variant.controls.img.value" alt="Vista previa de la variante" loading="lazy" />}
+      <label [for]="'variant-image-'+i">O pega un enlace de imagen</label>
+      <input [id]="'variant-image-'+i" type="url" formControlName="img" maxlength="255" placeholder="https://…" [readonly]="uploading()!==null" [attr.aria-invalid]="invalid('variantes.'+i+'.img')" />
+      @if(invalid('variantes.'+i+'.img')){<p class="field-error">Usa un enlace HTTP o HTTPS válido.</p>}
+    </div>
+  </div><button class="btn danger" type="button" (click)="removeVariant(i)" [disabled]="saving()||form.controls.variantes.length===1">Quitar variante</button></fieldset>}</div>
+  <div class="actions"><button class="btn primary" type="submit" [disabled]="saving()||uploading()!==null">{{saving()?'Guardando…':'Guardar prenda'}}</button><button class="btn" type="button" (click)="editor.set(false)" [disabled]="saving()||uploading()!==null">Cancelar</button></div></form> }
+  @if(confirm();as product){<div class="confirm" role="alert"><p>¿Eliminar {{product.descripcion}} y sus variantes? No se eliminará si tiene inventario o registros asociados.</p><div class="actions"><button class="btn danger" (click)="remove()" [disabled]="saving()">Confirmar eliminación</button><button class="btn" (click)="confirm.set(null)" [disabled]="saving()">Cancelar</button></div></div>}
+  @if(busy()){<p role="status">Cargando prendas…</p>}
+  @if(error()&&!page()){<button class="btn" (click)="load()" [disabled]="busy()">Reintentar</button>}
+  @if(page();as result){<p class="muted">{{result.total}} prendas</p><div class="table-wrap"><table><thead><tr><th>Prenda</th><th>Categoría</th><th>Marca</th><th>Colección</th><th>Proveedor</th><th>Variantes</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+    @for(product of result.items;track product.idProd){<tr><td>{{product.descripcion}}</td><td>{{product.categoria}}</td><td>{{product.marca}}</td><td>{{product.coleccion}}</td><td>{{product.proveedor}}</td><td>{{product.totalVariantes}}</td><td><span class="badge">{{product.estado}}</span></td><td><div class="actions"><button class="btn" (click)="edit(product)" [disabled]="saving()">Editar</button><button class="btn danger" (click)="confirm.set(product)" [disabled]="saving()">Eliminar</button></div></td></tr>}
+    @empty{<tr><td colspan="8" class="empty">No hay prendas registradas para esta búsqueda.</td></tr>}
+  </tbody></table></div><nav class="actions" aria-label="Paginación"><button class="btn" (click)="load(result.offset-result.limit)" [disabled]="busy()||result.offset===0">Anterior</button><span class="muted">{{result.total}} resultados</span><button class="btn" (click)="load(result.offset+result.limit)" [disabled]="busy()||result.offset+result.limit>=result.total">Siguiente</button></nav>}
+</app-inventario-panel>
