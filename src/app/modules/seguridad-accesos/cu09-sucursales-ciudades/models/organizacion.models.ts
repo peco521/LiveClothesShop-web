@@ -4,7 +4,9 @@ export interface Ciudad { id: number; nombre: string; }
 export const DIAS_SEMANA = [{ id: 1, nombre: 'Lunes' }, { id: 2, nombre: 'Martes' }, { id: 3, nombre: 'Miércoles' }, { id: 4, nombre: 'Jueves' }, { id: 5, nombre: 'Viernes' }, { id: 6, nombre: 'Sábado' }, { id: 7, nombre: 'Domingo' }];
 export interface HorarioSucursal { horaIni: string; horaFin: string; dias?: number[]; }
 export interface HorarioSugerencia { idAten: number; horaIni: string; horaFin: string; }
-export interface Sucursal { nro: number; nombre: string; direccion: string; estado: Estado; idCiud: number; ciudad: Ciudad; horarios?: HorarioSucursal[]; }
+export interface Sucursal { nro: number; nombre: string; direccion: string; estado: Estado; idCiud: number; ciudad: Ciudad; horarios?: HorarioSucursal[];
+  // CU09: coordenadas verificadas por el backend; null en sucursales antiguas sin validar.
+  latitud?: number | string | null; longitud?: number | string | null; }
 export type Detalle = Ciudad | Sucursal;
 export interface Listado { items: Detalle[]; total: number; offset: number; limit: number; }
 export interface Filtros { offset: number; limit: number; q: string; idCiud?: number; estado?: Estado; }

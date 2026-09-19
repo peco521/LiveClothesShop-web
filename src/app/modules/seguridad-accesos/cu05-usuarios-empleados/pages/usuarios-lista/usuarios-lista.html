@@ -15,11 +15,13 @@
     <p role="status">{{ page.total }} usuarios internos encontrados.</p>
     @if (!page.items.length) { <p>No hay usuarios para estos filtros.</p> }
     @else {
-      <div class="table-scroll"><table><caption class="visually-hidden">Usuarios internos</caption><thead><tr><th scope="col">Nombre</th><th scope="col">CI</th><th scope="col">Correo</th><th scope="col">Código</th><th scope="col">Tipo</th><th scope="col">Rol</th><th scope="col">Acciones</th></tr></thead><tbody>
+      <div class="table-scroll"><table><caption class="visually-hidden">Usuarios internos</caption><thead><tr><th scope="col">Nombre</th><th scope="col">CI</th><th scope="col">Correo</th><th scope="col">Código</th><th scope="col">Tipo</th><th scope="col">Rol</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead><tbody>
         @for (user of page.items; track user.idUsuario) {
           <tr><td>{{ user.nombres }} {{ user.apellidoPat }} {{ user.apellidoMat }}</td><td>{{ user.ci }}</td><td>{{ user.correo }}</td><td>{{ user.empleado?.cod_emp ?? user.admin?.cod_adm ?? 'No registrado' }}</td><td>{{ user.tipo === 'E' ? 'Empleado' : 'Administrador' }}</td><td>{{ user.rol.descripcion }}</td>
+            <td>{{ user.estado === 'inactivo' ? 'Inactivo' : (user.estado === 'activo' ? 'Activo' : 'No aplica') }}</td>
             <td><a [routerLink]="['/admin/usuarios', user.idUsuario]">Detalle</a>
               @if (user.tipo === 'E') { · <a [routerLink]="['/admin/empleados', user.idUsuario, 'editar']">Editar</a> }
+              @if (user.tipo === 'E' && user.estado) { · <button type="button" (click)="cambiarEstado(user)" [disabled]="busyId() === user.idUsuario">{{ user.estado === 'inactivo' ? 'Reactivar' : 'Desactivar' }}</button> }
             </td></tr>
         }
       </tbody></table></div>

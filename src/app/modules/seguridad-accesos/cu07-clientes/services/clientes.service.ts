@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { defer, EMPTY, map, Observable } from 'rxjs';
 import { API_BASE_URL } from '../../../../core/config/api.config';
-import { ClienteDetalle, ClienteEditar, ClientesFiltros, ClientesListado } from '../models/cliente.models';
+import { ClienteCrear, ClienteDetalle, ClienteEditar, ClientesFiltros, ClientesListado } from '../models/cliente.models';
 
 function detalle(value: ClienteDetalle): ClienteDetalle {
   // Explicit allowlist: never retain unexpected credentials or opaque profile data.
@@ -41,5 +41,18 @@ export class ClientesService {
     if (body.correo !== undefined) body.correo = body.correo.toLowerCase();
     if (input.sexo !== undefined) body.sexo = input.sexo;
     return this.browser(() => this.http.patch<ClienteDetalle>(`${this.base}/${encodeURIComponent(id)}`, body)).pipe(map(detalle));
+  }
+  // CU07 alta administrativa: la sesión del administrador NO cambia.
+  crear(input: ClienteCrear): Observable<ClienteDetalle> {
+    const body = { ci: input.ci.trim(), nombres: input.nombres.trim(), apellidoPat: input.apellidoPat.trim(),
+      apellidoMat: input.apellidoMat.trim(), sexo: input.sexo, correo: input.correo.trim().toLowerCase(),
+      telefono: input.telefono.trim(), direccion: input.direccion.trim(), fechaNac: input.fechaNac,
+      contrasena: input.contrasena };
+    return this.browser(() => this.http.post<ClienteDetalle>(this.base, body)).pipe(map(detalle));
+  }
+  // CU07 baja lógica y reactivación (inactivo conserva historial, ventas y reservas).
+  estadoCuenta(id: string, activo: boolean): Observable<ClienteDetalle> {
+    return this.browser(() => this.http.patch<ClienteDetalle>(
+      `${this.base}/${encodeURIComponent(id)}/estado-cuenta`, { activo })).pipe(map(detalle));
   }
 }

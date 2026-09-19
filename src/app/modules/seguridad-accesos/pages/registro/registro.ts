@@ -1,7 +1,7 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthLayout } from '../../components/auth-layout';
 import { FieldError } from '../../components/field-error';
@@ -17,6 +17,7 @@ import { AuthService } from '../../services/auth.service';
 export class RegistroPage {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   readonly busy = signal(false);
   readonly error = signal('');
@@ -55,7 +56,9 @@ export class RegistroPage {
       takeUntilDestroyed(this.destroyRef),
       finalize(() => { this.busy.set(false); this.form.controls.contrasena.reset(); }),
     ).subscribe({
-      next: () => { this.success.set(true); this.form.reset(); },
+      next: () => { this.success.set(true); this.form.reset();
+        // CU01: el registro ya dejó la sesión iniciada; se entra directo a la tienda.
+        void this.router.navigateByUrl('/tienda'); },
       error: (error: unknown) => this.error.set(authError(error, 'registro')),
     });
   }

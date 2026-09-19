@@ -13,7 +13,8 @@ function detalle(value: UsuarioDetalle): UsuarioDetalle {
     tipo: value.tipo, nroRol: value.nroRol,
     rol: { nro: value.rol.nro, descripcion: value.rol.descripcion },
     empleado: value.empleado ? { cod_emp: value.empleado.cod_emp, cargo: value.empleado.cargo, nroSuc: value.empleado.nroSuc } : null,
-    admin: value.admin ? { cod_adm: value.admin.cod_adm } : null };
+    admin: value.admin ? { cod_adm: value.admin.cod_adm } : null,
+    estado: value.estado ?? null };
 }
 
 function datos(input: EmpleadoEditar): EmpleadoEditar {
@@ -51,6 +52,11 @@ export class UsuariosService {
   }
   editar(id: string, input: EmpleadoEditar): Observable<UsuarioDetalle> {
     return this.browser(() => this.http.patch<UsuarioDetalle>(`${this.base}/empleados/${encodeURIComponent(id)}`, datos(input))).pipe(map(detalle));
+  }
+  // CU05: baja lógica y reactivación (no elimina al empleado ni su historial).
+  estadoCuenta(id: string, activo: boolean): Observable<UsuarioDetalle> {
+    return this.browser(() => this.http.patch<UsuarioDetalle>(
+      `${this.base}/empleados/${encodeURIComponent(id)}/estado-cuenta`, { activo })).pipe(map(detalle));
   }
   roles(): Observable<RolOpcion[]> {
     return this.browser(() => this.http.get<RolOpcion[]>(`${this.base}/usuarios/roles`));

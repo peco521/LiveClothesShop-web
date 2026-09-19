@@ -23,12 +23,14 @@ import { customer, list, session } from './cliente.fixtures';
 describe('CU07 páginas, navegación y permisos', () => {
   let activeHarness: RouterTestingHarness | undefined;
   const auth = { restore: vi.fn(), session: signal<AuthResponse | null>(session) };
-  const service = { listar: vi.fn(), detalle: vi.fn(), editar: vi.fn() };
+  const service = { listar: vi.fn(), detalle: vi.fn(), editar: vi.fn(), crear: vi.fn(), estadoCuenta: vi.fn() };
   beforeEach(() => {
     activeHarness = undefined;
     auth.restore.mockReset().mockReturnValue(of(session)); auth.session.set(session);
     service.listar.mockReset().mockReturnValue(of(list)); service.detalle.mockReset().mockReturnValue(of(customer));
     service.editar.mockReset().mockReturnValue(of(customer));
+    service.crear.mockReset().mockReturnValue(of(customer));
+    service.estadoCuenta.mockReset().mockReturnValue(of({ ...customer, cliente: { ...customer.cliente, estado: 'activo' } }));
     TestBed.configureTestingModule({ providers: [provideRouter(routes), { provide: AuthService, useValue: auth }, { provide: ClientesService, useValue: service }] });
   });
   afterEach(() => vi.restoreAllMocks());
@@ -40,13 +42,35 @@ describe('CU07 páginas, navegación y permisos', () => {
     const page = harness.fixture.debugElement.query(By.directive(type))!.componentInstance as T;
     return { harness, page };
   }
-  it('lista, enlaces y ausencia de alta/filtros ajenos', async () => {
+  it('lista, enlaces y ausencia de filtros ajenos con alta administrativa disponible', async () => {
     const { harness } = await open('/admin/clientes', ClientesListaPage);
     expect(harness.routeNativeElement?.textContent).toContain('21 clientes candidatos');
     expect(harness.routeNativeElement?.querySelector('a[href="/admin/clientes/cliente-1"]')).toBeTruthy();
     expect(harness.routeNativeElement?.querySelector('a[href="/admin/clientes/cliente-1/editar"]')).toBeTruthy();
     expect(harness.routeNativeElement?.querySelector('[formControlName="estado"]')).toBeNull();
-    expect(harness.routeNativeElement?.textContent).not.toContain('Crear cliente');
+    // CU07: la baja/reactivación es una acción explícita (no un filtro por estado
+    // comercial) y el alta se hace desde administración, nunca por el registro público.
+    expect(harness.routeNativeElement?.textContent).toContain('Registrar cliente');
+    expect(harness.routeNativeElement?.textContent).toContain('Reactivar');
+    expect(harness.routeNativeElement?.querySelector('a[href="/registro"]')).toBeNull();
+  });
+  it('registra un cliente desde administración sin cambiar la sesión', async () => {
+    const { page } = await open('/admin/clientes', ClientesListaPage);
+    page.registrando.set(true);
+    page.nuevo = { ci: '1234567', nombres: 'Ana', apellidoPat: 'Pérez', apellidoMat: 'López', sexo: 'F',
+      correo: 'ana@example.com', telefono: '70000000', direccion: 'Calle 1', fechaNac: '2000-01-01',
+      contrasena: 'Frase de prueba larga 123!' };
+    page.registrar();
+    expect(service.crear).toHaveBeenCalledOnce();
+    expect(page.registrando()).toBe(false);
+    // El administrador conserva su propia sesión: no queda autenticado como el cliente.
+    expect(auth.session()).toBe(session);
+  });
+  it('desactiva y reactiva al cliente con una acción explícita', async () => {
+    const { page } = await open('/admin/clientes', ClientesListaPage);
+    page.cambiarEstado(customer);
+    // El fixture está inactivo, por lo que la acción solicitada es reactivarlo.
+    expect(service.estadoCuenta).toHaveBeenCalledWith(customer.idUsuario, true);
   });
   it('conserva búsqueda solo al paginar y la reinicia al volver del detalle', async () => {
     const { harness, page } = await open('/admin/clientes?offset=10&limit=10', ClientesListaPage);

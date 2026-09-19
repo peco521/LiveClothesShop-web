@@ -2,7 +2,7 @@ import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { InventarioPanel, requestError } from '../../shared/panel';
 import { OperacionesService } from '../../shared/operaciones.service';
@@ -11,8 +11,11 @@ import { ProductoDetalle, ProductosListado, VarianteDetalle } from '../../../cli
 
 type ElectronicMethod = 'tarjeta' | 'QR' | 'transferencia';
 interface DraftLine { idVar: string; producto: string; talla: string; colores: string; imagen: string | null; cantidad: number }
+// CU24: alta de cliente en el mostrador (no cambia la sesión del cajero).
+interface NewCustomerDraft { ci: string; nombres: string; apellidoPat: string; apellidoMat: string; sexo: 'M' | 'F';
+  correo: string; telefono: string; direccion: string; fechaNac: string; contrasena: string }
 
-@Component({ selector: 'app-punto-de-venta', imports: [FormsModule, RouterLink, CurrencyPipe, DatePipe, InventarioPanel],
+@Component({ selector: 'app-punto-de-venta', imports: [FormsModule, CurrencyPipe, DatePipe, InventarioPanel],
   templateUrl: './caja.html', styleUrls: ['../../shared/panel.css', '../../shared/operaciones.css'] })
 export class PuntoDeVentaPage {
   private readonly service = inject(OperacionesService);
@@ -29,6 +32,7 @@ export class PuntoDeVentaPage {
   readonly busy = signal(false);
   readonly saving = signal(false);
   readonly picker = signal(false);
+  readonly registrando = signal(false);
   readonly error = signal('');
   readonly success = signal('');
   nroSuc = 0;
@@ -40,6 +44,8 @@ export class PuntoDeVentaPage {
   confirmCancel = false;
   operationKey = this.newKey();
   draft: DraftLine[] = [];
+  nuevo: NewCustomerDraft = { ci: '', nombres: '', apellidoPat: '', apellidoMat: '', sexo: 'F',
+    correo: '', telefono: '', direccion: '', fechaNac: '', contrasena: '' };
 
   constructor() { this.readReservation(); this.loadReferences(); }
 
@@ -78,6 +84,40 @@ export class PuntoDeVentaPage {
 
   clearReservation(): void {
     this.nroReserva = null; this.reservaCliente.set(null); this.success.set('');
+  }
+
+  /** CU24: registra al cliente en el mostrador y lo selecciona, sin cambiar la sesión. */
+  registrarCliente(): void {
+    if (this.saving()) return;
+    const data = this.nuevo;
+    if (!data.ci.trim() || !data.nombres.trim() || !data.apellidoPat.trim() || !data.apellidoMat.trim()
+        || !data.correo.trim() || !data.telefono.trim() || !data.direccion.trim() || !data.fechaNac
+        || data.contrasena.length < 12) {
+      this.error.set('Completa los datos del cliente (la contraseña debe tener al menos 12 caracteres).'); return;
+    }
+    this.saving.set(true); this.error.set(''); this.success.set('');
+    this.service.send<Customer>('caja/clientes', {
+      ci: data.ci.trim(), nombres: data.nombres.trim(), apellidoPat: data.apellidoPat.trim(),
+      apellidoMat: data.apellidoMat.trim(), sexo: data.sexo, correo: data.correo.trim().toLowerCase(),
+      telefono: data.telefono.trim(), direccion: data.direccion.trim(),
+      fechaNac: data.fechaNac, contrasena: data.contrasena })
+      .pipe(takeUntilDestroyed(this.destroy), finalize(() => this.saving.set(false))).subscribe({
+        next: value => {
+          this.customers.set([value]);
+          this.selectedCustomer.set(value);
+          this.nuevo = { ci: '', nombres: '', apellidoPat: '', apellidoMat: '', sexo: 'F',
+            correo: '', telefono: '', direccion: '', fechaNac: '', contrasena: '' };
+          this.registrando.set(false);
+          this.success.set('Cliente registrado y seleccionado para esta venta.');
+        },
+        error: e => this.error.set(requestError(e, this.router)),
+      });
+  }
+
+  /** CU24: venta anónima; no se inventa un cliente genérico. */
+  usarSinRegistro(): void {
+    this.selectedCustomer.set(null); this.customers.set([]); this.customerQ = '';
+    this.error.set(''); this.success.set('Venta sin registro: se guardará como venta anónima (sin cliente).');
   }
 
   searchCustomers(): void {
@@ -119,12 +159,16 @@ export class PuntoDeVentaPage {
 
   prepareSale(): void {
     if (this.saving()) return;
-    if (!this.selectedCustomer() || !this.nroSuc || !this.draft.length || this.draft.some(line => !Number.isInteger(line.cantidad) || line.cantidad < 1)) {
-      this.error.set('Selecciona cliente, sucursal y prendas con cantidades válidas.'); return;
+    if (!this.nroSuc || !this.draft.length || this.draft.some(line => !Number.isInteger(line.cantidad) || line.cantidad < 1)) {
+      this.error.set('Selecciona sucursal y prendas con cantidades válidas.'); return;
+    }
+    if (this.nroReserva && !this.selectedCustomer()) {
+      // CU24: una venta de reserva siempre exige el cliente titular.
+      this.error.set('La reserva requiere su cliente registrado.'); return;
     }
     this.saving.set(true); this.error.set(''); this.success.set('');
     this.service.send<Sale>('caja', { claveOperacion: this.operationKey, nroSuc: this.nroSuc,
-      idCliente: this.selectedCustomer()!.idUsuario, nroReserva: this.nroReserva || null,
+      idCliente: this.selectedCustomer()?.idUsuario ?? null, nroReserva: this.nroReserva || null,
       items: this.draft.map(line => ({ idVar: line.idVar, cantidad: line.cantidad })) })
       .pipe(takeUntilDestroyed(this.destroy), finalize(() => this.saving.set(false))).subscribe({
         next: value => { this.sale.set(value); this.picker.set(false); this.success.set('Venta preparada. El inventario se descuenta al confirmar el pago.'); },

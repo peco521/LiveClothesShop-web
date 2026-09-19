@@ -17,8 +17,16 @@ export class UsuarioDetallePage {
   private request?: Subscription;
   readonly usuario = signal<UsuarioDetalle | null>(null);
   readonly sucursal = signal<SucursalOpcion | null>(null);
-  readonly loading = signal(false); readonly error = signal('');
+  readonly loading = signal(false); readonly busy = signal(false); readonly error = signal('');
   constructor() { this.route.paramMap.pipe(takeUntilDestroyed()).subscribe(() => this.load()); }
+  cambiarEstado(): void {
+    const user = this.usuario();
+    if (!user?.estado || this.busy()) return;
+    this.busy.set(true); this.error.set('');
+    this.service.estadoCuenta(user.idUsuario, user.estado === 'inactivo').pipe(
+      takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false)),
+    ).subscribe({ next: () => this.load(), error: (error: unknown) => this.error.set(usuarioError(error)) });
+  }
   load(): void {
     this.request?.unsubscribe(); this.usuario.set(null); this.sucursal.set(null); this.error.set(''); this.loading.set(true);
     const id = this.route.snapshot.paramMap.get('idUsuario') ?? '';

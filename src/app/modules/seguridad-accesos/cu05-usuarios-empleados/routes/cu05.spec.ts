@@ -30,9 +30,11 @@ const employee: UsuarioDetalle = { idUsuario: 'empleado-1', ci: input.ci, nombre
   apellidoPat: input.apellidoPat, apellidoMat: input.apellidoMat, sexo: input.sexo, correo: input.correo,
   telefono: input.telefono, direccion: input.direccion, fechaNac: input.fechaNac, nroRol: input.nroRol,
   tipo: 'E', rol: { nro: 'laboral', descripcion: 'Empleado' },
-  empleado: { cod_emp: 'EMP001', cargo: 'Cajero', nroSuc: 1 }, admin: null };
+  empleado: { cod_emp: 'EMP001', cargo: 'Cajero', nroSuc: 1 }, admin: null, estado: 'activo' };
 const administrator: UsuarioDetalle = { ...employee, idUsuario: 'admin-1', tipo: 'A', empleado: null,
-  admin: { cod_adm: 'ADM001' }, nroRol: 'gestor', rol: { nro: 'gestor', descripcion: 'Gestor' } };
+  admin: { cod_adm: 'ADM001' }, nroRol: 'gestor', rol: { nro: 'gestor', descripcion: 'Gestor' },
+  // CU05: los administradores no tienen perfil de empleado, por eso su estado es null.
+  estado: null };
 const options: EmpleadoOpciones = { proximoCodigo: 'Emp-000001', roles: [employee.rol, administrator.rol], ciudades: [{ id: 1, nombre: 'Santa Cruz' }, { id: 2, nombre: 'La Paz' }],
   sucursales: [{ nro: 1, nombre: 'Sucursal Central', direccion: 'Calle Central', estado: 'activo', idCiud: 1, ciudad: { id: 1, nombre: 'Santa Cruz' } },
     { nro: 2, nombre: 'Sucursal Norte', direccion: 'Calle Norte', estado: 'inactivo', idCiud: 2, ciudad: { id: 2, nombre: 'La Paz' } }] };

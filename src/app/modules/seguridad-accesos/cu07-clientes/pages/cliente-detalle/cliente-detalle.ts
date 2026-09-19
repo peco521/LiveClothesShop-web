@@ -17,9 +17,19 @@ export class ClienteDetallePage {
   private readonly destroy = inject(DestroyRef);
   private request?: Subscription;
   readonly cliente = signal<ClienteDetalle | null>(null);
+  readonly busy = signal(false);
   readonly loading = signal(false); readonly error = signal('');
   constructor() { this.route.paramMap.pipe(takeUntilDestroyed()).subscribe(() => this.load()); }
   get navigationParams() { return clienteNavigationParams(this.route.snapshot.queryParamMap); }
+  /** CU07: baja lógica o reactivación; el historial del cliente no se pierde. */
+  cambiarEstado(): void {
+    const user = this.cliente();
+    if (!user || this.busy()) return;
+    this.busy.set(true); this.error.set('');
+    this.service.estadoCuenta(user.idUsuario, user.cliente.estado === 'inactivo').pipe(
+      takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false)),
+    ).subscribe({ next: value => this.cliente.set(value), error: (error: unknown) => this.error.set(clienteError(error)) });
+  }
   load(): void {
     this.request?.unsubscribe();
     this.cliente.set(null); this.error.set(''); this.loading.set(true);

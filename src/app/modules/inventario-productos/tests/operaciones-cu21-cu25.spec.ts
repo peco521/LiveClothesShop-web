@@ -126,20 +126,52 @@ describe('CU21-CU25 validaciones de pantalla', () => {
       items: [{ idDetalleVenta: 1, cantidad: 1 }] }));
   });
 
-  it('CU24 exige cliente, sucursal y prendas antes de preparar la venta', () => {
+  it('CU24 exige sucursal y prendas, y admite la venta anónima', () => {
     setup();
     const page = TestBed.createComponent(PuntoDeVentaPage).componentInstance;
     page.prepareSale();
     expect(service.send).not.toHaveBeenCalled();
-    expect(page.error()).toContain('cliente');
+    expect(page.error()).toContain('sucursal');
     page.nroSuc = 1;
-    page.selectedCustomer.set({ idUsuario: 'cliente-1', nombre: 'Ana', correo: 'ana@example.com', ci: '1234567' });
     page.prepareSale();
     expect(service.send).not.toHaveBeenCalled();
+    expect(page.error()).toContain('prendas');
+    // CU24: sin cliente la venta queda como anónima (idCliente null) en vez de fallar.
     page.draft = [{ idVar: 'Var-1', producto: 'Camisa', talla: 'M', colores: 'Rojo', imagen: null, cantidad: 1 }];
     page.prepareSale();
-    expect(service.send).toHaveBeenCalledWith('caja', expect.objectContaining({ nroSuc: 1, idCliente: 'cliente-1',
+    expect(service.send).toHaveBeenCalledWith('caja', expect.objectContaining({ nroSuc: 1, idCliente: null,
       items: [{ idVar: 'Var-1', cantidad: 1 }] }));
+  });
+
+  it('CU24 exige el cliente titular cuando la venta proviene de una reserva', () => {
+    setup();
+    const page = TestBed.createComponent(PuntoDeVentaPage).componentInstance;
+    page.nroSuc = 1; page.nroReserva = 5;
+    page.draft = [{ idVar: 'Var-1', producto: 'Camisa', talla: 'M', colores: 'Rojo', imagen: null, cantidad: 1 }];
+    page.prepareSale();
+    expect(service.send).not.toHaveBeenCalled();
+    expect(page.error()).toContain('reserva');
+    page.selectedCustomer.set({ idUsuario: 'cliente-1', nombre: 'Ana', correo: 'ana@example.com', ci: '1234567' });
+    page.prepareSale();
+    expect(service.send).toHaveBeenCalledWith('caja', expect.objectContaining({ idCliente: 'cliente-1', nroReserva: 5 }));
+  });
+
+  it('CU24 registra al cliente en el mostrador y lo selecciona sin cambiar la sesión', () => {
+    setup();
+    const page = TestBed.createComponent(PuntoDeVentaPage).componentInstance;
+    page.nuevo = { ci: '1234567', nombres: 'Ana', apellidoPat: 'Pérez', apellidoMat: 'López', sexo: 'F',
+      correo: 'ana@example.com', telefono: '70000000', direccion: 'Calle 1', fechaNac: '2000-01-01',
+      contrasena: 'Frase de prueba larga 123!' };
+    service.send.mockReturnValue(of({ idUsuario: 'nuevo-1', nombre: 'Ana Pérez López', correo: 'ana@example.com', ci: '1234567' }));
+    page.registrarCliente();
+    expect(service.send).toHaveBeenCalledWith('caja/clientes', expect.objectContaining({
+      correo: 'ana@example.com', ci: '1234567', nombres: 'Ana' }));
+    expect(page.selectedCustomer()?.idUsuario).toBe('nuevo-1');
+    expect(page.registrando()).toBe(false);
+    // La venta anónima se puede elegir explícitamente y no inventa cliente genérico.
+    page.draft = [{ idVar: 'Var-1', producto: 'Camisa', talla: 'M', colores: 'Rojo', imagen: null, cantidad: 1 }];
+    page.usarSinRegistro();
+    expect(page.selectedCustomer()).toBeNull();
   });
 
   it('CU25 exige el rango de fechas antes de consultar o exportar', () => {

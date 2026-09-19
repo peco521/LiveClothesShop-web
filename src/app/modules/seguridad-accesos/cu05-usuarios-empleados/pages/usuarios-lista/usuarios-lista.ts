@@ -4,7 +4,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { Cu05Layout } from '../../components/cu05-layout';
-import { UsuariosFiltros, UsuariosListado } from '../../models/usuario.models';
+import { UsuarioDetalle, UsuariosFiltros, UsuariosListado } from '../../models/usuario.models';
 import { UsuariosService } from '../../services/usuarios.service';
 import { usuarioError } from '../../services/usuario-error';
 
@@ -16,6 +16,7 @@ export class UsuariosListaPage {
   private readonly service = inject(UsuariosService);
   private readonly destroy = inject(DestroyRef);
   readonly busy = signal(false);
+  readonly busyId = signal('');
   readonly error = signal('');
   readonly result = signal<UsuariosListado | null>(null);
   readonly form = inject(NonNullableFormBuilder).group({ q: [''], tipo: ['' as '' | 'A' | 'E'], limit: [20] });
@@ -34,5 +35,13 @@ export class UsuariosListaPage {
     this.service.listar(this.filters).pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false))).subscribe({
       next: value => this.result.set(value), error: (error: unknown) => this.error.set(usuarioError(error)),
     });
+  }
+  cambiarEstado(user: UsuarioDetalle): void {
+    if (this.busy() || !user.estado) return;
+    const activo = user.estado === 'inactivo';
+    this.busyId.set(user.idUsuario); this.error.set('');
+    this.service.estadoCuenta(user.idUsuario, activo).pipe(
+      takeUntilDestroyed(this.destroy), finalize(() => this.busyId.set('')),
+    ).subscribe({ next: () => this.load(this.filters.offset), error: (error: unknown) => this.error.set(usuarioError(error)) });
   }
 }

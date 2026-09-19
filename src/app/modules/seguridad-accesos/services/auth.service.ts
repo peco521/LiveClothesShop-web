@@ -46,7 +46,16 @@ export class AuthService {
       correo: input.correo.trim().toLowerCase(), telefono: input.telefono.trim(),
       direccion: input.direccion.trim(), fechaNac: input.fechaNac, contrasena: input.contrasena,
     };
-    return this.http.post<RegistroResponse>(`${this.base}/registro`, body);
+    return defer(() => {
+      const revision = ++this.revision;
+      this.loginRevision = revision;
+      return this.http.post<RegistroResponse>(`${this.base}/registro`, body).pipe(
+        // CU01: el registro público deja la sesión iniciada igual que el login.
+        tap((result) => {
+          if (revision === this.revision && result.sesion) this.state.set(publicSession(result.sesion));
+        }),
+      );
+    });
   }
 
   login(input: LoginRequest, portal: 'cliente' | 'admin' = 'cliente'): Observable<AuthResponse> {

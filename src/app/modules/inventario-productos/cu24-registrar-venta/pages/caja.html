@@ -6,7 +6,13 @@
     </div>
     <section class="card">
       @if (reservaCliente()) { <p class="notice">Reserva confirmada en la sucursal: al aprobarse el pago la reserva quedará como atendida. <button class="btn" type="button" (click)="clearReservation()">Quitar reserva</button></p> }
-      <div class="section-heading"><h2>Cliente</h2><a class="btn" routerLink="/registro" target="_blank" rel="noopener">Registrar cliente</a></div>
+      <div class="section-heading"><h2>Cliente</h2></div>
+      <p class="muted">Elige cómo continuar: cliente registrado, registrar cliente ahora o venta sin registro.</p>
+      <div class="actions">
+        <button class="btn" type="button" (click)="registrando.set(!registrando())" [disabled]="saving() || !!nroReserva">{{ registrando() ? 'Cancelar registro' : 'Registrar cliente' }}</button>
+        <button class="btn" type="button" (click)="usarSinRegistro()" [disabled]="saving() || !!nroReserva">Continuar sin registro</button>
+      </div>
+      @if (nroReserva) { <p class="muted">La venta de una reserva requiere el cliente titular.</p> }
       <form class="toolbar" (ngSubmit)="searchCustomers()"><input name="cliente" [(ngModel)]="customerQ" maxlength="100" placeholder="Nombre, correo o CI" aria-label="Buscar cliente" /><button class="btn" type="submit">Buscar cliente</button></form>
       @if (customers().length) {
         <div class="customer-options">
@@ -16,6 +22,25 @@
         </div>
       } @else { <p class="muted">Busca al cliente por nombre, correo o CI para asociarlo a la venta.</p> }
       @if (selectedCustomer(); as c) { <p class="selected-customer">Cliente seleccionado: <strong>{{ c.nombre }}</strong></p> }
+      @else { <p class="muted">Sin cliente: la venta quedará registrada como anónima.</p> }
+      @if (registrando()) {
+        <fieldset [disabled]="saving()"><legend>Registrar cliente en el mostrador</legend>
+          <div class="form-grid">
+            <div class="field"><label for="nc-ci">CI</label><input id="nc-ci" [(ngModel)]="nuevo.ci" [ngModelOptions]="{standalone:true}" maxlength="100" /></div>
+            <div class="field"><label for="nc-nombres">Nombres</label><input id="nc-nombres" [(ngModel)]="nuevo.nombres" [ngModelOptions]="{standalone:true}" maxlength="100" /></div>
+            <div class="field"><label for="nc-pat">Apellido paterno</label><input id="nc-pat" [(ngModel)]="nuevo.apellidoPat" [ngModelOptions]="{standalone:true}" maxlength="50" /></div>
+            <div class="field"><label for="nc-mat">Apellido materno</label><input id="nc-mat" [(ngModel)]="nuevo.apellidoMat" [ngModelOptions]="{standalone:true}" maxlength="50" /></div>
+            <div class="field"><label for="nc-sexo">Sexo</label><select id="nc-sexo" [(ngModel)]="nuevo.sexo" [ngModelOptions]="{standalone:true}"><option value="F">F</option><option value="M">M</option></select></div>
+            <div class="field"><label for="nc-correo">Correo</label><input id="nc-correo" type="email" [(ngModel)]="nuevo.correo" [ngModelOptions]="{standalone:true}" maxlength="100" /></div>
+            <div class="field"><label for="nc-telefono">Teléfono</label><input id="nc-telefono" [(ngModel)]="nuevo.telefono" [ngModelOptions]="{standalone:true}" maxlength="20" /></div>
+            <div class="field"><label for="nc-direccion">Dirección</label><input id="nc-direccion" [(ngModel)]="nuevo.direccion" [ngModelOptions]="{standalone:true}" maxlength="150" /></div>
+            <div class="field"><label for="nc-nac">Fecha de nacimiento</label><input id="nc-nac" type="date" [(ngModel)]="nuevo.fechaNac" [ngModelOptions]="{standalone:true}" /></div>
+            <div class="field"><label for="nc-pass">Contraseña (mínimo 12)</label><input id="nc-pass" type="password" [(ngModel)]="nuevo.contrasena" [ngModelOptions]="{standalone:true}" minlength="12" maxlength="128" /></div>
+          </div>
+          <div class="actions"><button class="btn primary" type="button" (click)="registrarCliente()" [disabled]="saving()">Crear cliente y usarlo en esta venta</button></div>
+          <p class="muted">La sesión de caja no cambia: el cliente queda sólo seleccionado para esta venta.</p>
+        </fieldset>
+      }
     </section>
     <section class="card">
       <div class="section-heading"><h2>Prendas de la venta</h2><button class="btn" type="button" (click)="picker.set(!picker()); searchProducts()" [disabled]="saving()">{{ picker() ? 'Ocultar catálogo' : '+ Añadir prenda' }}</button></div>

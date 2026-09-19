@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import { RegistroPage } from './registro';
 import { AuthService } from '../../services/auth.service';
@@ -68,16 +68,21 @@ describe('CU01 RegistroPage', () => {
     expect(page.form.controls.fechaNac.invalid).toBe(true);
   });
 
-  it('envía el payload público y confirma sin asumir login', () => {
+  it('envía el payload público y entra directo a la tienda con la sesión ya iniciada', () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     auth.register.mockReturnValue(of({ idUsuario: '1', correo: data.correo, mensaje: 'OK' }));
     page.form.setValue(data);
     fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     expect(auth.register).toHaveBeenCalledWith(data);
     expect(page.success()).toBe(true);
     expect(page.form.controls.contrasena.value).toBe('');
+    // CU01: el registro deja la sesión iniciada; no se pide un segundo inicio de sesión.
+    expect(navigate).toHaveBeenCalledWith('/tienda');
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Tu cuenta está lista');
-    expect(fixture.nativeElement.querySelector('a[href="/login"]')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).toContain('tu sesión ya está iniciada');
+    expect(fixture.nativeElement.querySelector('a[href="/tienda"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('a[href="/login"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('form')).toBeNull();
   });
 

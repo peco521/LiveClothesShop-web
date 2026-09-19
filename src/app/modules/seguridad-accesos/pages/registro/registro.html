@@ -2,9 +2,9 @@
   @if (success()) {
     <div class="notice success" role="status">
       <h2>Tu cuenta está lista</h2>
-      <p>Te has registrado correctamente. Inicia sesión para acceder a tu cuenta.</p>
+      <p>Te has registrado correctamente y tu sesión ya está iniciada. Puedes comprar en la tienda sin volver a identificarte.</p>
     </div>
-    <a class="button primary" routerLink="/login">Continuar a iniciar sesión <span aria-hidden="true">→</span></a>
+    <a class="button primary" routerLink="/tienda">Entrar a la tienda <span aria-hidden="true">→</span></a>
   } @else {
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="busy()">
       <fieldset [disabled]="busy()">
