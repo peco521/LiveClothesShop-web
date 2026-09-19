@@ -1,0 +1,56 @@
+<app-inventario-panel title="Dashboard y reportes gerenciales" [error]="error()" [success]="success()">
+  <form (ngSubmit)="load()">
+    <div class="form-grid">
+      <div class="field"><label for="reporte-desde">Desde</label><input id="reporte-desde" type="date" name="desde" [(ngModel)]="fechaIni" required /></div>
+      <div class="field"><label for="reporte-hasta">Hasta</label><input id="reporte-hasta" type="date" name="hasta" [(ngModel)]="fechaFin" required /></div>
+      <div class="field"><label for="reporte-sucursal">Sucursal</label><select id="reporte-sucursal" name="sucursal" [(ngModel)]="nroSuc"><option [ngValue]="0">Todas las sucursales</option>@for (s of refs()?.sucursales; track s.nro) { <option [ngValue]="s.nro">{{ s.nombre }}</option> }</select></div>
+      <div class="field"><label for="reporte-categoria">Categoría</label><select id="reporte-categoria" name="categoria" [(ngModel)]="idCat"><option [ngValue]="0">Todas las categorías</option>@for (c of refs()?.categorias; track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }</select></div>
+      <div class="field"><label for="reporte-temporada">Temporada</label><select id="reporte-temporada" name="temporada" [(ngModel)]="idTemp"><option [ngValue]="0">Todas las temporadas</option>@for (t of refs()?.temporadas; track t.id) { <option [ngValue]="t.id">{{ t.nombre }}</option> }</select></div>
+    </div>
+    <div class="actions"><button class="btn primary" type="submit" [disabled]="busy()">Actualizar indicadores</button></div>
+  </form>
+  @if (busy()) { <p role="status">Calculando indicadores…</p> }
+  @if (report(); as data) {
+    <div class="metrics">
+      <article><span>Ingresos de ventas pagadas</span><strong>{{ data.ingresos | currency:'USD':'code' }}</strong></article>
+      <article><span>Ventas registradas</span><strong>{{ data.ventas }}</strong></article>
+      <article><span>Unidades en stock</span><strong>{{ data.inventario.stock }}</strong></article>
+      <article><span>Unidades disponibles</span><strong>{{ data.inventario.disponible }}</strong></article>
+      <article><span>Unidades reservadas</span><strong>{{ data.inventario.reservado }}</strong></article>
+      <article><span>Registros agotados</span><strong>{{ data.inventario.agotados }}</strong></article>
+      <article><span>Reservas del período</span><strong>{{ data.reservas }}</strong></article>
+      <article><span>Devoluciones</span><strong>{{ data.devoluciones }}</strong></article>
+      <article><span>Conversión de reservas</span><strong>{{ data.conversionReservas }} %</strong></article>
+      <article><span>Carritos del período</span><strong>{{ data.carritos }}</strong></article>
+      <article><span>Conversión de carritos</span><strong>{{ data.conversionCarritos }} %</strong></article>
+    </div>
+    @if (!data.ventas) { <p class="empty">No hay ventas pagadas para el período y los filtros seleccionados.</p> }
+    <div class="report-grid">
+      <section class="card">
+        <h2>Ventas por sucursal</h2>
+        @for (s of data.sucursales; track s.nombre) {
+          <div class="receipt-line"><span>{{ s.nombre }}<small>{{ s.ventas }} ventas</small></span><strong>{{ s.total | currency:'USD':'code' }}</strong></div>
+        } @empty { <p class="muted">Sin ventas registradas en el rango seleccionado.</p> }
+      </section>
+      <section class="card">
+        <h2>Prendas más vendidas</h2>
+        @for (p of data.productos; track p.nombre) {
+          <div class="receipt-line"><span>{{ p.nombre }}</span><strong>{{ p.unidades }} unidades</strong></div>
+        } @empty { <p class="muted">Sin prendas vendidas en el rango seleccionado.</p> }
+      </section>
+    </div>
+    <p class="footnote">{{ data.nota }}</p>
+    <section class="card">
+      <h2>Exportar reporte</h2>
+      @for (kind of kinds; track kind) {
+        <div class="export-row">
+          <strong>{{ kind }}</strong>
+          <div class="actions">
+            <button class="btn" type="button" (click)="download(kind, 'pdf')" [disabled]="exporting()">PDF</button>
+            <button class="btn" type="button" (click)="download(kind, 'xlsx')" [disabled]="exporting()">Excel</button>
+          </div>
+        </div>
+      }
+    </section>
+  }
+</app-inventario-panel>

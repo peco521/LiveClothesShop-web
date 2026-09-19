@@ -44,7 +44,7 @@ describe('CU18 CU19 CU20 formularios',()=>{
     const url = 'https://res.cloudinary.com/test/image/upload/image.png';
     pending.next({url,publicId:'test'}); pending.complete(); fixture.detectChanges();
     expect(page.uploading()).toBeNull(); expect(page.form.controls.variantes.at(0).controls.img.value).toBe(url);
-    expect(fixture.nativeElement.querySelector('.image-preview').src).toBe(url);
+    expect(fixture.nativeElement.querySelector('.variant-thumb').src).toBe(url);
     page.save(); expect(service.saveProduct.mock.calls[0][0].variantes[0].img).toBe(url);
   });
   it('rechaza archivos no permitidos y conserva la imagen ante error del proveedor',()=>{
@@ -62,6 +62,37 @@ describe('CU18 CU19 CU20 formularios',()=>{
     expect(service.saveGroup).not.toHaveBeenCalled();expect(fixture.nativeElement.querySelector('.field-error')).toBeTruthy();
     page.form.controls.descripcion.setValue('M');page.save();expect(service.saveGroup).toHaveBeenCalledWith('tallas',{descripcion:'M'},undefined);
     expect(page.success()).toContain('Guardado correctamente');
+  });
+  it('oculta el identificador del color en el formulario y listado',()=>{
+    setup('colores');const fixture=TestBed.createComponent(ReferenciasPage);fixture.detectChanges();fixture.componentInstance.edit();fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#reference-code')).toBeNull();
+    expect([...fixture.nativeElement.querySelectorAll('th')].map((th:any)=>th.textContent.trim())).not.toContain('ID');
+  });
+  it('muestra una lista compacta y añade variantes en un panel separado con imagen reutilizada',()=>{
+    setup();const image='https://example.com/blue.png';service.product.mockReturnValue(of({...product,variantes:[{...product.variantes[0],img:image}]}));
+    const fixture=TestBed.createComponent(ProductosPage);fixture.detectChanges();const page=fixture.componentInstance;page.edit(summary);fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.variant-list')).toBeTruthy();expect(fixture.nativeElement.querySelector('#variant-sku-0')).toBeNull();
+    page.beginVariant();page.variantDraft.patchValue({sku:'CAM-2',precio:30,idTalla:1,idColores:[1]});fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.variant-panel')).toBeTruthy();expect(fixture.nativeElement.querySelector('#product-name')).toBeNull();
+    expect(page.imageSuggestions()[0]).toEqual(expect.objectContaining({url:image,sameColor:true}));
+    page.reuseImage(image);page.applyVariant();expect(page.variantPanel()).toBe(false);expect(page.form.controls.variantes.length).toBe(2);
+    expect(service.saveProduct).not.toHaveBeenCalled();page.save();expect(service.saveProduct.mock.calls[0][0].variantes[1].img).toBe(image);
+  });
+  it('filtra las variantes y cancelar no modifica la variante original',()=>{
+    setup();const fixture=TestBed.createComponent(ProductosPage);fixture.detectChanges();const page=fixture.componentInstance;page.edit(summary);
+    page.form.controls.variantes.push(page.variantForm({...product.variantes[0],idVariante:'Var-2',sku:'OTHER',idTalla:2,idColores:[2],estado:'inactivo'}));
+    page.variantFilters.patchValue({q:'CAM',idTalla:1,idColor:1,estado:'activo'});expect(page.filteredVariants().map(v=>v.index)).toEqual([0]);
+    page.variantFilters.reset();page.beginVariant(1);page.variantDraft.controls.sku.setValue('CANCELLED');page.closeVariant();
+    expect(page.form.controls.variantes.at(1).controls.sku.value).toBe('OTHER');
+    page.beginVariant(1);page.variantDraft.controls.sku.setValue('CAM-1');page.applyVariant();expect(page.error()).toContain('SKU diferente');expect(page.variantPanel()).toBe(true);
+  });
+  it('la subida en el panel solo actualiza el borrador hasta aplicar la variante',()=>{
+    setup();uploadImage.mockReturnValue(of({url:'https://example.com/new.png',publicId:'new'}));
+    const fixture=TestBed.createComponent(ProductosPage);fixture.detectChanges();const page=fixture.componentInstance;page.edit(summary);page.beginVariant(0);
+    page.uploadImage(0,{target:{files:[new File(['png'],'image.png',{type:'image/png'})],value:''}} as unknown as Event);
+    expect(page.variantDraft.controls.img.value).toBe('https://example.com/new.png');
+    expect(page.form.controls.variantes.at(0).controls.img.value).toBe('');page.applyVariant();
+    expect(page.form.controls.variantes.at(0).controls.img.value).toBe('https://example.com/new.png');
   });
   it('guarda temporadas como enlaces de colección',()=>{
     setup('colecciones');const fixture=TestBed.createComponent(ReferenciasPage);fixture.detectChanges();const page=fixture.componentInstance;page.edit();
@@ -99,6 +130,30 @@ describe('CU18 CU19 CU20 formularios',()=>{
   it('una variante incompleta no se envía y quitar una nunca elimina todas',()=>{
     setup();const fixture=TestBed.createComponent(ProductosPage);fixture.detectChanges();const page=fixture.componentInstance;page.newProduct();page.save();
     expect(service.saveProduct).not.toHaveBeenCalled();page.removeVariant(0);expect(page.form.controls.variantes.length).toBe(1);
+  });
+  it('registrar movimiento abre un panel sin filtros ni tabla y al volver conserva la búsqueda',()=>{
+    setup();const fixture=TestBed.createComponent(InventarioPage);fixture.detectChanges();const page=fixture.componentInstance;
+    page.filters.controls.q.setValue('CAM-1');
+    const open=[...fixture.nativeElement.querySelectorAll('button')].find((button:any)=>button.textContent.trim()==='Registrar movimiento') as HTMLButtonElement;
+    open.click();fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#inventory-search')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.table-wrap')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#movement-quantity')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('h1').textContent).toContain('Registrar movimiento');
+    const back=[...fixture.nativeElement.querySelectorAll('button')].find((button:any)=>button.textContent.includes('Volver al inventario')) as HTMLButtonElement;
+    back.click();fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#movement-quantity')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#inventory-search').value).toBe('CAM-1');
+    expect(service.registerMovement).not.toHaveBeenCalled();
+  });
+  it('guardar desde el panel independiente vuelve al listado con el mensaje de éxito',()=>{
+    setup();const fixture=TestBed.createComponent(InventarioPage);fixture.detectChanges();const page=fixture.componentInstance;
+    page.newMovement();page.form.patchValue({nroSuc:1,idVariante:'Var-1',cantidad:3,motivo:'Recepción'});fixture.detectChanges();
+    page.save();fixture.detectChanges();
+    expect(service.registerMovement).toHaveBeenCalledTimes(1);expect(page.editor()).toBe(false);
+    expect(fixture.nativeElement.querySelector('#movement-quantity')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#inventory-search')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).toContain('Movimiento registrado correctamente');
   });
   it('fija la sucursal del encargado y registra ajustes con dirección explícita',()=>{
     setup();service.inventoryReferences.mockReturnValue(of({...inventoryRefs,sucursalAsignada:1}));

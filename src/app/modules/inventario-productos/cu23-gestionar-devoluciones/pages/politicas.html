@@ -1,0 +1,67 @@
+<app-inventario-panel title="Políticas de devolución" [error]="error()" [success]="success()">
+  <p class="intro">Configura el plazo y el porcentaje de reembolso por prenda. Una política de talla y color tiene prioridad sobre la política general del producto. Solo se aceptan prendas en buen estado.</p>
+  @if (isAdmin()) {
+    <form #policyForm="ngForm" (ngSubmit)="savePolicy(policyForm)" class="editor">
+      <div class="section-heading"><h2>Configurar política</h2>@if (product()) { <button class="btn" type="button" (click)="clearProduct()" [disabled]="saving()">Elegir otra prenda</button> }</div>
+      @if (product(); as p) {
+        <h3>{{ p.descripcion }}</h3>
+        <div class="form-grid">
+          <div class="field">
+            <label for="policy-opcion">Aplicar a</label>
+            <select id="policy-opcion" name="opcion" [(ngModel)]="policy.idVar">
+              <option [ngValue]="null">Todo el producto</option>
+              @for (v of p.variantes; track v.idVariante) {
+                <option [ngValue]="v.idVariante">Talla {{ v.talla.descripcion }} · @for (c of v.colores; track c.idColor) { {{ c.descripcion }} }</option>
+              }
+            </select>
+          </div>
+          <div class="field"><label for="policy-dias">Plazo desde la compra (días)</label><input id="policy-dias" type="number" name="dias" [(ngModel)]="policy.dias" min="1" max="3650" step="1" required [attr.aria-invalid]="invalid(policyForm,'dias')" />@if (invalid(policyForm,'dias')) { <p class="field-error">Indica un plazo de al menos un día.</p> }</div>
+          <div class="field"><label for="policy-porcentaje">Porcentaje del importe pagado</label><input id="policy-porcentaje" type="number" name="porcentaje" [(ngModel)]="policy.porcentaje" min="0.01" max="100" step="0.01" required [attr.aria-invalid]="invalid(policyForm,'porcentaje')" />@if (invalid(policyForm,'porcentaje')) { <p class="field-error">Ingresa un porcentaje mayor que cero y máximo 100.</p> }</div>
+        </div>
+        <button class="btn primary" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar política' }}</button>
+      } @else {
+        <p class="muted">Selecciona una prenda en el catálogo de abajo para configurar su política.</p>
+      }
+    </form>
+    <section class="card catalog-picker">
+      <div class="section-heading"><h2>Seleccionar prenda del catálogo</h2></div>
+      <form class="search" (ngSubmit)="searchProducts()"><input name="producto" [(ngModel)]="productQ" maxlength="100" placeholder="Buscar por nombre, marca o categoría" aria-label="Buscar prendas" /><button class="btn" type="submit">Buscar</button></form>
+      @if (products(); as rows) {
+        @if (!rows.total) { <p class="empty">No se encontraron prendas con esa búsqueda.</p> }
+        @else {
+          <div class="product-grid">
+            @for (p of rows.items; track p.idProd) {
+              <button class="product-card" type="button" (click)="selectProduct(p.idProd)" [class.selected]="product()?.idProd === p.idProd">
+                @if (p.imagen) { <img [src]="p.imagen" [alt]="p.descripcion" /> }
+                <strong>{{ p.descripcion }}</strong>
+                <small>{{ p.categoria.descripcion }} · {{ p.marca.nombre }}</small>
+                <span>{{ product()?.idProd === p.idProd ? '✓ Seleccionada' : 'Configurar política' }}</span>
+              </button>
+            }
+          </div>
+          <nav class="actions" aria-label="Paginación de prendas">
+            <button class="btn" type="button" (click)="searchProducts(rows.offset - rows.limit)" [disabled]="rows.offset === 0">Anterior</button>
+            <span class="muted">{{ rows.total }} prendas</span>
+            <button class="btn" type="button" (click)="searchProducts(rows.offset + rows.limit)" [disabled]="rows.offset + rows.limit >= rows.total">Siguiente</button>
+          </nav>
+        }
+      }
+    </section>
+  } @else {
+    <p class="notice">Solo el administrador puede modificar las políticas de devolución. Puedes consultar las políticas vigentes.</p>
+  }
+  <h2>Políticas configuradas</h2>
+  @if (busy()) { <p role="status">Consultando políticas…</p> }
+  <div class="table-wrap"><table><thead><tr><th>Prenda</th><th>Aplicación</th><th>Plazo</th><th>Reembolso</th></tr></thead><tbody>
+    @for (row of policies(); track row.id) {
+      <tr>
+        <td>{{ row.producto || row.idProd }}</td>
+        <td>{{ row.opcion || (row.idVar ? 'Talla y color específicos' : 'Todo el producto') }}</td>
+        <td>{{ row.dias }} días</td>
+        <td>{{ row.porcentaje }} %</td>
+      </tr>
+    } @empty {
+      <tr><td colspan="4" class="empty">No hay políticas configuradas. No se aplicará un plazo o porcentaje inventado.</td></tr>
+    }
+  </tbody></table></div>
+</app-inventario-panel>

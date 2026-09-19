@@ -1,0 +1,33 @@
+/* CU21-CU25: tarjetas, catálogo seleccionable, comprobantes e indicadores. */
+.card { border:1px solid var(--line); border-radius:12px; padding:24px; margin:20px 0; background:#fafbf7; }
+.card h2 { font-size:1.1rem; margin:0 0 16px; }.card h3 { font-size:.98rem; margin:0 0 10px; }
+.section-heading { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin:0 0 16px; }
+.section-heading h2 { margin:0; }.intro { color:var(--muted); font-size:.88rem; line-height:1.6; margin:0 0 18px; }
+.footnote { color:var(--muted); font-size:.8rem; margin:18px 0; }
+.checkbox { display:flex; align-items:center; gap:8px; font-size:.83rem; }.checkbox input { width:18px; min-height:18px; }
+textarea { width:100%; min-height:90px; padding:11px 13px; border:1px solid #c8cbbf; border-radius:8px; background:var(--paper); color:var(--ink); font:inherit; resize:vertical; }
+.metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; margin:20px 0; }
+.metrics article { border:1px solid var(--line); border-radius:10px; padding:16px; background:var(--paper); display:grid; gap:6px; }
+.metrics span { color:var(--muted); font-size:.78rem; }.metrics strong { font-size:1.35rem; }
+.product-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:14px; margin:18px 0; }
+.product-card { display:grid; gap:6px; text-align:left; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--paper); cursor:pointer; }
+.product-card.selected { border-color:var(--accent); background:#edf3e9; }
+.product-card img { width:100%; height:130px; object-fit:cover; border-radius:8px; }
+.product-card small, .product-card span { color:var(--muted); font-size:.78rem; }
+.product-line { display:flex; align-items:center; gap:14px; border-bottom:1px solid var(--line); padding:12px 0; }
+.product-line img { width:56px; height:56px; object-fit:cover; border-radius:8px; }
+.product-line h3 { margin:0 0 4px; font-size:.95rem; }.product-line p { margin:0; color:var(--muted); font-size:.82rem; }
+.return-line { display:flex; justify-content:space-between; align-items:center; gap:14px; border-bottom:1px solid var(--line); padding:12px 0; }
+.return-line label { margin:0; max-width:190px; }
+.customer-options { display:grid; gap:8px; margin:14px 0; }.customer-options button { text-align:left; }
+.customer-options button.selected { border-color:var(--accent); background:#edf3e9; }
+.selected-customer { border:1px solid var(--accent); border-radius:8px; padding:10px 12px; font-size:.85rem; }
+.pagination { display:flex; align-items:center; gap:14px; margin:18px 0; font-size:.85rem; }
+.receipt-line { display:flex; justify-content:space-between; gap:14px; border-bottom:1px dashed var(--line); padding:8px 0; font-size:.88rem; }
+.receipt-line small { display:block; color:var(--muted); font-size:.78rem; }.receipt-line.total { border-bottom:0; font-size:1.05rem; }
+.checkout-grid, .report-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px; align-items:start; }
+.summary { border:1px solid var(--line); border-radius:12px; padding:22px; background:var(--paper); }.summary h2 { font-size:1.05rem; margin:0 0 16px; }
+.export-row { display:flex; justify-content:space-between; align-items:center; gap:14px; border-bottom:1px solid var(--line); padding:10px 0; }
+.reprogram { margin-top:14px; }.catalog-picker { border-style:dashed; }
+@media print { .tabs, .toolbar, .btn, nav, form { display:none !important; } }
+@media(max-width:600px) { .checkout-grid, .report-grid, .form-grid { grid-template-columns:1fr; }.return-line { flex-direction:column; align-items:flex-start; } }

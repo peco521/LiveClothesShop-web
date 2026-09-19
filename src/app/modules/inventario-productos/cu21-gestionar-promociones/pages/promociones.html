@@ -1,0 +1,76 @@
+<app-inventario-panel [title]="editor() ? (promotionId ? 'Editar promoción' : 'Nueva promoción') : 'Promociones y descuentos'" [error]="error()" [success]="success()">
+  @if (!editor()) {
+    <div class="toolbar">
+      <form class="search" (ngSubmit)="load()"><input name="buscar" [(ngModel)]="q" maxlength="100" placeholder="Buscar promociones" aria-label="Buscar promociones" /><button class="btn" type="submit" [disabled]="busy()">Buscar</button></form>
+      <button class="btn primary" type="button" (click)="newPromotion()" [disabled]="saving()">Crear promoción</button>
+    </div>
+    @if (busy()) { <p role="status">Consultando promociones…</p> }
+    @if (page(); as rows) {
+      @if (!rows.total) { <p class="empty">No hay promociones para esta búsqueda.</p> }
+      @else {
+        <div class="table-wrap"><table><thead><tr><th>Promoción</th><th>Descuento</th><th>Vigencia</th><th>Estado</th><th>Prendas</th><th>Acciones</th></tr></thead><tbody>
+          @for (row of rows.items; track row.idPromo) {
+            <tr>
+              <td><strong>{{ row.nombre }}</strong><br /><small class="muted">{{ row.descripcion }}</small></td>
+              <td>{{ row.valorDescuento }} {{ row.tipoDescuento === 'porcentaje' ? '%' : 'USD / unidad' }}</td>
+              <td>{{ row.fechaIni | date:'dd/MM/yyyy' }}<br /><small class="muted">hasta {{ row.fechaFin | date:'dd/MM/yyyy' }}</small></td>
+              <td><span class="badge">{{ row.estado }}</span></td>
+              <td>{{ row.productos.length }}</td>
+              <td><div class="actions">
+                @if (row.estado !== 'cancelada') {
+                  <button class="btn" type="button" (click)="newPromotion(row)" [disabled]="saving()">Editar</button>
+                  <button class="btn danger" type="button" (click)="deactivate(row)" [disabled]="saving()">Desactivar</button>
+                } @else { <span class="muted">Desactivada</span> }
+              </div></td>
+            </tr>
+          }
+        </tbody></table></div>
+        <nav class="actions" aria-label="Paginación de promociones">
+          <button class="btn" type="button" (click)="load(rows.offset - rows.limit)" [disabled]="busy() || rows.offset === 0">Anterior</button>
+          <span class="muted">{{ rows.total }} promociones</span>
+          <button class="btn" type="button" (click)="load(rows.offset + rows.limit)" [disabled]="busy() || rows.offset + rows.limit >= rows.total">Siguiente</button>
+        </nav>
+      }
+    }
+  } @else {
+    <form #promoForm="ngForm" (ngSubmit)="savePromotion(promoForm)" class="editor">
+      <div class="form-grid">
+        <div class="field"><label for="promo-nombre">Nombre</label><input id="promo-nombre" name="nombre" [(ngModel)]="promotion.nombre" required maxlength="100" [attr.aria-invalid]="invalid(promoForm,'nombre')" />@if (invalid(promoForm,'nombre')) { <p class="field-error">Escribe el nombre de la promoción.</p> }</div>
+        <div class="field"><label for="promo-tipo">Tipo de descuento</label><select id="promo-tipo" name="tipo" [(ngModel)]="promotion.tipoDescuento"><option value="porcentaje">Porcentaje</option><option value="montoFijo">Monto fijo por unidad (USD)</option></select></div>
+        <div class="field"><label for="promo-valor">Valor del descuento</label><input id="promo-valor" type="number" name="valor" [(ngModel)]="promotion.valorDescuento" min="0.01" [max]="promotion.tipoDescuento === 'porcentaje' ? 100 : 99999999" step="0.01" required [attr.aria-invalid]="invalid(promoForm,'valor')" />@if (invalid(promoForm,'valor')) { <p class="field-error">Ingresa un valor mayor que cero{{ promotion.tipoDescuento === 'porcentaje' ? ' (máximo 100)' : '' }}.</p> }</div>
+        <div class="field"><label for="promo-ini">Fecha de inicio</label><input id="promo-ini" type="date" name="inicio" [(ngModel)]="promotion.fechaIni" required [attr.aria-invalid]="invalid(promoForm,'inicio')" />@if (invalid(promoForm,'inicio')) { <p class="field-error">Indica la fecha de inicio.</p> }</div>
+        <div class="field"><label for="promo-fin">Fecha de fin</label><input id="promo-fin" type="date" name="fin" [(ngModel)]="promotion.fechaFin" required [attr.aria-invalid]="invalid(promoForm,'fin')" />@if (invalid(promoForm,'fin')) { <p class="field-error">Indica la fecha de fin.</p> }</div>
+        <div class="field full-width"><label for="promo-desc">Descripción</label><textarea id="promo-desc" name="descripcion" [(ngModel)]="promotion.descripcion" required maxlength="300" [attr.aria-invalid]="invalid(promoForm,'descripcion')"></textarea>@if (invalid(promoForm,'descripcion')) { <p class="field-error">Describe la promoción.</p> }</div>
+      </div>
+      <p class="muted">{{ selectedProducts.length }} prendas seleccionadas. Elige las prendas en el catálogo de abajo.</p>
+      <div class="actions">
+        <button class="btn primary" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar promoción' }}</button>
+        <button class="btn" type="button" (click)="closeEditor()" [disabled]="saving()">Cancelar</button>
+      </div>
+    </form>
+    <section class="card catalog-picker">
+      <div class="section-heading"><h2>Seleccionar prendas del catálogo</h2><span class="muted">{{ selectedProducts.length }} seleccionadas</span></div>
+      <form class="search" (ngSubmit)="searchProducts()"><input name="producto" [(ngModel)]="productQ" maxlength="100" placeholder="Buscar por nombre, marca o categoría" aria-label="Buscar prendas" /><button class="btn" type="submit">Buscar</button></form>
+      @if (products(); as rows) {
+        @if (!rows.total) { <p class="empty">No se encontraron prendas con esa búsqueda.</p> }
+        @else {
+          <div class="product-grid">
+            @for (p of rows.items; track p.idProd) {
+              <button class="product-card" type="button" (click)="toggleProduct(p.idProd)" [class.selected]="selectedProducts.includes(p.idProd)">
+                @if (p.imagen) { <img [src]="p.imagen" [alt]="p.descripcion" /> }
+                <strong>{{ p.descripcion }}</strong>
+                <small>{{ p.categoria.descripcion }} · {{ p.marca.nombre }}</small>
+                <span>{{ selectedProducts.includes(p.idProd) ? '✓ Seleccionada' : '+ Seleccionar' }}</span>
+              </button>
+            }
+          </div>
+          <nav class="actions" aria-label="Paginación de prendas">
+            <button class="btn" type="button" (click)="searchProducts(rows.offset - rows.limit)" [disabled]="rows.offset === 0">Anterior</button>
+            <span class="muted">{{ rows.total }} prendas</span>
+            <button class="btn" type="button" (click)="searchProducts(rows.offset + rows.limit)" [disabled]="rows.offset + rows.limit >= rows.total">Siguiente</button>
+          </nav>
+        }
+      }
+    </section>
+  }
+</app-inventario-panel>

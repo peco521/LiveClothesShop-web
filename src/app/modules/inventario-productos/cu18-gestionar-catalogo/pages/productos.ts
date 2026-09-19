@@ -19,12 +19,12 @@ export class ProductosPage {
     if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size === 0 || file.size > 5*1024*1024) {
       this.error.set('Selecciona una imagen JPG, PNG o WebP de hasta 5 MB.'); return;
     }
-    const variant = this.form.controls.variantes.at(index);
+    const variant = this.variantPanel() ? this.variantDraft : this.form.controls.variantes.at(index);
     if (!variant) return;
     this.uploading.set(index);
     this.service.uploadImage(file).pipe(takeUntilDestroyed(this.destroy), finalize(() => this.uploading.set(null))).subscribe({
       next: result => {
-        if (!this.form.controls.variantes.controls.includes(variant)) return;
+        if (this.variantPanel() ? this.variantDraft !== variant : !this.form.controls.variantes.controls.includes(variant)) return;
         variant.controls.img.setValue(result.url); variant.controls.img.markAsDirty();
         this.imageMessage.set('Imagen subida correctamente. Guarda la prenda para asociarla.');
       },
@@ -40,6 +40,68 @@ export class ProductosPage {
   readonly form=this.fb.group({descripcion:['',[Validators.required,Validators.maxLength(100),Validators.pattern(/\S/)]],estado:['activo'],
     idCat:[null as number|null,Validators.required],idMarca:[null as number|null,Validators.required],idCol:[null as number|null,Validators.required],
     idProv:[null as number|null,Validators.required],idPromo:[null as number|null],idTemp:[null as number|null],variantes:this.fb.array<ReturnType<ProductosPage['variantForm']>>([])});
+
+  readonly variantPanel=signal(false);
+  readonly variantIndex=signal<number|null>(null);
+  readonly variantNotice=signal('');
+  variantDraft=this.variantForm();
+  readonly variantFilters=this.fb.group({q:[''],idTalla:[null as number|null],idColor:[null as number|null],estado:['']});
+  beginVariant(index?:number):void{
+    if(this.saving()||this.uploading()!==null)return;
+    if(index===undefined){
+      const blank=this.form.controls.variantes.controls.findIndex(v=>!v.controls.sku.value.trim()&&!v.controls.idVariante.value);
+      if(blank>=0)index=blank;
+      else if(this.form.controls.variantes.length>=100)return;
+    }
+    this.variantIndex.set(index??null);
+    const value=index===undefined?undefined:this.form.controls.variantes.at(index).getRawValue();
+    this.variantDraft=this.variantForm(value?{...value,precio:value.precio??0,idTalla:value.idTalla??0}:undefined);
+    if(value?.idTalla===null)this.variantDraft.controls.idTalla.setValue(null);
+    if(value?.precio===null)this.variantDraft.controls.precio.setValue(null);
+    this.imageMessage.set('');this.variantNotice.set('');this.variantPanel.set(true);
+  }
+  closeVariant():void{
+    if(this.uploading()!==null)return;
+    this.variantPanel.set(false);this.error.set('');this.imageMessage.set('');
+  }
+  applyVariant():void{
+    if(this.saving()||this.uploading()!==null)return;
+    if(this.variantDraft.invalid){this.variantDraft.markAllAsTouched();this.error.set('Completa los campos obligatorios de la variante.');return;}
+    const index=this.variantIndex(),sku=this.variantDraft.controls.sku.value.trim();
+    if(this.form.controls.variantes.controls.some((v,i)=>i!==index&&v.controls.sku.value.trim()===sku)){
+      this.error.set('Cada variante debe tener un SKU diferente.');return;
+    }
+    this.variantDraft.controls.sku.setValue(sku);
+    if(index===null){
+      if(this.form.controls.variantes.length>=100)return;
+      this.form.controls.variantes.push(this.variantDraft);
+    }else this.form.controls.variantes.setControl(index,this.variantDraft);
+    this.form.markAsDirty();this.variantPanel.set(false);this.error.set('');this.imageMessage.set('');
+    this.variantNotice.set('Variante preparada. Guarda la prenda para confirmar los cambios.');
+  }
+  draftInvalid(path:string):boolean{const c=this.variantDraft.get(path);return !!c&&c.invalid&&(c.touched||c.dirty);}
+  referenceName(group:string,id:number|null):string{return this.refs()[group]?.find(x=>x.id===id)?.nombre??'—';}
+  colorNames(ids:number[]):string{return ids.map(id=>this.referenceName('colores',id)).join(', ')||'—';}
+  filteredVariants(){
+    const f=this.variantFilters.getRawValue(),q=f.q.trim().toLocaleLowerCase();
+    return this.form.controls.variantes.controls.map((control,index)=>({control,index,value:control.getRawValue()})).filter(({value:v})=>
+      (!q||[v.sku,this.referenceName('tallas',v.idTalla),this.colorNames(v.idColores)].join(' ').toLocaleLowerCase().includes(q))
+      &&(f.idTalla===null||v.idTalla===f.idTalla)&&(f.idColor===null||v.idColores.includes(f.idColor))&&(!f.estado||v.estado===f.estado));
+  }
+  imageSuggestions(){
+    const colors=this.variantDraft.controls.idColores.value;
+    const candidates=this.form.controls.variantes.controls.flatMap((v,i)=>{
+      const url=v.controls.img.value.trim();
+      return i!==this.variantIndex()&&url&&v.controls.img.valid?[{url,sku:v.controls.sku.value,sameColor:colors.some(c=>v.controls.idColores.value.includes(c))}]:[];
+    }).sort((a,b)=>Number(b.sameColor)-Number(a.sameColor));
+    return candidates.filter((item,i)=>candidates.findIndex(x=>x.url===item.url)===i);
+  }
+  reuseImage(url:string):void{
+    if(this.uploading()!==null)return;
+    this.variantDraft.controls.img.setValue(url);this.variantDraft.controls.img.markAsDirty();
+    this.imageMessage.set('Imagen seleccionada. No es necesario volver a subirla.');
+  }
+
   readonly options=[{key:'idCat',group:'categorias',label:'Categoría'},{key:'idMarca',group:'marcas',label:'Marca'},{key:'idCol',group:'colecciones',label:'Colección'},
     {key:'idProv',group:'proveedores',label:'Proveedor'},{key:'idPromo',group:'promociones',label:'Promoción (opcional)'}];
   constructor(){this.loadReferences();this.load();}
@@ -64,7 +126,7 @@ export class ProductosPage {
     this.service.product(product.idProd).pipe(takeUntilDestroyed(this.destroy),finalize(()=>this.saving.set(false))).subscribe({next:r=>this.fill(r),error:e=>this.error.set(requestError(e,this.router))});
   }
   private fill(product?:Product):void{
-    this.imageMessage.set('');
+    this.imageMessage.set(''); this.variantPanel.set(false); this.variantFilters.reset();
     this.editId.set(product?.idProd);this.editor.set(true);this.confirm.set(null);this.success.set('');this.error.set('');
     this.form.reset({descripcion:product?.descripcion??'',estado:product?.estado??'activo',idCat:product?.idCat??null,idMarca:product?.idMarca??null,
       idCol:product?.idCol??null,idProv:product?.idProv??null,idPromo:product?.idPromo??null,idTemp:null});
@@ -73,10 +135,16 @@ export class ProductosPage {
   }
   addVariant():void{if(this.form.controls.variantes.length<100)this.form.controls.variantes.push(this.variantForm());}
   removeVariant(index:number):void{if(this.form.controls.variantes.length>1&&!this.saving()&&this.uploading()===null)this.form.controls.variantes.removeAt(index);}
-  toggleColor(index:number,id:number):void{const c=this.form.controls.variantes.at(index).controls.idColores;const next=c.value.includes(id)?c.value.filter(x=>x!==id):[...c.value,id];c.setValue(next);c.markAsTouched();}
+  toggleColor(index:number,id:number):void{const c=(this.variantPanel()?this.variantDraft:this.form.controls.variantes.at(index)).controls.idColores;const next=c.value.includes(id)?c.value.filter(x=>x!==id):[...c.value,id];c.setValue(next);c.markAsTouched();}
   invalid(path:string):boolean{const c=this.form.get(path);return !!c&&c.invalid&&(c.touched||c.dirty);}
   save():void{
-    if(this.uploading()!==null||this.saving())return;if(this.form.invalid){this.form.markAllAsTouched();return;}
+    if(this.uploading()!==null||this.saving()||this.variantPanel())return;
+    if(this.form.invalid){
+      this.form.markAllAsTouched(); this.error.set('Completa los campos obligatorios de la prenda y sus variantes.');
+      const invalidIndex=this.form.controls.variantes.controls.findIndex(v=>v.invalid);
+      if(invalidIndex>=0)this.beginVariant(invalidIndex);
+      return;
+    }
     const raw=this.form.getRawValue();const skus=raw.variantes.map(v=>v.sku.trim());
     if(new Set(skus).size!==skus.length){this.error.set('Cada variante debe tener un SKU diferente.');return;}
     const data:ProductData={descripcion:raw.descripcion.trim(),estado:raw.estado as ProductData['estado'],idCat:raw.idCat!,idMarca:raw.idMarca!,idCol:raw.idCol!,idProv:raw.idProv!,idPromo:raw.idPromo,

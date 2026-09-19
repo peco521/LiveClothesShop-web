@@ -8,13 +8,17 @@
     <nav class="shop-nav" aria-label="Navegación de la tienda">
       <a class="shop-link" routerLink="/tienda" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active" ariaCurrentWhenActive="page"><span>Catálogo</span></a>
       <a class="shop-link" routerLink="/tienda/reservas" routerLinkActive="active" ariaCurrentWhenActive="page"><span>Mis reservas</span></a>
-      <a class="shop-link" routerLink="/tienda/carrito" routerLinkActive="active" ariaCurrentWhenActive="page"><span>Carrito@if (carrito.estado()?.cantidadItems) { ({{ carrito.estado()?.cantidadItems }}) }</span></a>
       <a class="shop-link" routerLink="/tienda/historial-compras" routerLinkActive="active" ariaCurrentWhenActive="page"><span>Historial de compras</span></a>
     </nav>
     @if (auth.session(); as session) {
       <span class="header-user">{{ session.usuario.nombres || session.usuario.correo }}</span>
     }
     <div class="header-actions">
+      <a class="cart-icon" routerLink="/tienda/carrito" routerLinkActive="active" ariaCurrentWhenActive="page" [attr.aria-label]="'Ver carrito, '+(carrito.estado()?.cantidadItems??0)+' prendas'">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 3h3l2.3 12h11.4l2-8H6"/><path d="M8 19h.01M18 19h.01" stroke-width="4" stroke-linecap="round"/></svg>
+        <span class="visually-hidden">Carrito@if(carrito.estado()?.cantidadItems){ ({{carrito.estado()?.cantidadItems}}) }</span>
+        @if(carrito.estado()?.cantidadItems){<span class="cart-count" aria-hidden="true">{{carrito.estado()?.cantidadItems}}</span>}
+      </a>
       @if (logoutError()) { <p class="notice error" role="alert">{{ logoutError() }}</p> }
       <button class="button primary" type="button" (click)="logout()" [disabled]="busy()">
         {{ busy() ? 'Cerrando sesión…' : 'Cerrar sesión' }}

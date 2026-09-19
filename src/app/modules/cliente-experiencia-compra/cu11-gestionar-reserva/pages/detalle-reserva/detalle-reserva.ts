@@ -6,9 +6,10 @@ import { Cu11Layout } from '../../components/cu11-layout';
 import { ReservaDetalle } from '../../models/reserva.models';
 import { ReservasService } from '../../services/reservas.service';
 import { reservaError } from '../../services/reserva-error';
+import { DatePipe } from '@angular/common';
 
-@Component({ selector: 'app-detalle-reserva', imports: [Cu11Layout, RouterLink], templateUrl: './detalle-reserva.html',
-  styles: `.table-scroll { overflow-x: auto; } table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--line); } .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 0.85rem; } .actions { display: flex; gap: 12px; margin: 16px 0; }`,
+@Component({ selector: 'app-detalle-reserva', imports: [Cu11Layout, RouterLink, DatePipe], templateUrl: './reserva-detalle.html',
+  styleUrl: './detalle-reserva.css',
 })
 export class DetalleReservaPage {
   private readonly service = inject(ReservasService);

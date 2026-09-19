@@ -1,0 +1,55 @@
+<app-inventario-panel title="Devoluciones de prendas" [error]="error()" [success]="success()">
+  <section class="card">
+    <div class="section-heading"><h2>Registrar una devolución</h2><a class="btn" routerLink="/admin/politicas-devolucion">Políticas de devolución</a></div>
+    <form class="toolbar" (ngSubmit)="findSale()">
+      <div class="field" style="margin:0"><label for="devolucion-venta">Número de venta del comprobante</label><input id="devolucion-venta" type="number" name="venta" [(ngModel)]="saleSearch" min="1" step="1" required /></div>
+      <button class="btn" type="submit" [disabled]="saving()">Buscar venta</button>
+    </form>
+    @if (sale(); as row) {
+      <h3>Venta #{{ row.nroVenta }} · {{ row.sucursal.nombre }}</h3>
+      <p class="muted">Importe pagado: {{ row.total | currency:'USD':'code' }} · {{ row.items.length }} prendas registradas</p>
+      @for (item of row.items; track item.idDetalleVenta) {
+        <div class="return-line">
+          <div><strong>{{ item.producto }}</strong><br /><small class="muted">{{ item.cantidad }} unidades compradas · {{ item.precioUnitario | currency:'USD':'code' }} c/u</small></div>
+          <div class="field" style="margin:0"><label [for]="'devolucion-cantidad-' + item.idDetalleVenta">Cantidad a devolver</label><input [id]="'devolucion-cantidad-' + item.idDetalleVenta" type="number" [(ngModel)]="returnQuantities[item.idDetalleVenta]" [ngModelOptions]="{standalone:true}" min="0" [max]="item.cantidad" step="1" /></div>
+        </div>
+      }
+      <div class="field"><label for="devolucion-motivo">Motivo de devolución</label><textarea id="devolucion-motivo" [(ngModel)]="motivo" [ngModelOptions]="{standalone:true}" maxlength="255" required></textarea></div>
+      <div class="actions"><button class="btn primary" type="button" (click)="registerReturn()" [disabled]="saving()">Registrar solicitud</button></div>
+    }
+  </section>
+  <h2>Devoluciones registradas</h2>
+  @if (busy()) { <p role="status">Consultando devoluciones…</p> }
+  @if (page(); as rows) {
+    @if (!rows.total) { <p class="empty">Todavía no hay devoluciones registradas.</p> }
+    @else {
+      <div class="table-wrap"><table><thead><tr><th>Devolución / venta</th><th>Prendas y motivo</th><th>Importe a reembolsar</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+        @for (row of rows.items; track row.nroDev) {
+          <tr>
+            <td>#{{ row.nroDev }}<br /><small class="muted">Venta #{{ row.nroVenta }}</small></td>
+            <td>@for (item of row.items; track $index) { <strong>{{ item.producto }} · {{ item.cantidad }} unidades</strong><br /> }<small class="muted">{{ row.motivo }}</small></td>
+            <td>{{ row.monto | currency:'USD':'code' }}</td>
+            <td><span class="badge">{{ row.estado }}</span>@if (row.reembolso) { <br /><small class="muted">Reembolso: {{ row.reembolso.estado }}</small> }</td>
+            <td>
+              @if (row.estado === 'pendiente') {
+                <label class="checkbox"><input type="checkbox" [(ngModel)]="buenEstado[row.nroDev]" [ngModelOptions]="{standalone:true}" /> Prenda en buen estado</label>
+                <div class="actions">
+                  <button class="btn" type="button" (click)="decideReturn(row, true)" [disabled]="saving() || !buenEstado[row.nroDev]">Aceptar</button>
+                  <button class="btn danger" type="button" (click)="decideReturn(row, false)" [disabled]="saving()">Rechazar</button>
+                </div>
+              }
+              @if (row.reembolso && row.reembolso.estado !== 'aprobado') {
+                <button class="btn" type="button" (click)="refund(row)" [disabled]="saving()">{{ row.reembolso.metodo === 'efectivo' ? 'Confirmar entrega del efectivo' : 'Procesar / consultar reembolso' }}</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody></table></div>
+      <nav class="actions" aria-label="Paginación de devoluciones">
+        <button class="btn" type="button" (click)="load(rows.offset - rows.limit)" [disabled]="busy() || rows.offset === 0">Anterior</button>
+        <span class="muted">{{ rows.total }} devoluciones</span>
+        <button class="btn" type="button" (click)="load(rows.offset + rows.limit)" [disabled]="busy() || rows.offset + rows.limit >= rows.total">Siguiente</button>
+      </nav>
+    }
+  }
+</app-inventario-panel>

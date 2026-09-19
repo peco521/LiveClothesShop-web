@@ -1,3 +1,4 @@
+import { money, priceQuote } from '../../../shared/pricing';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -11,9 +12,10 @@ import { catalogoError } from '../../services/catalogo-error';
 function integer(control: AbstractControl) { return Number.isInteger(control.value) ? null : { integer: true }; }
 
 @Component({ selector: 'app-catalogo-lista', imports: [Cu10Layout, ReactiveFormsModule, RouterLink], templateUrl: './catalogo-lista.html',
-  styleUrl: './catalogo-lista.css',
+  styleUrls: ['./catalogo-lista.css','./catalogo-cards.css'],
 })
 export class CatalogoListaPage {
+  readonly money=money;readonly quote=priceQuote;
   private readonly service = inject(CatalogoService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);

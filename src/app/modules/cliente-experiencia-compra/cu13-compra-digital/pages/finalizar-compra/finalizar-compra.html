@@ -1,22 +1,80 @@
-<app-cu13-layout title="Finalizar compra" [error]="error()">
-  @if (pendiente(); as compra) {
-    <p role="status">Tienes una compra pendiente número {{ compra.nroVenta }}. Continúa con ella o cancélala antes de editar tu carrito.</p>
-    <p><a [routerLink]="['/tienda/finalizar-compra', compra.nroVenta]">Ver compra pendiente</a></p>
-  }
-  @if (carrito(); as cart) {
-    @if (!cart.items.length) { <p>No tienes productos en tu carrito para finalizar la compra.</p><p><a routerLink="/tienda">Explorar el catálogo</a></p> }
-    @else {
-      <h2>Resumen del carrito</h2>
-      <div class="table-scroll"><table><caption class="visually-hidden">Resumen del carrito</caption><thead><tr><th>Prenda</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>
-        @for (item of cart.items; track item.idDetalleCarro) { <tr><td>{{ item.producto }} (Talla {{ item.talla.descripcion }})</td><td>{{ item.cantidad }}</td><td>{{ item.precio }}</td><td>{{ item.subtotal }}</td></tr> }
-      </tbody></table></div>
-      <p>Subtotal del carrito: {{ cart.subtotal }}. Los descuentos y el total final se calculan al confirmar, según la promoción vigente.</p>
-      <form [formGroup]="form" (ngSubmit)="confirmar()"><fieldset><legend>Datos de la compra</legend><div class="form-grid">
-        <div class="field"><label for="compra-sucursal">Sucursal de atención</label><select id="compra-sucursal" formControlName="nroSuc"><option [value]="0">Selecciona…</option>@for (sucursal of sucursales(); track sucursal.nro) { <option [value]="sucursal.nro">{{ sucursal.nombre }} · {{ sucursal.ciudad }}</option> }</select></div>
-        <div class="field"><label for="compra-nit">NIT (opcional)</label><input id="compra-nit" formControlName="nit" maxlength="30" /></div>
-      </div></fieldset>
-      @if (form.touched && form.invalid) { <p class="field-error" role="alert">Selecciona una sucursal válida. El NIT admite hasta 30 caracteres.</p> }
-      <button type="submit" [disabled]="busy() || !!pendiente()">{{ busy() ? 'Preparando…' : 'Confirmar compra' }}</button></form>
+<app-cu13-layout title="Finalizar compra" [plain]="true" [error]="error()">
+  @if (loading()) { <p role="status">Cargando resumen…</p> }
+  @else {
+    @if (pendiente(); as compra) {
+      <div class="commerce-grid checkout-grid">
+        <section class="checkout-sections">
+          <article class="checkout-card"><h2>Tu compra está lista para continuar</h2><p>Compra número <strong>{{compra.nroVenta}}</strong></p><p>{{compra.sucursal.nombre}} · {{compra.sucursal.ciudad}}</p></article>
+          <article class="checkout-card"><h2>Productos de tu compra</h2>
+            @for (item of compra.items; track item.idDetalleVenta) { <div class="pending-item"><strong>{{item.producto}}</strong><span>{{item.cantidad}} × {{money(item.precioUnitario)}}</span></div> }
+            <p class="muted">Puedes retomar el pago o revisar y cancelar esta compra antes de modificar el carrito.</p><a [routerLink]="['/tienda/finalizar-compra',compra.nroVenta]">Ver compra pendiente</a>
+          </article>
+          <article class="checkout-card"><h2>Método de pago</h2><div class="payment-overview"><svg class="card-symbol" aria-hidden="true" viewBox="0 0 32 22" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="30" height="20" rx="3"/><path d="M1 7h30M6 15h6"/></svg><div><strong>{{metodoSeleccionado}}</strong><p class="muted">{{config()?.proveedor==='stripe'?'Los datos de tarjeta se completan en Stripe Checkout.':'Pago de prueba: no se realizan cobros reales.'}}</p></div></div></article>
+        </section>
+        <aside class="checkout-sidebar">
+          <section class="summary-card"><h2>Resumen confirmado</h2><div class="summary-row"><span>Subtotal</span><span>{{money(compra.brutoTotal)}}</span></div>
+            @if (+compra.descAplicado>0) { <div class="summary-row saving"><span>Descuento</span><span>−{{money(compra.descAplicado)}}</span></div> }
+            <div class="summary-row summary-total"><span>Total</span><strong>{{money(compra.total)}}</strong></div>
+            <button class="primary wide pay-button" (click)="continuarPago()" [disabled]="busy()||!config()?.disponible">{{busy()?'Conectando…':'Continuar al pago'}}</button>
+          </section>
+          <section class="security-card"><h3>Pago protegido</h3><p class="muted">{{config()?.proveedor==='stripe'?'Tu información de tarjeta se ingresa directamente en Stripe, no en esta plataforma.':'Estás usando una pasarela de simulación académica.'}}</p></section>
+        </aside>
+      </div>
+    } @else if (carrito(); as cart) {
+      @if (!cart.items.length) { <div class="empty-state"><p>No tienes productos en tu carrito para finalizar la compra.</p><a class="shop-btn primary" routerLink="/tienda">Explorar el catálogo</a></div> }
+      @else {
+        @let pricing = cartQuote(cart.items);
+        <form [formGroup]="form" (ngSubmit)="confirmar()" class="commerce-grid checkout-grid">
+          <fieldset class="checkout-sections" [disabled]="busy()">
+            <article class="checkout-card">
+              <div class="card-heading"><h2>Sucursal de atención</h2>
+                @if (sucursalSeleccionada && !editarSucursal()) { <button class="text-action" type="button" (click)="editarSucursal.set(true)" [disabled]="busy()">Modificar</button> }
+              </div>
+              @if (editarSucursal() || !sucursalSeleccionada) {
+                <div class="field"><label for="compra-sucursal">Selecciona tu sucursal</label><select id="compra-sucursal" formControlName="nroSuc" [attr.aria-invalid]="form.controls.nroSuc.touched&&form.controls.nroSuc.invalid"><option [ngValue]="0">Selecciona una sucursal</option>@for (branch of sucursales(); track branch.nro) { <option [ngValue]="branch.nro">{{branch.nombre}} · {{branch.ciudad}}</option> }</select></div>
+                @if (sucursalSeleccionada) { <button class="text-action" type="button" (click)="editarSucursal.set(false)">Confirmar sucursal</button> }
+              }
+              @if (sucursalSeleccionada; as branch) { <div class="branch-address"><strong>{{branch.nombre}}</strong><p>{{branch.direccion}}</p><p>{{branch.ciudad}}</p></div> }
+              <div class="field nit-field"><label for="compra-nit">NIT (opcional)</label><input id="compra-nit" formControlName="nit" maxlength="30" /></div>
+              @if (form.touched&&form.invalid) { <p class="field-error" role="alert">Selecciona una sucursal válida y revisa tus datos.</p> }
+            </article>
+            <article class="checkout-card">
+              <div class="card-heading"><h2>Métodos de pago</h2>
+                @if (config()?.simulacion) { <button class="text-action" type="button" (click)="editarMetodo.set(!editarMetodo())" [disabled]="busy()">{{editarMetodo()?'Listo':'Cambiar'}}</button> }
+              </div>
+              <div class="payment-overview"><svg class="card-symbol" aria-hidden="true" viewBox="0 0 32 22" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="30" height="20" rx="3"/><path d="M1 7h30M6 15h6"/></svg><div><strong>{{metodoSeleccionado}}</strong>
+                @if (config()?.proveedor==='stripe') { <div class="card-brands" aria-label="Tarjetas"><span>VISA</span><span>Mastercard</span></div><p class="muted">Completarás los datos de tu tarjeta en Stripe Checkout. El pago se procesa en USD.</p> }
+                @else { <p class="muted">Simulación académica: no se realizan cobros reales.</p> }
+              </div></div>
+              @if (config()?.simulacion) {
+                @if (editarMetodo()) { <fieldset class="payment-options"><legend>Método de prueba</legend><label><input type="radio" formControlName="metodo" value="tarjeta" />Tarjeta</label><label><input type="radio" formControlName="metodo" value="QR" />QR</label><label><input type="radio" formControlName="metodo" value="transferencia" />Transferencia</label></fieldset> }
+                <details class="sandbox"><summary>Opciones de simulación</summary><div class="field"><label for="checkout-scenario">Resultado simulado</label><select id="checkout-scenario" formControlName="escenario"><option value="aprobado">Aprobado</option><option value="rechazado">Rechazado</option><option value="timeout">Pendiente</option></select></div></details>
+              }
+            </article>
+            <article class="checkout-card">
+              <div class="card-heading"><h2>Productos de tu compra</h2><a class="text-action" routerLink="/tienda/carrito">Editar</a></div>
+              @for (item of cart.items; track item.idDetalleCarro) {
+                @let unit = quote(item.precio,item.promocion);
+                <article class="line-item">
+                  @if (item.imagen) { <img [src]="item.imagen" [alt]="item.producto" loading="lazy" /> } @else { <span class="muted">Sin imagen</span> }
+                  <div><h3>{{item.producto}}</h3><p class="muted">Talla {{item.talla.descripcion}} · @for (color of item.colores; track color.idColor) { {{color.descripcion}} } @empty { Sin color }</p>
+                    <div class="checkout-product-bottom"><p><strong [class.sale-price]="unit.discount>0">{{money(unit.total*item.cantidad)}}</strong>@if (unit.discount>0) { <del class="old-price">{{money(unit.base*item.cantidad)}}</del> }</p><span class="units">{{item.cantidad}} {{item.cantidad===1?'unidad':'unidades'}}</span></div>
+                  </div>
+                </article>
+              }
+            </article>
+          </fieldset>
+          <aside class="checkout-sidebar">
+            <section class="summary-card"><h2>Resumen</h2><div class="summary-row"><span>Subtotal ({{cart.cantidadItems}} prendas)</span><span>{{money(cart.subtotal)}}</span></div>
+              @if (pricing.discount>0) { <div class="summary-row saving"><span>Descuentos estimados</span><span>−{{money(pricing.discount)}}</span></div> }
+              <div class="summary-row summary-total"><span>Total estimado</span><strong>{{money(pricing.total)}}</strong></div>
+              <button class="primary wide pay-button" type="submit" [disabled]="busy()||!config()?.disponible">{{busy()?'Conectando con el pago…':'Pagar ahora'}}</button>
+              <p class="muted summary-note">El total y la disponibilidad en tu sucursal se confirman antes del pago.</p>
+            </section>
+            <section class="security-card"><h3>Pago protegido</h3><p class="muted">{{config()?.proveedor==='stripe'?'Tus datos de tarjeta se ingresan únicamente en Stripe. No guardamos números de tarjeta en esta plataforma.':'Pasarela de prueba: no ingreses datos financieros reales.'}}</p></section>
+          </aside>
+        </form>
+      }
     }
-  } @else if (!error()) { <p role="status">Cargando resumen…</p> }
+  }
 </app-cu13-layout>

@@ -1,3 +1,4 @@
+import { PagosService } from '../../cu14-pago-electronico/services/pagos.service';
 import { signal, Type } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
@@ -22,9 +23,12 @@ describe('CU13 finalizar compra y venta preparada', () => {
   const auth = { restore: vi.fn(), session: signal<AuthResponse | null>(clienteSession) };
   const carrito = { obtener: vi.fn(), estado: signal(carritoResumen) };
   const reservas = { sucursales: vi.fn() };
+  const pagos={configuracion:vi.fn(),pagar:vi.fn(),detalle:()=>of({idPago:3,nroVenta:11,estado:'pendiente',metodo:'tarjeta',monto:180,referencia:null}),reconciliar:vi.fn()};
   const service = { preparar: vi.fn(), detalle: vi.fn(), pendiente: vi.fn(), cancelar: vi.fn() };
   beforeEach(() => {
     activeHarness = undefined;
+    pagos.configuracion.mockReset().mockReturnValue(of({proveedor:'mock',simulacion:true,disponible:true,moneda:null}));
+    pagos.pagar.mockReset().mockReturnValue(of({pago:{idPago:3,nroVenta:11,estado:'pendiente',metodo:'tarjeta',monto:180,referencia:null},reutilizado:false}));
     auth.restore.mockReset().mockReturnValue(of(clienteSession)); auth.session.set(clienteSession);
     carrito.obtener.mockReset().mockReturnValue(of(carritoResumen));
     reservas.sucursales.mockReset().mockReturnValue(of(sucursales));
@@ -34,7 +38,7 @@ describe('CU13 finalizar compra y venta preparada', () => {
     service.cancelar.mockReset().mockReturnValue(of({ ...venta, estado: 'anulada' }));
     TestBed.configureTestingModule({ providers: [provideRouter(routes), { provide: AuthService, useValue: auth },
       { provide: CarritoService, useValue: carrito }, { provide: ReservasService, useValue: reservas },
-      { provide: ComprasService, useValue: service }] });
+      { provide: ComprasService, useValue: service },{provide:PagosService,useValue:pagos}] });
   });
   afterEach(() => vi.restoreAllMocks());
   async function open<T>(path: string, type: Type<T>) {
@@ -52,7 +56,7 @@ describe('CU13 finalizar compra y venta preparada', () => {
     page.form.controls.nroSuc.setValue(1); page.form.controls.nit.setValue('123');
     page.confirmar(); await harness.fixture.whenStable();
     expect(service.preparar).toHaveBeenCalledWith({ nroSuc: 1, nit: '123' });
-    expect(TestBed.inject(Router).url).toContain('/tienda/finalizar-compra/11');
+    expect(TestBed.inject(Router).url).toContain('/tienda/pago/3');
   });
   it('permite recuperar una compra pendiente al volver del carrito', async () => {
     service.pendiente.mockReturnValue(of(venta));
@@ -81,9 +85,12 @@ describe('CU13 finalizar compra y venta preparada', () => {
     expect(service.detalle).toHaveBeenCalledWith(11);
     expect(texto(harness)).toContain('Compra número 11');
     expect(texto(harness)).toContain('registrada');
-    expect(texto(harness)).toContain('Total: 180');
+    expect(texto(harness)).toContain('Total');
+    expect(texto(harness)).toContain('USD');
+    expect(harness.routeNativeElement?.querySelector('.purchase-sidebar')).toBeTruthy();
+    expect(harness.routeNativeElement?.querySelector('.card-heading a[href="/tienda/carrito"]')?.textContent).toContain('Editar cantidades');
     expect(texto(harness)).toContain('Compra preparada para realizar el pago.');
-    for (const forbidden of ['CU13', 'CU14', 'Compra completada', 'Pagar', 'pagar', 'Tarjeta', 'QR']) {
+    for (const forbidden of ['CU13', 'CU14', 'Compra completada', 'Tarjeta', 'QR']) {
       expect(texto(harness)).not.toContain(forbidden);
     }
   });

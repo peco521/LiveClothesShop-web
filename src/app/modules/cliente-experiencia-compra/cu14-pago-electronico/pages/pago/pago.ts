@@ -10,6 +10,7 @@ import { PagosService } from '../../services/pagos.service';
 import { pagoError } from '../../services/pago-error';
 
 @Component({ selector: 'app-pago', imports: [Cu14Layout, ReactiveFormsModule, RouterLink], templateUrl: './pago.html',
+  styleUrls:['../../../shared/commerce.css','./pago.css'],
   styles: `.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px; } .sandbox { border: 1px dashed var(--line); border-radius: 8px; padding: 12px; margin: 12px 0; }`,
 })
 export class PagoPage {

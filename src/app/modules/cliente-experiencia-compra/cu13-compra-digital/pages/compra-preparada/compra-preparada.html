@@ -1,22 +1,30 @@
-<app-cu13-layout title="Compra preparada" [error]="error()">
-  @if (busy() && !venta()) { <p role="status">Cargando compra…</p> }
-  @if (error() && !venta()) { <button (click)="load()" [disabled]="busy()">Reintentar</button> }
-  @if (venta(); as compra) {
-    <p>Compra número <strong>{{ compra.nroVenta }}</strong> · <span class="badge">{{ compra.estado }}</span></p>
-    <p>{{ compra.sucursal.nombre }} · {{ compra.sucursal.ciudad }}@if (compra.nit) { · NIT {{ compra.nit }}}</p>
-    <div class="table-scroll"><table><caption class="visually-hidden">Detalle de la compra</caption><thead><tr><th>Prenda</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr></thead><tbody>
-      @for (item of compra.items; track item.idDetalleVenta) { <tr><td>{{ item.producto }} ({{ item.sku }})</td><td>{{ item.cantidad }}</td><td>{{ item.precioUnitario }}</td><td>{{ item.subtotalBruto }}</td></tr> }
-    </tbody></table></div>
-    <p class="total">Descuento: {{ compra.descAplicado }} · Total: {{ compra.total }}</p>
-    @if (compra.estado === 'registrada') { <p role="status">Compra preparada para realizar el pago. El siguiente paso será realizar el pago electrónico.</p>
-    <p><a [routerLink]="['/tienda/pago/nueva']" [queryParams]="{ nroVenta: compra.nroVenta }">Realizar pago</a></p>
-    <button (click)="confirmarCancelacion.set(true)" [disabled]="busy()">Cancelar compra</button>
-    @if (confirmarCancelacion()) {
-      <p>¿Confirmas cancelar la compra pendiente?</p>
-      <button (click)="cancelar()" [disabled]="busy()">Confirmar cancelación</button>
-      <button (click)="confirmarCancelacion.set(false)" [disabled]="busy()">Volver</button>
-    }
-    } @else { <p role="status">Compra anulada. Tu carrito sigue disponible.</p> }
-    <p><a routerLink="/tienda/carrito">Volver al carrito</a> · <a routerLink="/tienda">Volver al catálogo</a></p>
-  }
+<app-cu13-layout title="Revisa tu compra" [plain]="true" [error]="error()">
+ @if(busy()&&!venta()){<p role="status">Cargando compra…</p>}
+ @if(error()&&!venta()){<button (click)="load()" [disabled]="busy()">Reintentar</button>}
+ @if(venta();as compra){
+  <div class="prepared-grid">
+   <section class="purchase-sections">
+    <article class="purchase-card purchase-header"><span class="purchase-icon" aria-hidden="true">✓</span><div><p class="order-number">Compra número {{compra.nroVenta}}</p><h2>{{compra.estado==='registrada'?'Tu compra está preparada':'Compra anulada'}}</h2><span class="badge">{{compra.estado}}</span><p class="muted" role="status">{{compra.estado==='registrada'?'Compra preparada para realizar el pago.':'Tu carrito sigue disponible para seguir comprando.'}}</p></div></article>
+    <article class="purchase-card"><div class="card-heading"><h2>Productos</h2><a routerLink="/tienda/carrito">Editar cantidades</a></div>
+     @for(item of compra.items;track item.idDetalleVenta){<article class="prepared-item">
+      @if(producto(item.idVar)?.imagen;as image){<img [src]="image" [alt]="item.producto" loading="lazy" />}@else{<div class="no-photo" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m10 4-7 6 4 5 4-3v16h10V12l4 3 4-5-7-6c-2 4-10 4-12 0Z"/></svg></div>}
+      <div><h3>{{item.producto}}</h3>@if(producto(item.idVar);as detail){<p class="muted">Talla {{detail.talla.descripcion}} · @for(color of detail.colores;track color.idColor){ {{color.descripcion}} }</p>}<p class="muted">{{item.cantidad}} {{item.cantidad===1?'unidad':'unidades'}} · {{money(item.precioUnitario)}} cada una</p></div><strong>{{money(item.subtotalBruto)}}</strong>
+     </article>}
+    </article>
+    <article class="purchase-card branch-card"><h2>Sucursal de atención</h2><strong>{{compra.sucursal.nombre}}</strong><p class="muted">{{compra.sucursal.ciudad}}</p>@if(compra.nit){<p class="muted">NIT {{compra.nit}}</p>}</article>
+    <a class="back-link" routerLink="/tienda">← Volver al catálogo</a>
+   </section>
+   <aside class="purchase-sidebar">
+    <section class="purchase-card"><h2>Resumen</h2><div class="summary-row"><span>Subtotal</span><span>{{money(compra.brutoTotal)}}</span></div>@if(+compra.descAplicado>0){<div class="summary-row saving"><span>Descuento</span><span>−{{money(compra.descAplicado)}}</span></div>}<div class="summary-row summary-total"><span>Total</span><strong>{{money(compra.total)}}</strong></div>
+     @if(compra.estado==='registrada'){
+      <a class="shop-btn primary wide continue-pay" routerLink="/tienda/finalizar-compra">Continuar al pago</a>
+      <p class="muted payment-note">Revisa el importe antes de continuar. Cambiar cantidades en el carrito actualizará el resumen al volver a pagar.</p>
+      <button class="cancel-purchase" type="button" (click)="confirmarCancelacion.set(true)" [disabled]="busy()||confirmarCancelacion()">Cancelar compra</button>
+      @if(confirmarCancelacion()){<div class="cancel-panel" aria-label="Confirmación de cancelación"><h3>¿Confirmas cancelar la compra pendiente?</h3><p class="muted">Tus productos se conservarán en el carrito.</p><div class="actions"><button type="button" class="primary" (click)="cancelar()" [disabled]="busy()">{{busy()?'Cancelando…':'Confirmar cancelación'}}</button><button type="button" (click)="confirmarCancelacion.set(false)" [disabled]="busy()">Volver</button></div></div>}
+     }@else{<a class="shop-btn primary wide continue-pay" routerLink="/tienda/carrito">Volver al carrito</a>}
+    </section>
+    <section class="purchase-card reassurance"><h3>Tú tienes el control</h3><p class="muted">Puedes cambiar las cantidades sin vaciar el carrito. Un pago ya iniciado debe resolverse antes de modificar la compra.</p></section>
+   </aside>
+  </div>
+ }
 </app-cu13-layout>
