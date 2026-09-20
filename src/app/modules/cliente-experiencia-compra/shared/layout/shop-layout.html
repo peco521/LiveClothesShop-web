@@ -9,6 +9,7 @@
       <a class="shop-link" routerLink="/tienda" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active" ariaCurrentWhenActive="page"><span>Catálogo</span></a>
       <a class="shop-link" routerLink="/tienda/reservas" routerLinkActive="active" ariaCurrentWhenActive="page"><span>Mis reservas</span></a>
       <a class="shop-link" routerLink="/tienda/historial-compras" routerLinkActive="active" ariaCurrentWhenActive="page"><span>Historial de compras</span></a>
+      <a class="shop-link" routerLink="/tienda/recomendaciones" routerLinkActive="active" ariaCurrentWhenActive="page"><span>Recomendaciones</span></a>
     </nav>
     @if (auth.session(); as session) {
       <span class="header-user">{{ session.usuario.nombres || session.usuario.correo }}</span>

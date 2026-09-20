@@ -42,6 +42,7 @@ export const routes: Routes = [
       { path: 'finalizar-compra', loadChildren: () => import('./modules/cliente-experiencia-compra/cu13-compra-digital/routes/cu13.routes').then(m => m.CU13_ROUTES) },
       { path: 'pago', loadChildren: () => import('./modules/cliente-experiencia-compra/cu14-pago-electronico/routes/cu14.routes').then(m => m.CU14_ROUTES) },
       { path: 'historial-compras', loadChildren: () => import('./modules/cliente-experiencia-compra/cu15-historial-compra/routes/cu15.routes').then(m => m.CU15_ROUTES) },
+      { path: 'recomendaciones', loadChildren: () => import('./modules/cliente-experiencia-compra/cu17-recomendaciones/routes/cu17.routes').then(m => m.CU17_ROUTES) },
     ],
   },
   { path: '**', redirectTo: 'login' },

@@ -1,0 +1,23 @@
+/* Grilla y tarjeta base: mismas medidas que el catálogo de CU10, sin cargar su
+   hoja completa (el aspecto interno de la tarjeta viene de catalogo-cards.css). */
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px; margin:20px 0; }
+.card { border:1px solid var(--line); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.muted { color:var(--muted); font-size:.85rem; line-height:1.6; }
+.small-button { min-height:44px; padding:10px 16px; border:1px solid var(--line); border-radius:10px; background:var(--paper); color:var(--ink); font-size:.85rem; cursor:pointer; }
+.small-button:hover { background:#edf3e9; border-color:#c6d7bd; }
+.empty-results { text-align:center; padding:48px 20px; background:#f7f8f3; border-radius:12px; }
+.empty-results h2 { font-size:1.2rem; }
+.empty-results p { color:var(--muted); line-height:1.6; }
+
+/* Miniatura compacta: el <img> debe tomar el ancho de la tarjeta (si no, usa su
+   tamaño intrínseco y estira la tarjeta) y se limita en alto para que la
+   recomendación sea más pequeña que en el listado del catálogo. */
+.product-card .card-image img,
+.product-card .image-placeholder { width:100%; display:block; aspect-ratio:1; max-height:170px; }
+.card-image .image-placeholder { font-size:.7rem; }
+.recommendation-message { margin:16px 0 4px; font-size:1rem; line-height:1.6; }
+.recommendation-kind { font-size:.8rem; }
+.card-model { font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin:0; }
+.reasons { display:flex; flex-wrap:wrap; gap:6px; list-style:none; margin:0; padding:0; }
+.reasons li { border:1px solid var(--line); border-radius:999px; padding:3px 10px; font-size:.72rem; color:var(--muted); background:#f7f8f3; }
+.empty-results a { color:var(--accent); }
