@@ -31,25 +31,11 @@
         <div class="panel"><div class="purchase-head"><h3>Compra #{{ purchase.nroVenta }}</h3><app-compra-estados [venta]="purchase.estado" [pago]="purchase.estadoPago" /></div>
           <p>{{ purchase.fechaHora | date:'dd/MM/yyyy HH:mm' }} · {{ purchase.monto | currency:'USD' }}</p>
           @for (product of purchase.productos; track $index) { <p>{{ product.producto }} · {{ product.cantidad }} unidades</p> }
-          <button class="button secondary compact" type="button" (click)="loadDetail(purchase.nroVenta)">Ver detalle</button>
+          <button class="button secondary compact" type="button" aria-haspopup="dialog" (click)="loadDetail(purchase.nroVenta)">Ver detalle</button>
         </div>
       } @empty { <p>No existen compras en el historial disponible de este cliente.</p> }
       <nav aria-label="Páginas de compras"><button class="button secondary compact" type="button" [disabled]="loadingHistory() || result.offset === 0" (click)="loadHistory(result.offset - result.limit)">Anterior</button><button class="button secondary compact" type="button" [disabled]="loadingHistory() || result.offset + result.limit >= result.total" (click)="loadHistory(result.offset + result.limit)">Siguiente</button></nav>
     }
   </section>
 }
-@if (loadingDetail()) { <p role="status">Cargando detalle…</p> }
-@if (detailError()) { <p class="notice error" role="alert">{{ detailError() }}</p> }
-@if (detail(); as purchase) {
-  <section class="panel" aria-label="Detalle de compra">
-    <h2>Detalle de compra #{{ purchase.nroVenta }}</h2>
-    <p>{{ purchase.fechaHora | date:'dd/MM/yyyy HH:mm' }} · {{ purchase.sucursal.nombre }} · {{ purchase.sucursal.ciudad }}</p>
-    <app-compra-estados [venta]="purchase.estado" [pago]="purchase.estadoPago" />
-    <div class="table-scroll"><table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>
-      @for (item of purchase.items; track item.idDetalleVenta) { <tr><td>{{ item.producto }}<small>{{ item.sku }}</small></td><td>{{ item.cantidad }}</td><td>{{ item.precioUnitario | currency:'USD' }}</td><td>{{ item.subtotalBruto | currency:'USD' }}</td></tr> }
-    </tbody></table></div>
-    <p>Subtotal: {{ purchase.brutoTotal | currency:'USD' }} · Descuento: {{ purchase.descAplicado | currency:'USD' }}</p><p><strong>Total: {{ purchase.total | currency:'USD' }}</strong></p>
-    @if (purchase.pago; as payment) { <p>Pago: {{ payment.metodo }} · {{ payment.estado }} · {{ payment.monto | currency:'USD' }}</p><p>Referencia: {{ payment.referencia || 'No registrada' }}</p> }
-    @else { <p>No hay un pago registrado.</p> }
-  </section>
-}
+<app-detalle-compra-panel [open]="detailOpen()" [purchase]="detail()" [loading]="loadingDetail()" [error]="detailError()" (closed)="closeDetail()" />

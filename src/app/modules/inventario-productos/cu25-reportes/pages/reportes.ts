@@ -24,6 +24,9 @@ export class ReportesPage {
   readonly error = signal('');
   readonly success = signal('');
   readonly kinds: ReportKind[] = ['ventas', 'inventario', 'reservas', 'devoluciones'];
+  /** Nombre visible de cada reporte exportable. */
+  readonly labels: Record<ReportKind, string> = { ventas: 'Reporte de ventas', inventario: 'Inventario',
+    reservas: 'Reservas', devoluciones: 'Devoluciones' };
   fechaIni = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA');
   fechaFin = new Date().toLocaleDateString('en-CA');
   nroSuc = 0;

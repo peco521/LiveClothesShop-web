@@ -29,5 +29,11 @@ textarea { width:100%; min-height:90px; padding:11px 13px; border:1px solid #c8c
 .summary { border:1px solid var(--line); border-radius:12px; padding:22px; background:var(--paper); }.summary h2 { font-size:1.05rem; margin:0 0 16px; }
 .export-row { display:flex; justify-content:space-between; align-items:center; gap:14px; border-bottom:1px solid var(--line); padding:10px 0; }
 .reprogram { margin-top:14px; }.catalog-picker { border-style:dashed; }
+/* CU25: matriz del reporte de ventas (columnas por día o mes + indicadores finales). */
+.matrix caption { text-align:left; color:var(--muted); font-size:.85rem; padding:0 0 12px; }
+.matrix th, .matrix td { padding:9px 10px; }
+.matrix th.amount, .matrix td.amount { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.matrix tbody th { font-weight:600; white-space:nowrap; }
+.matrix tr.total th, .matrix tr.total td { font-weight:700; background:#edf3e9; }
 @media print { .tabs, .toolbar, .btn, nav, form { display:none !important; } }
 @media(max-width:600px) { .checkout-grid, .report-grid, .form-grid { grid-template-columns:1fr; }.return-line { flex-direction:column; align-items:flex-start; } }

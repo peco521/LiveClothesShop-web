@@ -1,0 +1,25 @@
+@if (open()) {
+  <div class="detalle-backdrop" (click)="close()" aria-hidden="true"></div>
+  <aside class="detalle-panel" role="dialog" aria-modal="true" aria-labelledby="detalle-compra-titulo">
+    <header class="detalle-head">
+      <h2 id="detalle-compra-titulo">{{ titulo() }}</h2>
+      <button #closeButton class="detalle-cerrar" type="button" (click)="close()" aria-label="Cerrar el detalle de compra">Cerrar</button>
+    </header>
+    <div class="detalle-cuerpo">
+      @if (loading()) { <p role="status">Cargando detalle…</p> }
+      @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+      @if (purchase(); as row) {
+        <p>{{ row.fechaHora | date:'dd/MM/yyyy HH:mm' }} · {{ row.sucursal.nombre }} · {{ row.sucursal.ciudad }}</p>
+        <app-compra-estados [venta]="row.estado" [pago]="row.estadoPago" />
+        <div class="table-scroll"><table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>
+          @for (item of row.items; track item.idDetalleVenta) { <tr><td>{{ item.producto }}<small>{{ item.sku }}</small></td><td>{{ item.cantidad }}</td><td>{{ item.precioUnitario | currency:'USD' }}</td><td>{{ item.subtotalBruto | currency:'USD' }}</td></tr> }
+        </tbody></table></div>
+        <p>Subtotal: {{ row.brutoTotal | currency:'USD' }} · Descuento: {{ row.descAplicado | currency:'USD' }}</p>
+        <p><strong>Total: {{ row.total | currency:'USD' }}</strong></p>
+        @if (row.pago; as payment) { <p>Pago: {{ payment.metodo }} · {{ payment.estado }} · {{ payment.monto | currency:'USD' }}</p><p>Referencia: {{ payment.referencia || 'No registrada' }}</p> }
+        @else { <p>No hay un pago registrado.</p> }
+      }
+    </div>
+    <footer class="detalle-pie"><button class="button secondary" type="button" (click)="close()">Cerrar detalle</button></footer>
+  </aside>
+}
