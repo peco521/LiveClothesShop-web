@@ -5,8 +5,8 @@
       "destination": "https://liveclothesshop-api.onrender.com/api/:path*"
     },
     {
-      "source": "/:path*",
-      "destination": "/index.html"
+      "source": "/(.*)",
+      "destination": "/"
     }
   ]
 }
