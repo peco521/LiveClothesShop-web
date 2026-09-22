@@ -1,4 +1,26 @@
 <app-cu07-layout title="Gestionar clientes" [error]="error()">
+  <div class="actions">
+    <button type="button" (click)="registrando.set(!registrando())" [disabled]="busy()">{{ registrando() ? 'Cancelar registro' : 'Registrar cliente' }}</button>
+  </div>
+  @if (success()) { <p class="notice success" role="status">{{ success() }}</p> }
+  @if (registrando()) {
+    <fieldset [disabled]="busy()"><legend>Registrar cliente desde administración</legend>
+      <div class="form-grid">
+        <div class="field"><label for="nc-ci">CI</label><input id="nc-ci" [(ngModel)]="nuevo.ci" [ngModelOptions]="{standalone:true}" maxlength="100" /></div>
+        <div class="field"><label for="nc-nombres">Nombres</label><input id="nc-nombres" [(ngModel)]="nuevo.nombres" [ngModelOptions]="{standalone:true}" maxlength="100" /></div>
+        <div class="field"><label for="nc-pat">Apellido paterno</label><input id="nc-pat" [(ngModel)]="nuevo.apellidoPat" [ngModelOptions]="{standalone:true}" maxlength="50" /></div>
+        <div class="field"><label for="nc-mat">Apellido materno</label><input id="nc-mat" [(ngModel)]="nuevo.apellidoMat" [ngModelOptions]="{standalone:true}" maxlength="50" /></div>
+        <div class="field"><label for="nc-sexo">Sexo</label><select id="nc-sexo" [(ngModel)]="nuevo.sexo" [ngModelOptions]="{standalone:true}"><option value="F">F</option><option value="M">M</option></select></div>
+        <div class="field"><label for="nc-correo">Correo</label><input id="nc-correo" type="email" [(ngModel)]="nuevo.correo" [ngModelOptions]="{standalone:true}" maxlength="100" /></div>
+        <div class="field"><label for="nc-telefono">Teléfono</label><input id="nc-telefono" [(ngModel)]="nuevo.telefono" [ngModelOptions]="{standalone:true}" maxlength="20" /></div>
+        <div class="field"><label for="nc-direccion">Dirección</label><input id="nc-direccion" [(ngModel)]="nuevo.direccion" [ngModelOptions]="{standalone:true}" maxlength="150" /></div>
+        <div class="field"><label for="nc-nac">Fecha de nacimiento</label><input id="nc-nac" type="date" [(ngModel)]="nuevo.fechaNac" [ngModelOptions]="{standalone:true}" /></div>
+        <div class="field"><label for="nc-pass">Contraseña (mínimo 12)</label><input id="nc-pass" type="password" [(ngModel)]="nuevo.contrasena" [ngModelOptions]="{standalone:true}" minlength="12" maxlength="128" /></div>
+      </div>
+      <div class="actions"><button type="button" (click)="registrar()" [disabled]="busy()">Crear cliente</button></div>
+      <p class="muted">El administrador mantiene su propia sesión: no queda autenticado como el cliente creado.</p>
+    </fieldset>
+  }
   <form [formGroup]="form" (ngSubmit)="aplicar()"><fieldset><legend>Buscar clientes registrados</legend><div class="form-grid">
     <div class="field"><label for="cliente-buscar">Nombre, apellidos, correo o CI</label><input id="cliente-buscar" formControlName="q" maxlength="100" /></div>
     <div class="field"><label for="cliente-limite">Resultados por página</label><input id="cliente-limite" type="number" formControlName="limit" min="1" max="100" required /></div>
@@ -9,8 +31,8 @@
   @if (result(); as page) {
     <p role="status">{{ page.total }} clientes candidatos encontrados.</p>
     @if (!page.items.length) { <p>No hay clientes en esta página para los filtros aplicados.</p> }
-    @else { <div class="table-scroll"><table><caption class="visually-hidden">Clientes registrados</caption><thead><tr><th>Nombre</th><th>Correo</th><th>Código</th><th>Rol</th><th>Acciones</th></tr></thead><tbody>
-      @for (user of page.items; track user.idUsuario) { <tr><td>{{ user.nombres }} {{ user.apellidoPat }} {{ user.apellidoMat }}</td><td>{{ user.correo }}</td><td>{{ user.cliente.cod_cl }}</td><td>{{ user.rol.descripcion }}</td><td><a [routerLink]="['/admin/clientes', user.idUsuario]" [queryParams]="navigationParams">Detalle</a> · <a [routerLink]="['/admin/clientes', user.idUsuario, 'editar']" [queryParams]="navigationParams">Editar</a></td></tr> }
+    @else { <div class="table-scroll"><table><caption class="visually-hidden">Clientes registrados</caption><thead><tr><th>Nombre</th><th>Correo</th><th>Código</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+      @for (user of page.items; track user.idUsuario) { <tr><td>{{ user.nombres }} {{ user.apellidoPat }} {{ user.apellidoMat }}</td><td>{{ user.correo }}</td><td>{{ user.cliente.cod_cl }}</td><td>{{ user.rol.descripcion }}</td><td>{{ user.cliente.estado === 'inactivo' ? 'Inactivo (sin acceso)' : user.cliente.estado }}</td><td><a [routerLink]="['/admin/clientes', user.idUsuario]" [queryParams]="navigationParams">Detalle</a> · <a [routerLink]="['/admin/clientes', user.idUsuario, 'editar']" [queryParams]="navigationParams">Editar</a> · <button type="button" (click)="cambiarEstado(user)" [disabled]="busyId() === user.idUsuario">{{ user.cliente.estado === 'inactivo' ? 'Reactivar' : 'Desactivar' }}</button></td></tr> }
     </tbody></table></div> }
     <nav class="actions" aria-label="Paginación"><button (click)="pagina(page.offset - page.limit)" [disabled]="busy() || page.offset === 0">Anterior</button><span>Desde {{ page.items.length ? page.offset + 1 : 0 }} · máximo {{ page.limit }} por página</span><button (click)="pagina(page.offset + page.limit)" [disabled]="busy() || page.offset + page.limit >= page.total">Siguiente</button></nav>
   }

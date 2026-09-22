@@ -47,7 +47,7 @@ describe('CU10 páginas y navegación de tienda', () => {
     page.pagina(20); await harness.fixture.whenStable();
     const url = TestBed.inject(Router).url;
     expect(url).toContain('offset=20');
-    for (const forbidden of ['CU10', 'CU11', 'CU12', 'Reservar', 'carrito', 'comprar', 'pagar']) {
+    for (const forbidden of ['CU10', 'CU11', 'CU12', 'Reservar', 'pagar']) {
       expect(harness.routeNativeElement?.textContent).not.toContain(forbidden);
     }
   });

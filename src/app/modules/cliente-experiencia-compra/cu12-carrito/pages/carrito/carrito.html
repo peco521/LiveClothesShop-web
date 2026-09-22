@@ -1,23 +1,59 @@
-<app-cu12-layout title="Carrito" [error]="error()">
+<app-cu12-layout title="Carrito de compras" [plain]="true" [error]="error()">
   @if (busy() && !carrito()) { <p role="status">Cargando carrito…</p> }
   @if (error() && !carrito()) { <button (click)="load()" [disabled]="busy()">Reintentar</button> }
+  @if (error().includes('compra pendiente')||error().includes('pago en curso')) { <p><a routerLink="/tienda/finalizar-compra">Revisar el pago de la compra</a></p> }
   @if (carrito(); as cart) {
-    @if (!cart.items.length) { <p>No tienes productos en tu carrito.</p><p><a routerLink="/tienda">Explorar el catálogo</a></p> }
-    @else {
-      @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
-      <div class="table-scroll"><table><caption class="visually-hidden">Productos en el carrito</caption><thead><tr><th>Prenda</th><th>Variante</th><th>Precio</th><th>Cantidad</th><th>Subtotal</th><th></th></tr></thead><tbody>
-        @for (item of cart.items; track item.idDetalleCarro) { <tr>
-          <td>@if (item.imagen) { <img class="thumb" [src]="item.imagen" [alt]="item.producto" loading="lazy" /> } {{ item.producto }}@if (item.promocion) { <br /><span>Promoción: {{ item.promocion.nombre }}</span> }</td>
-          <td>Talla {{ item.talla.descripcion }} · @for (color of item.colores; track color.idColor) { {{ color.descripcion }} } @empty { Sin color }</td>
-          <td>{{ item.precio }}</td>
-          <td><span class="qty"><button type="button" (click)="cambiar(item, item.cantidad - 1)" [disabled]="busy() || item.cantidad <= 1">−</button><input type="number" [ngModel]="cantidades[item.idDetalleCarro]" (ngModelChange)="cantidades[item.idDetalleCarro] = $event" (change)="cambiar(item, cantidades[item.idDetalleCarro])" min="1" step="1" [attr.aria-label]="'Cantidad de ' + item.producto" /><button type="button" (click)="cambiar(item, item.cantidad + 1)" [disabled]="busy()">+</button></span>
-          @if (!item.disponible) { <br /><span role="alert">No disponible actualmente (quedan {{ item.cantidadDisponible }}).</span> }</td>
-          <td>{{ item.subtotal }}</td>
-          <td><button type="button" (click)="quitar(item.idDetalleCarro)" [disabled]="busy()">Eliminar</button></td>
-        </tr> }
-      </tbody></table></div>
-      <p class="total">Subtotal: {{ cart.subtotal }} ({{ cart.cantidadItems }} prendas)</p>
-      <p><a routerLink="/tienda/finalizar-compra">Finalizar compra</a> · <a routerLink="/tienda">Seguir explorando</a></p>
+    @if (!cart.items.length) {
+      <div class="empty-state"><h2>Tu carrito está vacío</h2><p>No tienes productos en tu carrito.</p><a class="shop-btn primary" routerLink="/tienda">Explorar el catálogo</a></div>
+    } @else {
+      @let pricing = cartQuote(cart.items);
+      <div class="commerce-grid cart-grid">
+        <section aria-label="Productos del carrito">
+          @for (item of cart.items; track item.idDetalleCarro) {
+            @let unit = quote(item.precio, item.promocion);
+            <article class="cart-product">
+              <div class="product-photo">
+                @if (item.imagen) { <img [src]="item.imagen" [alt]="item.producto" loading="lazy" /> }
+                @else { <span class="muted">Sin imagen</span> }
+              </div>
+              <div class="product-info">
+                <h2>{{ item.producto }}</h2>
+                <p>Color: @for (color of item.colores; track color.idColor) { {{ color.descripcion }} } @empty { Sin color }</p>
+                <p>Talla: {{ item.talla.descripcion }}</p>
+                <p class="unit-price"><strong [class.sale-price]="unit.discount > 0">{{ money(unit.total) }}</strong>
+                  @if (unit.discount > 0) { <del class="old-price">{{ money(unit.base) }}</del><span class="saving">−{{ unit.percent }}%</span> }
+                </p>
+                <div class="quantity">
+                  <button type="button" (click)="cambiar(item,item.cantidad-1)" [disabled]="busy()" [attr.aria-label]="'Disminuir cantidad de '+item.producto">−</button>
+                  <input type="number" [ngModel]="cantidades[item.idDetalleCarro]" (ngModelChange)="cantidades[item.idDetalleCarro]=$event" (change)="cambiarDesdeCampo(item,$event)" [disabled]="busy()" min="1" [max]="item.cantidadDisponible" step="1" [attr.aria-label]="'Cantidad de '+item.producto" />
+                  <button type="button" (click)="cambiar(item,item.cantidad+1)" [disabled]="busy()||item.cantidad>=item.cantidadDisponible" [attr.aria-label]="'Aumentar cantidad de '+item.producto">+</button>
+                </div>
+                <button class="remove-item" type="button" (click)="solicitarRetiro(item.idDetalleCarro)" [disabled]="busy()" [attr.aria-label]="'Cancelar y retirar '+item.producto+' del carrito'">Cancelar</button>
+                @if (item.cantidad>=item.cantidadDisponible && item.disponible) { <p class="muted" role="status">Has alcanzado las {{item.cantidadDisponible}} unidades disponibles de esta variante.</p> }
+                @if (!item.disponible) { <p class="field-error" role="alert">No disponible actualmente (quedan {{item.cantidadDisponible}}).</p> }
+              </div>
+              <strong class="item-total" [attr.aria-label]="'Subtotal de '+item.producto">{{ money(unit.total*item.cantidad) }}</strong>
+            </article>
+          }
+          <p class="continue-shopping"><a routerLink="/tienda">← Seguir explorando</a></p>
+        </section>
+        <aside class="summary-card cart-summary" aria-label="Resumen del carrito">
+          <h2>Resumen</h2>
+          <p class="muted item-count">{{ cart.cantidadItems }} prendas en tu carrito</p>
+          <div class="summary-row"><span>Subtotal</span><span>{{ money(cart.subtotal) }}</span></div>
+          @if (pricing.discount > 0) { <div class="summary-row saving"><span>Descuentos estimados</span><span>−{{ money(pricing.discount) }}</span></div> }
+          <div class="summary-row summary-total"><span>Total estimado</span><strong>{{ money(pricing.total) }}</strong></div>
+          <a class="shop-btn primary wide checkout-button" routerLink="/tienda/finalizar-compra" [attr.aria-disabled]="busy()" (click)="busy()&&$event.preventDefault()">Ir a pagar</a>
+          <p class="muted summary-note">Selecciona tu sucursal y revisa la compra en el siguiente paso. El total final se confirma antes del pago.</p>
+        </aside>
+      </div>
     }
   }
 </app-cu12-layout>
+<dialog #removeDialog class="cancel-dialog" aria-labelledby="cancel-cart-title" aria-describedby="cancel-cart-description" (cancel)="$event.preventDefault();!busy()&&cerrarConfirmacion()">
+  <div class="dialog-icon" aria-hidden="true">?</div>
+  <h2 id="cancel-cart-title">¿Quieres cancelar el carrito?</h2>
+  <p id="cancel-cart-description">Esta polera es el único producto del carrito. Si la retiras, el carrito quedará vacío.</p>
+  @if(error()){<p class="field-error" role="alert">{{error()}}</p>}
+  <div class="dialog-actions"><button type="button" (click)="cerrarConfirmacion()" [disabled]="busy()">Seguir comprando</button><button class="primary" type="button" (click)="confirmarRetiro()" [disabled]="busy()">{{busy()?'Retirando…':'Sí, cancelar carrito'}}</button></div>
+</dialog>

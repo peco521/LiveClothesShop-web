@@ -11,7 +11,11 @@ function detalle(value: ReservaDetalle): ReservaDetalle {
     estado: value.estado,
     sucursal: { nro: value.sucursal.nro, nombre: value.sucursal.nombre, ciudad: value.sucursal.ciudad },
     items: (value.items ?? []).map(item => ({ idDetalleRes: item.idDetalleRes, idVar: item.idVar,
-      sku: item.sku, producto: item.producto, cantidad: item.cantidad })),
+      sku: item.sku, producto: item.producto, cantidad: item.cantidad,
+      ...(item.imagen !== undefined ? { imagen: item.imagen } : {}),
+      ...(item.talla !== undefined ? { talla: item.talla } : {}),
+      ...(item.categoria !== undefined ? { categoria: item.categoria } : {}),
+      ...(item.colores !== undefined ? { colores: [...item.colores] } : {}) })),
     totalUnidades: value.totalUnidades, vencida: value.vencida };
 }
 

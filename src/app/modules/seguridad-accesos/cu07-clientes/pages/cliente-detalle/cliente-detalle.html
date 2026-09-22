@@ -6,9 +6,11 @@
       <dt>Apellido paterno</dt><dd>{{ user.apellidoPat }}</dd><dt>Apellido materno</dt><dd>{{ user.apellidoMat }}</dd><dt>CI</dt><dd>{{ user.ci }}</dd><dt>Sexo</dt><dd>{{ user.sexo }}</dd>
       <dt>Correo</dt><dd>{{ user.correo }}</dd><dt>Teléfono</dt><dd>{{ user.telefono }}</dd><dt>Dirección</dt><dd>{{ user.direccion }}</dd><dt>Fecha de nacimiento</dt><dd>{{ user.fechaNac }}</dd>
       <dt>Rol (solo lectura)</dt><dd>{{ user.rol.descripcion }} ({{ user.nroRol }})</dd>
-      <dt>Estado del perfil de cliente (solo lectura)</dt><dd>{{ user.cliente.estado }}</dd>
+      <dt>Estado del cliente</dt><dd>{{ user.cliente.estado === 'inactivo' ? 'Inactivo (sin acceso)' : (user.cliente.estado === 'frecuente' ? 'Frecuente' : 'Casual') }}</dd>
     </dl>
-    <p class="privacy-note">El estado del perfil muestra la clasificación comercial almacenada y no se modifica desde esta pantalla.</p>
-    <div class="actions"><a [routerLink]="['/admin/clientes', user.idUsuario, 'editar']" [queryParams]="navigationParams">Editar datos personales</a></div>
+    <p class="privacy-note">La baja lógica conserva el historial, las ventas y las reservas del cliente; reactivarlo lo devuelve a «frecuente».</p>
+    <div class="actions"><a [routerLink]="['/admin/clientes', user.idUsuario, 'editar']" [queryParams]="navigationParams">Editar datos personales</a>
+      <button type="button" (click)="cambiarEstado()" [disabled]="busy()">{{ user.cliente.estado === 'inactivo' ? 'Reactivar cliente' : 'Desactivar cliente' }}</button>
+    </div>
   }
 </app-cu07-layout>

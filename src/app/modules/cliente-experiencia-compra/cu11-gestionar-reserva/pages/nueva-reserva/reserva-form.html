@@ -1,0 +1,42 @@
+<app-cu11-layout title="Nueva reserva" [error]="error()">
+  <p class="intro">Elige tus prendas y programa una visita para probarlas en tienda.</p>
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="reservation-grid">
+    <div class="main-column">
+      <section class="card" aria-labelledby="appointment-title">
+        <h2 id="appointment-title"><span class="step">1</span> Tu visita a la tienda</h2>
+        <div class="field"><label for="reserva-sucursal">Sucursal</label><select id="reserva-sucursal" formControlName="nroSuc"><option [ngValue]="0">Selecciona una sucursal</option>@for (sucursal of sucursales(); track sucursal.nro) { <option [ngValue]="sucursal.nro">{{ sucursal.nombre }} · {{ sucursal.ciudad }}</option> }</select></div>
+        <div class="date-grid">
+          <div class="field"><label for="reserva-fecha">Fecha de la visita</label><input id="reserva-fecha" type="date" formControlName="fechaReserva" [min]="minima" /></div>
+          <div class="field"><label for="reserva-hora">Hora aproximada</label><input id="reserva-hora" type="time" formControlName="horaAtencion" /></div>
+        </div>
+        @if (horarios(); as info) { <div class="hours" role="status"><strong>Atiende:</strong>@for (rango of info.rangos; track $index) { <p>{{ dayNames(rango.dias) }}<br />{{ rango.horaIni.slice(0, 5) }} – {{ rango.horaFin.slice(0, 5) }}</p> }@if (!info.rangos.length) { <p>Consulta el horario con la sucursal antes de tu visita.</p> }</div> }
+      </section>
+      <section class="card" aria-labelledby="clothes-title">
+        <div class="card-heading"><h2 id="clothes-title"><span class="step">2</span> Prendas a reservar</h2><button class="secondary" type="button" (click)="agregar()" [disabled]="busy()">+ Añadir prenda</button></div>
+        <div formArrayName="items">
+          @for (grupo of items.controls; track grupo; let i = $index) {
+            <article class="reservation-item" [formGroupName]="i">
+              @if (variante(grupo.controls.idVar.value); as v) {
+                <div class="photo">@if (v.imagen) { <img [src]="v.imagen" [alt]="prendas()[grupo.controls.idVar.value].descripcion" /> }@else { <span>Sin imagen</span> }</div>
+                <div class="item-details"><h3>{{ prendas()[grupo.controls.idVar.value].descripcion }}</h3><dl><div><dt>Modelo</dt><dd>{{ prendas()[grupo.controls.idVar.value].descripcion }}</dd></div><div><dt>Categoría</dt><dd>{{ prendas()[grupo.controls.idVar.value].categoria.descripcion }}</dd></div><div><dt>Color</dt><dd>{{ colores(grupo.controls.idVar.value) }}</dd></div><div><dt>Talla</dt><dd>{{ v.talla.descripcion }}</dd></div></dl>
+                  @if (form.controls.nroSuc.value) { <p class="stock">{{ disponibles(grupo.controls.idVar.value) }} unidades disponibles en esta sucursal</p> }
+                  <label [for]="'cantidad-' + i">Cantidad a reservar</label><div class="quantity"><button type="button" aria-label="Disminuir cantidad" (click)="cambiarCantidad(i, -1)" [disabled]="busy() || grupo.controls.cantidad.value <= 1">−</button><input [id]="'cantidad-' + i" type="number" min="1" step="1" formControlName="cantidad" aria-label="Cantidad a reservar" [readOnly]="busy()" /><button type="button" aria-label="Aumentar cantidad" (click)="cambiarCantidad(i, 1)" [disabled]="busy()">+</button></div>
+                  @if (grupo.controls.cantidad.invalid && grupo.controls.cantidad.touched) { <p class="field-error">Ingresa una cantidad entera mayor a cero.</p> }
+                </div>
+              } @else { <div class="unloaded"><p>{{ cargando() ? 'Cargando los datos de la prenda…' : 'No se pudieron cargar los datos de la prenda.' }}</p>@if (!cargando()) { <button type="button" (click)="cargarPrenda(grupo.controls.idVar.value)">Reintentar</button> }</div> }
+              <button class="remove" type="button" (click)="quitar(i)" [disabled]="busy()">Quitar</button>
+            </article>
+          } @empty { <div class="empty"><h3>¿Qué prendas quieres probarte?</h3><p>Añade una prenda del catálogo para preparar tu reserva.</p></div> }
+        </div>
+        @if (selector()) {
+          <section class="picker" aria-label="Añadir prendas del catálogo"><div class="card-heading"><h3>Busca una prenda</h3><button type="button" class="secondary" (click)="selector.set(false)">Cerrar</button></div><div class="search"><input type="search" [formControl]="busqueda" maxlength="100" placeholder="Nombre, marca o categoría" aria-label="Buscar prendas" (keydown.enter)="$event.preventDefault(); buscar()" /><button type="button" (click)="buscar()" [disabled]="buscando()">Buscar</button></div>
+            @if (buscando()) { <p role="status">Buscando prendas…</p> }
+            @if (resultados(); as rows) { <div class="product-options">@for (p of rows.items; track p.idProd) { <button type="button" class="product-option" (click)="elegir(p.idProd)">{{ p.descripcion }}</button> } @empty { <p>No hay prendas para esta búsqueda.</p> }</div><div class="pages"><button type="button" (click)="buscar(rows.offset - rows.limit)" [disabled]="buscando() || rows.offset === 0">Anterior</button><button type="button" (click)="buscar(rows.offset + rows.limit)" [disabled]="buscando() || rows.offset + rows.limit >= rows.total">Siguiente</button></div> }
+            @if (seleccion(); as p) { <h3>{{ p.descripcion }}</h3><div class="product-options">@for (v of p.variantes; track v.idVariante) { <button type="button" class="variant-option" (click)="agregar(v.idVariante)" [disabled]="busy()">@if (v.imagen) { <img [src]="v.imagen" [alt]="p.descripcion" /> }<span>Talla {{ v.talla.descripcion }}</span><span>{{ colores(v.idVariante) }}</span><strong>+ Añadir</strong></button> }</div> }
+          </section>
+        }
+      </section>
+    </div>
+    <aside class="summary"><h2>Resumen de tu reserva</h2><div class="summary-row"><span>Prendas seleccionadas</span><strong>{{ items.length }}</strong></div><div class="summary-row"><span>Unidades a reservar</span><strong>{{ total() }}</strong></div><p>No estás realizando un pago. Las prendas quedarán reservadas para tu visita a la sucursal elegida.</p>@if (form.touched && (form.invalid || !items.length)) { <p class="field-error" role="alert">Selecciona sucursal, fecha y hora, y añade al menos una prenda con cantidad válida.</p> }<button class="confirm" type="submit" [disabled]="busy() || !!cargando()">{{ busy() ? 'Reservando…' : 'Confirmar reserva' }}</button><a routerLink="/tienda/reservas">Ver mis reservas</a></aside>
+  </form>
+</app-cu11-layout>

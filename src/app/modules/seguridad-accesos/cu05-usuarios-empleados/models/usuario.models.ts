@@ -18,6 +18,8 @@ export interface UsuarioDetalle {
   tipo: 'A' | 'E'; nroRol: string; rol: RolOpcion;
   empleado: { cod_emp: string; cargo: string; nroSuc: number } | null;
   admin: { cod_adm: string } | null;
+  // CU05: estado del empleado (null para administradores, que no tienen perfil de empleado).
+  estado: 'activo' | 'inactivo' | null;
 }
 export interface UsuariosListado { items: UsuarioDetalle[]; total: number; offset: number; limit: number }
 export interface UsuariosFiltros { offset: number; limit: number; q?: string; tipo?: 'A' | 'E' }

@@ -2,7 +2,7 @@ import { ReservaDetalle, ReservasListado, SucursalCliente } from '../models/rese
 
 export const reserva: ReservaDetalle = { nroReserva: 7, fechaReserva: '2026-09-20', horaAtencion: '10:00:00',
   estado: 'pendiente', sucursal: { nro: 1, nombre: 'Central', ciudad: 'La Paz' },
-  items: [{ idDetalleRes: 1, idVar: 'var-001', sku: 'SKU-001', producto: 'Camisa Oxford', cantidad: 2 }],
+  items: [{ idDetalleRes: 1, idVar: 'var-001', sku: 'SKU-001', producto: 'Camisa Oxford', cantidad: 2, imagen: 'http://img/1.jpg', talla: 'M', categoria: 'Camisas', colores: ['Rojo'] }],
   totalUnidades: 2, vencida: false };
 export const list: ReservasListado = { items: [reserva], total: 3, offset: 0, limit: 20 };
 export const sucursales: SucursalCliente[] = [

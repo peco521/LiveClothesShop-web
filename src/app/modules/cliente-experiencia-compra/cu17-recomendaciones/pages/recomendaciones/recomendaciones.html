@@ -1,0 +1,55 @@
+<app-cu10-layout title="Recomendaciones para ti" [error]="loginRequired() ? error() : ''">
+  <p class="muted">Sugerencias calculadas en el servidor a partir de tus compras, reservas y productos de interés.</p>
+  @if (busy()) { <p role="status">Buscando recomendaciones para ti…</p> }
+  @if (error() && !loginRequired()) {
+    <div class="notice error" role="alert">
+      <p>{{ error() }}</p>
+      @if (retryable()) { <button type="button" class="small-button" (click)="load()" [disabled]="busy()">Reintentar</button> }
+    </div>
+  }
+  @if (result(); as data) {
+    <p class="recommendation-message" role="status">{{ data.mensaje }}</p>
+    @if (!data.items.length) {
+      <div class="empty-results">
+        <h2>No hay recomendaciones disponibles en este momento.</h2>
+        <p>Estamos preparando el catálogo. Mientras tanto puedes explorar las poleras disponibles.</p>
+        <a routerLink="/tienda">Explorar el catálogo</a>
+      </div>
+    } @else {
+      <p class="muted recommendation-kind">{{ data.tipo === 'personalizada'
+        ? 'Poleras elegidas según tus interacciones.'
+        : 'Poleras populares del catálogo.' }}</p>
+      <div class="grid">
+        @for (item of data.items; track item.idProd) {
+          <article class="card product-card">
+            <a class="card-image" [routerLink]="['/tienda/prendas', item.idProd]" [attr.aria-label]="'Ver ' + item.descripcion">
+              @if (item.imagen) { <img [src]="item.imagen" [alt]="item.descripcion" loading="lazy" /> }
+              @else { <div class="image-placeholder" aria-hidden="true">Sin imagen</div> }
+              @if (item.precioMin !== null) {
+                @let pricing = quote(item.precioMin, item.promocion);
+                @if (pricing.discount > 0) { <span class="sale-tag">−{{ pricing.percent }}%</span> }
+              }
+            </a>
+            <p class="card-brand">{{ item.marca.nombre }}</p>
+            <h2><a [routerLink]="['/tienda/prendas', item.idProd]">{{ item.descripcion }}</a></h2>
+            <p class="card-model">{{ item.categoria.descripcion }}</p>
+            @if (item.precioMin !== null) {
+              @let pricing = quote(item.precioMin, item.promocion);
+              <div class="card-prices">
+                <span [class.sale-price]="pricing.discount > 0">@if (item.precioMax !== item.precioMin) { Desde }{{ money(pricing.total) }}</span>
+                @if (pricing.discount > 0) { <del>{{ money(pricing.base) }}</del> }
+              </div>
+            } @else { <p>Precio a consultar</p> }
+            <p class="card-availability">{{ item.disponible ? 'Disponible' : 'Agotado' }} · {{ item.totalVariantes }} variantes</p>
+            @if (item.razones.length) {
+              <ul class="reasons" aria-label="Motivos de la recomendación">
+                @for (razon of item.razones; track razon) { <li>{{ razon }}</li> }
+              </ul>
+            }
+            <a class="card-link" [routerLink]="['/tienda/prendas', item.idProd]">Ver detalle →</a>
+          </article>
+        }
+      </div>
+    }
+  }
+</app-cu10-layout>

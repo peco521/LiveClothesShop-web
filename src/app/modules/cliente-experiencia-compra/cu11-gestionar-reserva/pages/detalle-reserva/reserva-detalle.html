@@ -1,0 +1,24 @@
+<app-cu11-layout title="Detalle de reserva" [error]="error()">
+  @if (busy() && !item()) { <p role="status">Cargando reserva…</p> }
+  @if (error() && !item()) { <button type="button" (click)="load()" [disabled]="busy()">Reintentar</button> }
+  @if (item(); as reserva) {
+    <div class="reservation-heading"><p>Reserva número <strong>{{ reserva.nroReserva }}</strong></p><span class="badge" [class.cancelled]="reserva.estado === 'cancelada' || reserva.estado === 'vencida'">{{ reserva.estado }}</span></div>
+    @if (reserva.estado === 'cancelada') { <p class="notice" role="status">Tu reserva fue cancelada. Las prendas ya no están apartadas para esta visita.</p> }
+    @if (reserva.estado === 'vencida') { <p class="notice" role="status">Esta reserva venció. Puedes volver al catálogo para preparar una nueva visita.</p> }
+    <div class="detail-grid">
+      <section class="clothes" aria-labelledby="reserved-title"><h2 id="reserved-title">Tus prendas reservadas</h2>
+        @for (detalle of reserva.items; track detalle.idDetalleRes) {
+          <article class="reserved-product">
+            <div class="product-photo">@if (detalle.imagen) { <img [src]="detalle.imagen" [alt]="detalle.producto" /> }@else { <span>Sin imagen disponible</span> }</div>
+            <div class="product-info"><h3>{{ detalle.producto }}</h3><dl><div><dt>Modelo</dt><dd>{{ detalle.producto }}</dd></div><div><dt>Color</dt><dd>{{ detalle.colores?.length ? detalle.colores!.join(', ') : 'Sin color registrado' }}</dd></div><div><dt>Talla</dt><dd>{{ detalle.talla || 'Sin talla registrada' }}</dd></div><div><dt>Categoría</dt><dd>{{ detalle.categoria || 'Sin categoría registrada' }}</dd></div></dl></div>
+            <div class="product-quantity"><span>Cantidad</span><strong>{{ detalle.cantidad }}</strong><small>{{ detalle.cantidad === 1 ? 'unidad' : 'unidades' }}</small></div>
+          </article>
+        }
+        <a class="back" routerLink="/tienda/reservas">← Volver a mis reservas</a>
+      </section>
+      <aside class="visit-summary" aria-labelledby="visit-title"><h2 id="visit-title">Tu visita a la tienda</h2><div class="branch"><strong>{{ reserva.sucursal.nombre }}</strong><span>{{ reserva.sucursal.ciudad }}</span></div><dl class="visit-data"><div><dt>Fecha</dt><dd>{{ reserva.fechaReserva | date:'dd/MM/yyyy' }}</dd></div><div><dt>Hora aproximada</dt><dd>{{ reserva.horaAtencion.slice(0, 5) }}</dd></div></dl><div class="total"><span>Total de prendas</span><strong>{{ reserva.totalUnidades }}</strong></div>
+        @if (cancelable) { <p class="hint">Tus prendas están apartadas para que puedas probarlas en la sucursal seleccionada.</p>@if (!confirmar()) { <button type="button" class="cancel-button" (click)="confirmar.set(true)" [disabled]="busy()">Cancelar reserva</button> }@else { <div class="cancel-confirm" role="group" aria-label="Confirmar cancelación"><p>¿Deseas cancelar tu reserva? Las prendas volverán a estar disponibles.</p><button type="button" class="confirm-button" (click)="cancelar()" [disabled]="busy()">{{ busy() ? 'Cancelando…' : 'Confirmar cancelación' }}</button><button type="button" (click)="confirmar.set(false)" [disabled]="busy()">Volver</button></div> } }
+      </aside>
+    </div>
+  }
+</app-cu11-layout>

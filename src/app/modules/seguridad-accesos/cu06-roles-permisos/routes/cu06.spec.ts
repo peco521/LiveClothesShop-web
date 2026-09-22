@@ -25,8 +25,8 @@ import { RolCrearPage } from '../pages/rol-crear/rol-crear';
 import { RolEditarPage } from '../pages/rol-editar/rol-editar';
 import { RolDetallePage } from '../pages/rol-detalle/rol-detalle';
 
-const role: RolDetalle = { nro: 'Gestor', descripcion: 'Gestión', esRolCliente: false };
-const publicRole: RolDetalle = { nro: 'public-custom', descripcion: 'Público', esRolCliente: true };
+const role: RolDetalle = { nro: 'Gestor', descripcion: 'Gestión', esRolCliente: false, estado: 'activo' };
+const publicRole: RolDetalle = { nro: 'public-custom', descripcion: 'Público', esRolCliente: true, estado: 'activo' };
 const assigned: PermisosDetalle = { nroRol: role.nro, esRolCliente: false, permisos: ['CU06'] };
 const catalog: FuncionDetalle[] = ['CU05', 'CU06', 'CU07', 'CU08', 'CU09'].map(id => ({ id, descripcion: id === 'CU09' ? null : `Función ${id}` }));
 const list = { items: [role, publicRole], total: 2, offset: 0, limit: 20 };

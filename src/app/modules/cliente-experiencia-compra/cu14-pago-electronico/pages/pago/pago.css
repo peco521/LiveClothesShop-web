@@ -1,0 +1,13 @@
+.payment-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
+h2 { font-size: 1.15rem; margin: 0 0 20px; }
+fieldset { border: 0; padding: 0; margin: 0; }
+legend { font-size: .85rem; color: var(--muted); margin-bottom: 14px; }
+.payment-option { display: flex; gap: 14px; align-items: center; border: 1px solid var(--line); padding: 18px; margin-bottom: 12px; border-radius: 8px; cursor: pointer; font-size: .95rem; }
+.payment-option.selected { border-color: var(--accent); background: #f1f6ee; }
+.payment-option input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+.card-brands { display: flex; gap: 8px; margin-top: 10px; }
+.card-brands span { font-size: .7rem; border: 1px solid var(--line); border-radius: 3px; padding: 4px 7px; background: white; }
+.card-brands span:first-child { color: #1434cb; font-style: italic; font-weight: bold; }
+.payment-summary { background: #f1f2f3; padding: 24px; }
+.pay-button { border-radius: 999px; min-height: 54px; font-weight: bold; margin: 14px 0; }
+@media(max-width: 800px) { .payment-grid { grid-template-columns: 1fr; } }

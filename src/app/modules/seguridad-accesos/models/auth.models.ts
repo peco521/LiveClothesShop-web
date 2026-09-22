@@ -15,6 +15,8 @@ export interface RegistroResponse {
   idUsuario: string;
   correo: string;
   mensaje: string;
+  // CU01: el registro público devuelve la sesión ya iniciada (mismo contrato que el login).
+  sesion?: AuthResponse;
 }
 
 export interface LoginRequest {

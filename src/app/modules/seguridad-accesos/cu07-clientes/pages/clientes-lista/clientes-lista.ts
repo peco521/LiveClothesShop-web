@@ -1,15 +1,15 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, Subscription } from 'rxjs';
 import { Cu07Layout } from '../../components/cu07-layout';
-import { ClientesFiltros, ClientesListado } from '../../models/cliente.models';
+import { ClienteCrear, ClienteDetalle, ClientesFiltros, ClientesListado } from '../../models/cliente.models';
 import { ClientesService } from '../../services/clientes.service';
 import { clienteError } from '../../services/cliente-error';
 import { clienteNavigationParams } from '../../routes/cliente-navigation';
 
-@Component({ selector: 'app-clientes-lista', imports: [Cu07Layout, ReactiveFormsModule, RouterLink], templateUrl: './clientes-lista.html',
+@Component({ selector: 'app-clientes-lista', imports: [Cu07Layout, FormsModule, ReactiveFormsModule, RouterLink], templateUrl: './clientes-lista.html',
   styles: `.table-scroll { overflow-x: auto; } table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--line); } .actions { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 20px 0; }`,
 })
 export class ClientesListaPage {
@@ -21,6 +21,12 @@ export class ClientesListaPage {
   private query = '';
   private filters: ClientesFiltros = { offset: 0, limit: 20 };
   readonly busy = signal(false); readonly error = signal(''); readonly result = signal<ClientesListado | null>(null);
+  // CU07: alta administrativa (no cambia la sesión) y baja lógica/reactivación.
+  readonly registrando = signal(false);
+  readonly busyId = signal('');
+  readonly success = signal('');
+  nuevo: ClienteCrear = { ci: '', nombres: '', apellidoPat: '', apellidoMat: '', sexo: 'F',
+    correo: '', telefono: '', direccion: '', fechaNac: '', contrasena: '' };
   readonly form = inject(NonNullableFormBuilder).group({ q: ['', Validators.maxLength(100)],
     limit: [20, [Validators.required, Validators.min(1), Validators.max(100), (control: AbstractControl) => Number.isInteger(control.value) ? null : { integer: true }]] });
   constructor() {
@@ -58,6 +64,40 @@ export class ClientesListaPage {
     this.busy.set(true); this.error.set(''); this.result.set(null);
     this.request = this.service.listar(this.filters).pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false))).subscribe({
       next: value => this.result.set(value), error: (error: unknown) => this.error.set(clienteError(error)),
+    });
+  }
+  /** CU07: crea el cliente desde administración manteniendo la sesión actual. */
+  registrar(): void {
+    if (this.busy()) return;
+    const data = this.nuevo;
+    if (!data.ci.trim() || !data.nombres.trim() || !data.apellidoPat.trim() || !data.apellidoMat.trim()
+        || !data.correo.trim() || !data.telefono.trim() || !data.direccion.trim() || !data.fechaNac
+        || data.contrasena.length < 12) {
+      this.error.set('Completa los datos del cliente (la contraseña debe tener al menos 12 caracteres).'); return;
+    }
+    this.busy.set(true); this.error.set(''); this.success.set('');
+    this.service.crear(data).pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false))).subscribe({
+      next: () => {
+        this.nuevo = { ci: '', nombres: '', apellidoPat: '', apellidoMat: '', sexo: 'F',
+          correo: '', telefono: '', direccion: '', fechaNac: '', contrasena: '' };
+        this.registrando.set(false);
+        this.success.set('Cliente registrado. Tu sesión de administrador no cambia.');
+        this.load();
+      },
+      error: (error: unknown) => this.error.set(clienteError(error)),
+    });
+  }
+  /** CU07: inactivo conserva historial, ventas y reservas; se puede reactivar. */
+  cambiarEstado(user: ClienteDetalle): void {
+    if (this.busy() || this.busyId()) return;
+    this.busyId.set(user.idUsuario); this.error.set(''); this.success.set('');
+    this.service.estadoCuenta(user.idUsuario, user.cliente.estado === 'inactivo').pipe(
+      takeUntilDestroyed(this.destroy), finalize(() => this.busyId.set('')),
+    ).subscribe({
+      next: value => { this.success.set(value.cliente.estado === 'inactivo'
+          ? 'Cliente desactivado: no podrá iniciar sesión y conserva su historial.'
+          : 'Cliente reactivado.'); this.load(); },
+      error: (error: unknown) => this.error.set(clienteError(error)),
     });
   }
 }

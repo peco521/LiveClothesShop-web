@@ -1,0 +1,51 @@
+/* Recibo de pago de CU24 con aspecto de ticket térmico (80 mm; fluido hasta 58 mm).
+   Todo el estilo de papel vive aquí; el aislamiento de la impresión (imprimir sólo
+   el recibo) está en `src/styles.css`, fuera del alcance encapsulado del componente. */
+:host { display: block; }
+
+.receipt {
+  width: 100%; max-width: 80mm; margin: 0 auto; padding: 18px 16px; background: #fff; color: #1f211d;
+  border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 1px 3px rgba(31, 33, 29, .08);
+  font-family: 'Courier New', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; line-height: 1.45;
+}
+
+.receipt-head { display: grid; gap: 3px; text-align: center; }
+.receipt-head h2 { margin: 0; font-size: 1rem; letter-spacing: .1em; text-transform: uppercase; overflow-wrap: anywhere; }
+.receipt-muted { margin: 0; color: #55584f; font-size: .72rem; }
+.receipt-rule { border: 0; border-top: 1px dashed #9c9e94; margin: 10px 0; }
+
+.receipt-meta { display: grid; gap: 4px; margin: 0; }
+.receipt-meta > div { display: flex; gap: 10px; justify-content: space-between; }
+.receipt-meta dt { color: #55584f; }
+.receipt-meta dd { margin: 0; text-align: right; font-weight: 600; overflow-wrap: anywhere; }
+
+/* La tabla se adapta al ancho del rollo: la prenda ocupa el resto de la fila. */
+.receipt-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .74rem; }
+.receipt-table th, .receipt-table td { padding: 4px 0; text-align: left; vertical-align: top; }
+.receipt-table thead th { border-bottom: 1px solid #1f211d; font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; }
+.receipt-table tbody th { font-weight: 400; overflow-wrap: anywhere; }
+.receipt-table .num { text-align: right; white-space: nowrap; }
+
+.receipt-row { display: flex; gap: 10px; justify-content: space-between; padding: 2px 0; font-size: .78rem; }
+.receipt-discounts { margin-top: 8px; }
+.receipt-discounts h3 { margin: 0 0 4px; color: #55584f; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; }
+.receipt-discount { padding: 4px 0; border-bottom: 1px dotted #c3c5bb; }
+.receipt-discount p { margin: 0; }
+.receipt-discount-name { font-weight: 600; }
+
+.receipt-total { display: flex; align-items: baseline; gap: 10px; justify-content: space-between;
+  margin-top: 8px; padding: 6px 0; border-top: 2px solid #1f211d; border-bottom: 2px solid #1f211d;
+  font-size: 1rem; letter-spacing: .06em; text-transform: uppercase; }
+.receipt-total strong { font-size: 1.15rem; }
+.receipt-flag { margin: 8px 0 0; border: 1px dashed #9c9e94; padding: 4px; text-align: center; font-size: .7rem; }
+.receipt-foot { margin-top: 6px; text-align: center; }
+.receipt-foot p { margin: 0; font-size: .76rem; }
+
+/* El ticket impreso ocupa el ancho del papel (80 mm por defecto) y sube a 10 pt
+   para que una térmica de 203 dpi lo imprima legible; en A4 conserva su ancho. */
+@media print {
+  .receipt { max-width: 80mm; padding: 0; border: 0; border-radius: 0; box-shadow: none; font-size: 10pt; }
+  .receipt-table { font-size: 8.5pt; }
+  .receipt-muted, .receipt-foot p { font-size: 8.5pt; }
+  .receipt-total strong { font-size: 13pt; }
+}

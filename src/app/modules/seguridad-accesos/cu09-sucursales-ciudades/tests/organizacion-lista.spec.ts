@@ -3,7 +3,7 @@ import { ActivatedRoute, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { OrganizacionListaPage } from '../pages/organizacion-lista';
 import { OrganizacionService } from '../services/organizacion.service';
-import { ciudad, listado, sucursal } from './organizacion.fixtures';
+import { ciudad, listado, sucursal, sucursalSinUbicacion } from './organizacion.fixtures';
 
 describe('CU09 filtro de ciudad por nombre', () => {
   const list = vi.fn();
@@ -27,10 +27,25 @@ describe('CU09 filtro de ciudad por nombre', () => {
     const fixture = TestBed.createComponent(OrganizacionListaPage); fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     expect(Array.from(element.querySelectorAll('thead th')).map(th => th.textContent)).toEqual(['Nombre', 'Ciudad', 'Ubicación', 'Estado', 'Acciones']);
-    expect(Array.from(element.querySelectorAll('tbody tr:first-child td')).map(td => td.textContent?.trim())).toEqual([sucursal.nombre, sucursal.ciudad.nombre, sucursal.direccion, sucursal.estado, 'Editar']);
+    // CU09: la ubicación muestra la dirección y, si hay coordenadas verificadas, el enlace al mapa.
+    const cells = Array.from(element.querySelectorAll('tbody tr:first-child td')).map(td => td.textContent?.trim() ?? '');
+    expect(cells.slice(0, 2)).toEqual([sucursal.nombre, sucursal.ciudad.nombre]);
+    expect(cells[2]).toContain(sucursal.direccion);
+    expect(cells[2]).toContain('Ver ubicación (-17.783333, -63.182222)');
+    expect(cells[3]).toBe(sucursal.estado);
+    expect(cells[4]).toBe('Editar');
     expect(element.querySelector(`tbody a[href="/admin/sucursales/${sucursal.nro}"]`)).toBeTruthy();
     expect(element.querySelector(`tbody a[href="/admin/sucursales/${sucursal.nro}/editar"]`)).toBeTruthy();
     expect(element.querySelector('ul')).toBeNull();
+  });
+
+  it('no construye enlaces de mapa cuando la sucursal no tiene coordenadas', () => {
+    list.mockImplementation(() => of({ items: [sucursalSinUbicacion], total: 1, offset: 0, limit: 20 }));
+    const fixture = TestBed.createComponent(OrganizacionListaPage); fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(fixture.componentInstance.coordenadas(sucursalSinUbicacion)).toBeNull();
+    expect(element.textContent).toContain('Sin ubicación validada');
+    expect(element.querySelector('tbody a[href^="https://www.openstreetmap.org"]')).toBeNull();
   });
 
   it('muestra ciudades en una tabla y conserva sus enlaces', () => {

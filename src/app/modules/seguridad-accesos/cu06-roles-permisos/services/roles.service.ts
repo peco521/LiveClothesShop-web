@@ -6,7 +6,8 @@ import { API_BASE_URL } from '../../../../core/config/api.config';
 import { FuncionDetalle, PermisosDetalle, RolCrear, RolDetalle, RolesListado } from '../models/rol.models';
 
 function rol(value: RolDetalle): RolDetalle {
-  return { nro: value.nro, descripcion: value.descripcion, esRolCliente: value.esRolCliente };
+  return { nro: value.nro, descripcion: value.descripcion, esRolCliente: value.esRolCliente,
+    estado: value.estado === 'inactivo' ? 'inactivo' : 'activo' };
 }
 function permisos(value: PermisosDetalle): PermisosDetalle {
   return { nroRol: value.nroRol, esRolCliente: value.esRolCliente, permisos: [...value.permisos] };
@@ -38,6 +39,11 @@ export class RolesService {
     return this.browser(() => this.http.patch<RolDetalle>(`${this.base}/roles/${encodeURIComponent(nro)}`, {
       descripcion: descripcion.trim(),
     })).pipe(map(rol));
+  }
+  // CU06: baja lógica y reactivación del rol (el rol cliente está protegido en el backend).
+  estadoCuenta(nro: string, activo: boolean): Observable<RolDetalle> {
+    return this.browser(() => this.http.patch<RolDetalle>(
+      `${this.base}/roles/${encodeURIComponent(nro)}/estado-cuenta`, { activo })).pipe(map(rol));
   }
   funciones(): Observable<FuncionDetalle[]> {
     return this.browser(() => this.http.get<FuncionDetalle[]>(`${this.base}/funciones`)).pipe(

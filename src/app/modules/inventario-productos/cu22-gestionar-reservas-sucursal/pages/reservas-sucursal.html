@@ -1,0 +1,73 @@
+<app-inventario-panel title="Reservas de la sucursal" [error]="error()" [success]="success()">
+  <form class="toolbar" (ngSubmit)="load()">
+    <div class="field" style="margin:0">
+      <label for="reserva-estado">Estado de las reservas</label>
+      <select id="reserva-estado" name="estado" [(ngModel)]="status">
+        <option value="">Pendientes y confirmadas</option>
+        <option value="pendiente">Pendientes</option>
+        <option value="confirmada">Confirmadas</option>
+        <option value="atendida">Atendidas</option>
+        <option value="cancelada">Canceladas</option>
+        <option value="vencida">Vencidas</option>
+      </select>
+    </div>
+    <button class="btn" type="submit" [disabled]="busy()">Consultar</button>
+  </form>
+  @if (busy()) { <p role="status">Consultando reservas…</p> }
+  @if (page(); as result) {
+    @if (!result.total) { <p class="empty">No hay reservas con este estado.</p> }
+    @else {
+      <div class="table-wrap"><table><thead><tr><th>Reserva</th><th>Visita</th><th>Sucursal</th><th>Prendas</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+        @for (row of result.items; track row.nroReserva) {
+          <tr>
+            <td>#{{ row.nroReserva }}</td>
+            <td>{{ row.fechaReserva | date:'dd/MM/yyyy' }}<br /><small class="muted">{{ row.horaAtencion.slice(0, 5) }}</small></td>
+            <td>{{ row.sucursal.nombre }}</td>
+            <td>{{ row.totalUnidades }} unidades</td>
+            <td><span class="badge">{{ row.estado }}</span><br /><small class="muted">{{ actions[row.estado] }}</small></td>
+            <td><button class="btn" type="button" (click)="showReservation(row)" [disabled]="saving()">Ver detalle</button></td>
+          </tr>
+        }
+      </tbody></table></div>
+      <nav class="actions" aria-label="Paginación de reservas">
+        <button class="btn" type="button" (click)="load(result.offset - result.limit)" [disabled]="busy() || result.offset === 0">Anterior</button>
+        <span class="muted">{{ result.total }} reservas</span>
+        <button class="btn" type="button" (click)="load(result.offset + result.limit)" [disabled]="busy() || result.offset + result.limit >= result.total">Siguiente</button>
+      </nav>
+    }
+  }
+  @if (reservation(); as row) {
+    <section class="card">
+      <div class="section-heading"><h2>Reserva #{{ row.nroReserva }}</h2><button class="btn" type="button" (click)="closeDetail()" [disabled]="saving()">Cerrar detalle</button></div>
+      <p class="muted">{{ row.sucursal.nombre }} · {{ row.fechaReserva | date:'dd/MM/yyyy' }} · {{ row.horaAtencion.slice(0, 5) }} · <span class="badge">{{ row.estado }}</span></p>
+      @for (item of row.items; track item.idDetalleRes) {
+        <article class="product-line">
+          @if (item.imagen) { <img [src]="item.imagen" [alt]="item.producto" /> }
+          <div>
+            <h3>{{ item.producto }}</h3>
+            <p>Talla {{ item.talla || 'no registrada' }} · {{ item.colores?.join(', ') || 'Sin color registrado' }}</p>
+            <small class="muted">{{ item.categoria }} · {{ item.cantidad }} unidades reservadas</small>
+          </div>
+        </article>
+      }
+      @if (row.estado === 'pendiente' || row.estado === 'confirmada') {
+        <div class="actions">
+          @if (row.estado === 'pendiente') {
+            <button class="btn primary" type="button" (click)="reservationAction('confirmar')" [disabled]="saving()">Confirmar prendas preparadas</button>
+            <p class="muted">Al confirmar se abre el punto de venta (CU24) para cobrar la reserva: el pago la marca como atendida.</p>
+          } @else {
+            <button class="btn primary" type="button" (click)="chargeInCashier(row)" [disabled]="saving()">Confirmar llegada y cobrar en caja</button>
+            <p class="muted">La reserva se marca como atendida cuando el cliente paga en el punto de venta (CU24).</p>
+          }
+        </div>
+        <form class="form-grid reprogram" (ngSubmit)="reservationAction('reprogramar')">
+          <div class="field"><label for="reserva-fecha">Nueva fecha</label><input id="reserva-fecha" type="date" name="fecha" [(ngModel)]="reservationDate" required /></div>
+          <div class="field"><label for="reserva-hora">Nueva hora</label><input id="reserva-hora" type="time" name="hora" [(ngModel)]="reservationTime" required /></div>
+          <div class="field"><button class="btn" type="submit" [disabled]="saving()">Reprogramar visita</button></div>
+        </form>
+      } @else {
+        <p class="muted">Esta reserva ya está cerrada; no admite nuevas acciones.</p>
+      }
+    </section>
+  }
+</app-inventario-panel>

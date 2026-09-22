@@ -1,0 +1,143 @@
+<app-inventario-panel title="Dashboard y reportes gerenciales" [error]="error()" [success]="success()">
+  <form (ngSubmit)="load()">
+    <div class="form-grid">
+      <div class="field"><label for="reporte-desde">Desde</label><input id="reporte-desde" type="date" name="desde" [(ngModel)]="fechaIni" required /></div>
+      <div class="field"><label for="reporte-hasta">Hasta</label><input id="reporte-hasta" type="date" name="hasta" [(ngModel)]="fechaFin" required /></div>
+      <div class="field"><label for="reporte-sucursal">Sucursal</label><select id="reporte-sucursal" name="sucursal" [(ngModel)]="nroSuc"><option [ngValue]="0">Todas las sucursales</option>@for (s of refs()?.sucursales; track s.nro) { <option [ngValue]="s.nro">{{ s.nombre }}</option> }</select></div>
+      <div class="field"><label for="reporte-modelo">Modelo de polera</label><select id="reporte-modelo" name="modelo" [(ngModel)]="idCat"><option [ngValue]="0">Todos los modelos</option>@for (c of refs()?.categorias; track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }</select></div>
+      <div class="field"><label for="reporte-temporada">Temporada</label><select id="reporte-temporada" name="temporada" [(ngModel)]="idTemp"><option [ngValue]="0">Todas las temporadas</option>@for (t of refs()?.temporadas; track t.id) { <option [ngValue]="t.id">{{ t.nombre }}</option> }</select></div>
+    </div>
+    <div class="actions"><button class="btn primary" type="submit" [disabled]="busy()">Actualizar indicadores</button></div>
+  </form>
+  @if (busy()) { <p role="status">Calculando indicadores…</p> }
+  @if (report(); as data) {
+    <div class="metrics">
+      <article><span>Ingresos de ventas pagadas</span><strong>{{ data.ingresos | currency:'USD':'code' }}</strong></article>
+      <article><span>Ventas registradas</span><strong>{{ data.ventas }}</strong></article>
+      <article><span>Unidades en stock</span><strong>{{ data.inventario.stock }}</strong></article>
+      <article><span>Unidades disponibles</span><strong>{{ data.inventario.disponible }}</strong></article>
+      <article><span>Unidades reservadas</span><strong>{{ data.inventario.reservado }}</strong></article>
+      <article><span>Registros agotados</span><strong>{{ data.inventario.agotados }}</strong></article>
+      <article><span>Reservas del período</span><strong>{{ data.reservas }}</strong></article>
+      <article><span>Devoluciones</span><strong>{{ data.devoluciones }}</strong></article>
+      <article><span>Conversión de reservas</span><strong>{{ data.conversionReservas }} %</strong></article>
+      <article><span>Carritos del período</span><strong>{{ data.carritos }}</strong></article>
+      <article><span>Conversión de carritos</span><strong>{{ data.conversionCarritos }} %</strong></article>
+    </div>
+    @if (!data.ventas) { <p class="empty">No hay ventas pagadas para el período y los filtros seleccionados.</p> }
+    <div class="report-grid">
+      <section class="card">
+        <h2>Ventas por sucursal</h2>
+        @for (s of data.sucursales; track s.nombre) {
+          <div class="receipt-line"><span>{{ s.nombre }}<small>{{ s.ventas }} ventas · {{ s.poleras }} poleras · ticket {{ s.ticket | currency:'USD':'code' }}</small></span><strong>{{ s.total | currency:'USD':'code' }}</strong></div>
+        } @empty { <p class="muted">Sin ventas registradas en el rango seleccionado.</p> }
+      </section>
+      <section class="card">
+        <h2>Prendas más vendidas</h2>
+        @for (p of data.productos; track p.nombre) {
+          <div class="receipt-line"><span>{{ p.nombre }}</span><strong>{{ p.unidades }} unidades</strong></div>
+        } @empty { <p class="muted">Sin prendas vendidas en el rango seleccionado.</p> }
+      </section>
+    </div>
+    <section class="card">
+      <div class="section-heading">
+        <h2>Devoluciones registradas</h2>
+        <span class="muted">{{ data.devoluciones }} devolución(es) · se indica la polera devuelta</span>
+      </div>
+      <div class="table-wrap">
+        <table class="matrix">
+          <caption>Fecha y hora en la zona horaria del negocio; el monto es el reembolsado por la devolución.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Nro. Devolución</th>
+              <th scope="col">Venta</th>
+              <th scope="col">Fecha</th>
+              <th scope="col">Sucursal</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Poleras devueltas</th>
+              <th scope="col">Motivo</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Reembolso</th>
+              <th scope="col" class="amount">Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (devolucion of data.devolucionesDetalle || []; track devolucion.nroDev) {
+              <tr>
+                <td>#{{ devolucion.nroDev }}</td>
+                <td>#{{ devolucion.nroVenta }}</td>
+                <td>{{ devolucion.fecha }} {{ devolucion.hora }}</td>
+                <td>{{ devolucion.sucursal }}</td>
+                <td>{{ devolucion.cliente }}</td>
+                <td>{{ devolucion.poleras }}</td>
+                <td>{{ devolucion.motivo }}</td>
+                <td>{{ devolucion.estado }}</td>
+                <td>{{ devolucion.reembolso }}</td>
+                <td class="amount">{{ devolucion.monto | currency:'USD':'code' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="10" class="muted">Sin devoluciones para el período y los filtros seleccionados.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    @if (data.reporte; as matriz) {
+      <section class="card">
+        <div class="section-heading">
+          <h2>Reporte de ventas {{ matriz.granularidad === 'dia' ? 'por día' : 'por mes' }}</h2>
+          <span class="muted">{{ matriz.filas.length }} sucursal(es) con ventas pagadas</span>
+        </div>
+        <div class="table-wrap">
+          <table class="matrix">
+            <caption>{{ data.filtros.sucursal }} · Modelo de polera: {{ data.filtros.modelo }} · Temporada: {{ data.filtros.temporada }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Sucursal</th>
+                @for (periodo of matriz.periodos; track periodo.clave) { <th scope="col" class="amount">{{ periodo.etiqueta }}</th> }
+                <th scope="col" class="amount">Ventas pagadas</th>
+                <th scope="col" class="amount">Poleras vendidas</th>
+                <th scope="col" class="amount">Importe total</th>
+                <th scope="col" class="amount">Ticket promedio</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (fila of matriz.filas; track fila.sucursal) {
+                <tr>
+                  <th scope="row">{{ fila.sucursal }}</th>
+                  @for (valor of fila.valores; track $index) { <td class="amount">{{ valor | currency:'USD':'code' }}</td> }
+                  <td class="amount">{{ fila.ventas }}</td>
+                  <td class="amount">{{ fila.poleras }}</td>
+                  <td class="amount">{{ fila.importe | currency:'USD':'code' }}</td>
+                  <td class="amount">{{ fila.ticket | currency:'USD':'code' }}</td>
+                </tr>
+              } @empty { <tr><td [attr.colspan]="matriz.periodos.length + 5" class="muted">Sin ventas pagadas para el período y los filtros seleccionados.</td></tr> }
+              <tr class="total">
+                <th scope="row">{{ matriz.total.sucursal }}</th>
+                @for (valor of matriz.total.valores; track $index) { <td class="amount">{{ valor | currency:'USD':'code' }}</td> }
+                <td class="amount">{{ matriz.total.ventas }}</td>
+                <td class="amount">{{ matriz.total.poleras }}</td>
+                <td class="amount">{{ matriz.total.importe | currency:'USD':'code' }}</td>
+                <td class="amount">{{ matriz.total.ticket | currency:'USD':'code' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="footnote">El PDF y el Excel exportan exactamente esta matriz; el Excel añade la hoja DETALLE DE VENTAS.</p>
+      </section>
+    }
+    <p class="footnote">{{ data.nota }}</p>
+    <section class="card">
+      <h2>Exportar reporte</h2>
+      @for (kind of kinds; track kind) {
+        <div class="export-row">
+          <strong>{{ labels[kind] }}</strong>
+          <div class="actions">
+            <button class="btn" type="button" (click)="download(kind, 'pdf')" [disabled]="exporting()">PDF</button>
+            <button class="btn" type="button" (click)="download(kind, 'xlsx')" [disabled]="exporting()">Excel</button>
+          </div>
+        </div>
+      }
+    </section>
+  }
+</app-inventario-panel>

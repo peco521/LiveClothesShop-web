@@ -1,28 +1,22 @@
-<app-cu14-layout title="Estado del pago" [error]="error()">
-  @if (busy() && !pago()) { <p role="status">Cargando pago…</p> }
-  @if (error() && !pago()) { <button (click)="load()" [disabled]="busy()">Reintentar</button> }
-  @if (pago(); as resultado) {
-    <p>Pago número <strong>{{ resultado.idPago }}</strong> · <span class="badge">{{ resultado.estado }}</span></p>
-    <p>Compra número <strong>{{ resultado.nroVenta }}</strong>.</p>
-    <p>Método: {{ resultado.metodo }} · Monto: {{ resultado.monto }}@if (resultado.referencia) { · Referencia {{ resultado.referencia }}}</p>
-    @if (resultado.estado === 'aprobado') {
-      <p role="status">Compra completada. Tu pago fue aprobado y el inventario quedó actualizado.</p>
-      <p><a routerLink="/tienda">Volver al catálogo</a></p>
-    }
-    @if (resultado.estado === 'rechazado') {
-      <p role="status">Pago rechazado. Tu carrito sigue disponible para intentarlo nuevamente.</p>
-      <div class="actions"><a routerLink="/tienda/carrito">Volver al carrito</a> <a routerLink="/tienda/finalizar-compra">Finalizar compra nuevamente</a></div>
-    }
-    @if (resultado.estado === 'pendiente') {
-      <p role="status">Pago pendiente: aún no hay certeza del resultado. Puedes consultar su estado.</p>
-      <p>Si saliste de Stripe sin pagar, puedes cancelar la compra y volver a editar tu carrito.</p>
-      <button (click)="confirmarCancelacion.set(true)" [disabled]="busy()">Cancelar compra</button>
-      @if (confirmarCancelacion()) {
-        <p>¿Confirmas cancelar la compra pendiente?</p>
-        <button (click)="cancelar()" [disabled]="busy()">Confirmar cancelación</button>
-        <button (click)="confirmarCancelacion.set(false)" [disabled]="busy()">Volver</button>
-      }
-      <div class="actions"><button (click)="consultar()" [disabled]="busy()">{{ busy() ? 'Consultando…' : 'Consultar estado' }}</button></div>
-    }
+<app-cu14-layout title="Tu compra" [error]="error()">
+ @if(busy()&&!pago()){<p role="status">Cargando pago…</p>}
+ @if(error()&&!pago()){<button (click)="load()" [disabled]="busy()">Reintentar</button>}
+ @if(pago();as result){
+ <section class="payment-status" [class.approved]="result.estado==='aprobado'" [class.rejected]="result.estado==='rechazado'">
+  <div class="status-icon" aria-hidden="true">{{result.estado==='aprobado'?'✓':result.estado==='rechazado'?'!':'…'}}</div>
+  <span class="badge">{{result.estado}}</span>
+  <h2>{{result.estado==='aprobado'?'Compra completada':result.estado==='rechazado'?'Pago rechazado':'Pago pendiente'}}</h2>
+  <p class="muted">{{result.estado==='aprobado'?'¡Gracias por tu compra! Tu pago fue aprobado.':result.estado==='rechazado'?'No se pudo completar el pago. Tu carrito sigue disponible.':'Estamos esperando la confirmación del pago. No necesitas crear otra compra.'}}</p>
+  <div class="payment-amount">{{money(result.monto)}}</div>
+  <div class="payment-meta"><span>Compra #{{result.nroVenta}}</span><span>Pago #{{result.idPago}}</span><span>{{result.metodo==='tarjeta'?'Tarjeta':result.metodo}}</span></div>
+  @if(result.estado==='aprobado'){<div class="actions"><a class="shop-btn primary" routerLink="/tienda/historial-compras">Ver mis compras</a><a class="shop-btn" routerLink="/tienda">Seguir explorando</a></div>}
+  @if(result.estado==='rechazado'){<div class="actions"><a class="shop-btn primary" routerLink="/tienda/carrito">Volver al carrito</a></div>}
+  @if(result.estado==='pendiente'){
+   <div class="actions"><button class="primary" (click)="consultar()" [disabled]="busy()">{{busy()?'Consultando…':'Consultar estado'}}</button><button (click)="confirmarCancelacion.set(true)" [disabled]="busy()">Cancelar compra</button></div>
+   <p class="muted">Si cerraste Stripe sin pagar, puedes cancelar la compra para editar tu carrito.</p>
+   @if(confirmarCancelacion()){<div class="cancel-confirm"><p>¿Confirmas cancelar la compra pendiente?</p><div class="actions"><button (click)="cancelar()" [disabled]="busy()">Confirmar cancelación</button><button (click)="confirmarCancelacion.set(false)" [disabled]="busy()">Volver</button></div></div>}
   }
+  @if(result.referencia){<details class="payment-reference"><summary>Información de la transacción</summary><p>{{result.referencia}}</p></details>}
+ </section>
+ }
 </app-cu14-layout>

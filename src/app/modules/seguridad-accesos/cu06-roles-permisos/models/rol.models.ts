@@ -1,5 +1,6 @@
 export interface RolCrear { nro: string; descripcion: string; }
-export interface RolDetalle extends RolCrear { esRolCliente: boolean; }
+// CU06: estado de baja lógica del rol; inactivo no autoriza funciones.
+export interface RolDetalle extends RolCrear { esRolCliente: boolean; estado: 'activo' | 'inactivo'; }
 export interface RolesListado { items: RolDetalle[]; total: number; offset: number; limit: number; }
 export interface FuncionDetalle { id: string; descripcion: string | null; }
 export interface PermisosDetalle { nroRol: string; esRolCliente: boolean; permisos: string[]; }

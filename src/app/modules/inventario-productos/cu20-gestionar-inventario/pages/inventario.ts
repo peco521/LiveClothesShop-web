@@ -31,6 +31,9 @@ export class InventarioPage {
     if(this.saving()||!this.refs())return;this.editor.set(true);this.error.set('');this.success.set('');this.historyRow.set(null);this.history.set(null);
     this.form.reset({nroSuc:row?.nroSuc??this.refs()?.sucursalAsignada??null,idVariante:row?.idVariante??'',tipoMov:'entrada',cantidad:null,motivo:'',ajusteDireccion:'aumentar'});
   }
+  closeMovement():void{
+    if(this.saving())return;this.editor.set(false);this.error.set('');
+  }
   save():void{
     if(this.saving())return;if(this.form.invalid){this.form.markAllAsTouched();return;}
     const raw=this.form.getRawValue();const data:MovementData={nroSuc:raw.nroSuc!,idVariante:raw.idVariante,tipoMov:raw.tipoMov as MovementData['tipoMov'],cantidad:raw.cantidad!,motivo:raw.motivo.trim(),

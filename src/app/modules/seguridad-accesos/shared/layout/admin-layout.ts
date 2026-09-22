@@ -45,7 +45,7 @@ export class AdminLayout {
     const permissions = this.auth.session()?.permisos ?? [];
     const administrator = this.auth.session()?.usuario.tipo === 'A';
     return ADMIN_MODULES.map(module => ({ ...module, items: module.items.filter(item => permissions.includes(item.permission)
-      && (!['CU18','CU19'].includes(item.permission) || administrator)) })).filter(module => module.items.length);
+      && (!['CU18','CU19','CU21','CU25'].includes(item.permission) || administrator)) })).filter(module => module.items.length);
   }
 
   closeMenu(): void {

@@ -1,3 +1,4 @@
+import { money } from '../../../shared/pricing';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -9,9 +10,10 @@ import { ComprasService } from '../../../cu13-compra-digital/services/compras.se
 import { pagoError } from '../../services/pago-error';
 
 @Component({ selector: 'app-estado-pago', imports: [Cu14Layout, RouterLink], templateUrl: './estado-pago.html',
-  styles: `.badge { display: inline-block; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); } .actions { display: flex; gap: 12px; margin: 16px 0; flex-wrap: wrap; }`,
+  styleUrls:['../../../shared/commerce.css','./estado-pago.css'],
 })
 export class EstadoPagoPage {
+  readonly money=money;
   private readonly service = inject(PagosService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroy = inject(DestroyRef);

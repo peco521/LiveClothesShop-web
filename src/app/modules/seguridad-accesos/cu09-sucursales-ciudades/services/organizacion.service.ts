@@ -10,6 +10,7 @@ function detalle(kind: Entidad, value: Detalle): Detalle {
   const branch = value as Sucursal;
   return { nro: branch.nro, nombre: branch.nombre, direccion: branch.direccion, estado: branch.estado,
     idCiud: branch.idCiud, ciudad: { id: branch.ciudad.id, nombre: branch.ciudad.nombre },
+    latitud: branch.latitud ?? null, longitud: branch.longitud ?? null,
     ...(branch.horarios !== undefined ? { horarios: branch.horarios.map(h => ({ horaIni: h.horaIni, horaFin: h.horaFin, ...(h.dias ? { dias: [...h.dias] } : {}) })) } : {}) };
 }
 

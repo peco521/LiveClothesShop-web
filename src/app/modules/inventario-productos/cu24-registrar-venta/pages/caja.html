@@ -1,0 +1,141 @@
+<app-inventario-panel [title]="sale() ? 'Comprobante de venta' : 'Punto de venta'" [error]="error()" [success]="success()">
+  @if (!sale()) {
+    <div class="form-grid">
+      <div class="field"><label for="caja-sucursal">Sucursal</label><select id="caja-sucursal" [(ngModel)]="nroSuc" [ngModelOptions]="{standalone:true}" [disabled]="refs()?.sucursalAsignada !== null || !!nroReserva"><option [ngValue]="0">Selecciona una sucursal</option>@for (s of refs()?.sucursales; track s.nro) { <option [ngValue]="s.nro">{{ s.nombre }} · {{ s.ciudad }}</option> }</select>
+        @if (nroReserva) { <small class="hint">La reserva se cobra en su propia sucursal.</small> }</div>
+      <div class="field"><label for="caja-reserva">Reserva del cliente (opcional)</label><input id="caja-reserva" type="number" [(ngModel)]="nroReserva" [ngModelOptions]="{standalone:true}" [readonly]="!!reservation()" min="1" step="1" />
+        @if (reservation(); as res) { <small class="hint">Prendas de la reserva #{{ res.nroReserva }} cargadas.</small> }
+        @else { <button class="btn" type="button" (click)="cargarReserva()" [disabled]="saving() || busy()">Cargar reserva</button> }</div>
+    </div>
+    <section class="card">
+      @if (reservation(); as res) {
+        <p class="notice">Reserva #{{ res.nroReserva }} · {{ res.sucursal.nombre }} · {{ res.estado }}: {{ res.totalUnidades }} unidades cargadas automáticamente. Al aprobarse el pago quedará como atendida. <button class="btn" type="button" (click)="clearReservation()" [disabled]="saving()">Quitar reserva</button></p>
+      } @else if (nroReserva) {
+        <p class="notice">Reserva #{{ nroReserva }} pendiente de carga. <button class="btn" type="button" (click)="clearReservation()" [disabled]="saving()">Quitar reserva</button></p>
+      }
+      <div class="section-heading"><h2>Cliente</h2></div>
+      <p class="muted">Elige cómo continuar: cliente registrado, registrar cliente ahora o venta sin registro.</p>
+      <div class="actions">
+        <button class="btn" type="button" (click)="registrando.set(!registrando())" [disabled]="saving() || !!nroReserva">{{ registrando() ? 'Cancelar registro' : 'Registrar cliente' }}</button>
+        <button class="btn" type="button" (click)="usarSinRegistro()" [disabled]="saving() || !!nroReserva">Continuar sin registro</button>
+      </div>
+      @if (nroReserva) { <p class="muted">La venta de una reserva requiere el cliente titular.</p> }
+      @if (reservation()) { <p class="muted">El titular de la reserva ya está seleccionado: su cobro no admite otro cliente.</p> }
+      <form class="toolbar" (ngSubmit)="searchCustomers()"><input name="cliente" [(ngModel)]="customerQ" maxlength="100" placeholder="Nombre, correo o CI" aria-label="Buscar cliente" [disabled]="!!reservation()" /><button class="btn" type="submit" [disabled]="!!reservation()">Buscar cliente</button></form>
+      @if (customers().length) {
+        <div class="customer-options">
+          @for (c of customers(); track c.idUsuario) {
+            <button class="btn" type="button" (click)="selectedCustomer.set(c)" [class.selected]="selectedCustomer()?.idUsuario === c.idUsuario">{{ c.nombre }} <small class="muted">{{ c.correo }} · {{ c.ci }}</small></button>
+          }
+        </div>
+      } @else { <p class="muted">Busca al cliente por nombre, correo o CI para asociarlo a la venta.</p> }
+      @if (selectedCustomer(); as c) { <p class="selected-customer">Cliente seleccionado: <strong>{{ c.nombre }}</strong></p> }
+      @else { <p class="muted">Sin cliente: la venta quedará registrada como anónima.</p> }
+      @if (registrando()) {
+        <fieldset [disabled]="saving()"><legend>Registrar cliente en el mostrador</legend>
+          <div class="form-grid">
+            <div class="field"><label for="nc-ci">CI</label><input id="nc-ci" [(ngModel)]="nuevo.ci" [ngModelOptions]="{standalone:true}" maxlength="100" /></div>
+            <div class="field"><label for="nc-nombres">Nombres</label><input id="nc-nombres" [(ngModel)]="nuevo.nombres" [ngModelOptions]="{standalone:true}" maxlength="100" /></div>
+            <div class="field"><label for="nc-pat">Apellido paterno</label><input id="nc-pat" [(ngModel)]="nuevo.apellidoPat" [ngModelOptions]="{standalone:true}" maxlength="50" /></div>
+            <div class="field"><label for="nc-mat">Apellido materno</label><input id="nc-mat" [(ngModel)]="nuevo.apellidoMat" [ngModelOptions]="{standalone:true}" maxlength="50" /></div>
+            <div class="field"><label for="nc-sexo">Sexo</label><select id="nc-sexo" [(ngModel)]="nuevo.sexo" [ngModelOptions]="{standalone:true}"><option value="F">F</option><option value="M">M</option></select></div>
+            <div class="field"><label for="nc-correo">Correo</label><input id="nc-correo" type="email" [(ngModel)]="nuevo.correo" [ngModelOptions]="{standalone:true}" maxlength="100" /></div>
+            <div class="field"><label for="nc-telefono">Teléfono</label><input id="nc-telefono" [(ngModel)]="nuevo.telefono" [ngModelOptions]="{standalone:true}" maxlength="20" /></div>
+            <div class="field"><label for="nc-direccion">Dirección</label><input id="nc-direccion" [(ngModel)]="nuevo.direccion" [ngModelOptions]="{standalone:true}" maxlength="150" /></div>
+            <div class="field"><label for="nc-nac">Fecha de nacimiento</label><input id="nc-nac" type="date" [(ngModel)]="nuevo.fechaNac" [ngModelOptions]="{standalone:true}" /></div>
+            <div class="field"><label for="nc-pass">Contraseña (mínimo 12)</label><input id="nc-pass" type="password" [(ngModel)]="nuevo.contrasena" [ngModelOptions]="{standalone:true}" minlength="12" maxlength="128" /></div>
+          </div>
+          <div class="actions"><button class="btn primary" type="button" (click)="registrarCliente()" [disabled]="saving()">Crear cliente y usarlo en esta venta</button></div>
+          <p class="muted">La sesión de caja no cambia: el cliente queda sólo seleccionado para esta venta.</p>
+        </fieldset>
+      }
+    </section>
+    <section class="card">
+      <div class="section-heading"><h2>Prendas de la venta</h2><button class="btn" type="button" (click)="picker.set(!picker()); searchProducts()" [disabled]="saving()">{{ picker() ? 'Ocultar catálogo' : '+ Añadir prenda' }}</button></div>
+      @if (reservation(); as res) { <p class="muted">Prendas de la reserva #{{ res.nroReserva }}: se cargaron automáticamente y no se pueden quitar ni reducir mientras la reserva siga vinculada. Puedes añadir prendas extra con «+ Añadir prenda».</p> }
+      @for (line of draft; track line.idVar; let i = $index) {
+        <article class="product-line">
+          @if (line.imagen) { <img [src]="line.imagen" [alt]="line.producto" /> }
+          <div><h3>{{ line.producto }} @if (line.reservada) { <span class="badge">Reservada</span> }</h3><p>Talla {{ line.talla }} · {{ line.colores }}</p></div>
+          <div class="field" style="margin:0;max-width:130px"><label [for]="'caja-cantidad-' + i">Cantidad</label><input [id]="'caja-cantidad-' + i" type="number" [(ngModel)]="line.cantidad" (change)="normalizarCantidad(i)" [ngModelOptions]="{standalone:true}" [min]="line.cantidadReservada ?? 1" step="1" /></div>
+          <button class="btn danger" type="button" (click)="removeDraft(i)" [disabled]="saving() || line.reservada" [title]="line.reservada ? 'Las prendas de la reserva se quitan con «Quitar reserva»' : 'Quitar prenda'">Quitar</button>
+        </article>
+      } @empty { <p class="empty">Selecciona las prendas del catálogo para preparar la venta.</p> }
+      <div class="actions"><button class="btn primary" type="button" (click)="prepareSale()" [disabled]="saving()">Revisar total y continuar al cobro</button></div>
+    </section>
+    <section class="card catalog-picker">
+      <div class="section-heading"><h2>Seleccionar prendas del catálogo</h2>@if (product()) { <button class="btn" type="button" (click)="product.set(null)">Ocultar variantes</button> }</div>
+      <form class="toolbar" (ngSubmit)="searchProducts()"><input name="producto" [(ngModel)]="productQ" maxlength="100" placeholder="Buscar por nombre, marca o categoría" aria-label="Buscar prendas" /><button class="btn" type="submit">Buscar</button></form>
+      @if (productRows(); as rows) {
+        @if (!rows.total) { <p class="empty">No se encontraron prendas con esa búsqueda.</p> }
+        @else {
+          <div class="product-grid">
+            @for (p of rows.items; track p.idProd) {
+              <button class="product-card" type="button" (click)="selectProduct(p.idProd)" [class.selected]="product()?.idProd === p.idProd">
+                @if (p.imagen) { <img [src]="p.imagen" [alt]="p.descripcion" /> }
+                <strong>{{ p.descripcion }}</strong>
+                <small>{{ p.categoria.descripcion }} · {{ p.marca.nombre }}</small>
+                <span>{{ product()?.idProd === p.idProd ? '✓ Seleccionada' : 'Ver variantes' }}</span>
+              </button>
+            }
+          </div>
+          <nav class="actions" aria-label="Paginación de prendas">
+            <button class="btn" type="button" (click)="searchProducts(rows.offset - rows.limit)" [disabled]="rows.offset === 0">Anterior</button>
+            <span class="muted">{{ rows.total }} prendas</span>
+            <button class="btn" type="button" (click)="searchProducts(rows.offset + rows.limit)" [disabled]="rows.offset + rows.limit >= rows.total">Siguiente</button>
+          </nav>
+        }
+      }
+      @if (product(); as p) {
+        <h3>{{ p.descripcion }} · variantes disponibles</h3>
+        <div class="product-grid">
+          @for (v of p.variantes; track v.idVariante) {
+            <button class="product-card" type="button" (click)="addVariant(v)" [disabled]="saving()">
+              @if (v.imagen) { <img [src]="v.imagen" [alt]="p.descripcion" /> }
+              <strong>Talla {{ v.talla.descripcion }}</strong>
+              <small>{{ v.colores.length ? v.colores[0].descripcion : 'Sin color' }} · {{ v.sku }}</small>
+              <span>{{ v.precio | currency:'USD':'code' }} · + Añadir</span>
+            </button>
+          } @empty { <p class="empty">Esta prenda no tiene variantes activas.</p> }
+        </div>
+      }
+    </section>
+  } @else {
+    @if (sale(); as row) {
+      <div class="checkout-grid">
+        <section class="card">
+          <app-recibo-ticket [sale]="row" />
+          @if (paid()) {
+            <p class="notice success no-print">Pago confirmado. La venta quedó registrada y el inventario actualizado.@if (nroReserva) { La reserva #{{ nroReserva }} quedó como atendida. }</p>
+          } @else { <p class="muted no-print">Venta preparada; todavía no se confirma el pago.</p> }
+          <div class="actions no-print">
+            <button class="btn primary" type="button" (click)="print()">Imprimir recibo</button>
+            <button class="btn" type="button" (click)="newSale()">Nueva venta</button>
+          </div>
+        </section>
+        <aside class="summary no-print">
+          <h2>Resumen del cobro</h2>
+          <div class="receipt-line"><span>Descuento</span><strong>{{ row.descAplicado | currency:'USD':'code' }}</strong></div>
+          <div class="receipt-line total"><span>Total</span><strong>{{ row.total | currency:'USD':'code' }}</strong></div>
+          @if (row.cambio !== undefined) { <p>Cambio: {{ row.cambio | currency:'USD':'code' }}</p> }
+          @if (!paid()) {
+            <div class="field"><label for="caja-recibido">Efectivo recibido</label><input id="caja-recibido" type="number" [(ngModel)]="received" [ngModelOptions]="{standalone:true}" min="0" step="0.01" /></div>
+            <div class="actions"><button class="btn primary" type="button" (click)="cash()" [disabled]="saving()">Confirmar pago en efectivo</button></div>
+            <hr />
+            <div class="field"><label for="caja-metodo">Pago electrónico</label><select id="caja-metodo" [(ngModel)]="metodo" [ngModelOptions]="{standalone:true}"><option value="tarjeta">Tarjeta</option><option value="QR">QR</option><option value="transferencia">Transferencia</option></select></div>
+            <div class="actions">
+              <button class="btn" type="button" (click)="electronic()" [disabled]="saving()">{{ saving() ? 'Preparando pago seguro…' : 'Iniciar pago electrónico' }}</button>
+              <button class="btn" type="button" (click)="refreshSale()" [disabled]="saving()">Consultar estado del pago</button>
+            </div>
+            <p class="muted">Los datos de la tarjeta se introducen en Stripe Checkout. Al terminar o cancelar volverás a este comprobante para verificar el pago real.</p>
+            @if (!confirmCancel) { <button class="btn danger" type="button" (click)="confirmCancel = true" [disabled]="saving()">Cancelar venta</button> }
+            @else {
+              <p>¿Deseas cancelar la venta pendiente?</p>
+              <div class="actions"><button class="btn danger" type="button" (click)="cancelSale()" [disabled]="saving()">Confirmar cancelación</button><button class="btn" type="button" (click)="confirmCancel = false" [disabled]="saving()">Volver</button></div>
+            }
+          }
+        </aside>
+      </div>
+    }
+  }
+</app-inventario-panel>

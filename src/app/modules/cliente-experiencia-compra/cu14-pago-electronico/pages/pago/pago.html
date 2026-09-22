@@ -1,15 +1,27 @@
-<app-cu14-layout title="Pago" [error]="error()">
-  @if (config()?.simulacion) { <p role="status">Entorno de prueba/simulación: no ingreses datos financieros reales. Solo eliges el medio de pago; el monto lo determina la venta.</p> }
-  @if (config()?.proveedor === 'stripe') { <p>Pago con tarjeta mediante Stripe Checkout en USD, en modo de prueba. Los datos se ingresan directamente en Stripe.</p> }
+<app-cu14-layout title="Métodos de pago" [error]="error()">
   @if (!nroVenta()) { <p class="field-error" role="alert">Falta la venta a pagar. Vuelve a tu compra preparada.</p><p><a routerLink="/tienda/carrito">Volver al carrito</a></p> }
   @else {
-    <p>Vas a pagar la compra número <strong>{{ nroVenta() }}</strong>.</p>
-    <form [formGroup]="form" (ngSubmit)="pagar()"><fieldset><legend>Método de pago</legend><div class="form-grid">
-      <div class="field"><label for="pago-metodo">Medio</label><select id="pago-metodo" formControlName="metodo"><option value="tarjeta">Tarjeta</option>@if (config()?.simulacion) { <option value="QR">QR</option><option value="transferencia">Transferencia</option> }</select></div>
-    </div></fieldset>
-    @if (config()?.simulacion) { <div class="sandbox"><p><strong>Simulación académica:</strong> el resultado lo genera una pasarela de prueba.</p>
-      <div class="field"><label for="pago-escenario">Resultado simulado</label><select id="pago-escenario" formControlName="escenario"><option value="aprobado">Aprobado</option><option value="rechazado">Rechazado</option><option value="timeout">Sin respuesta (pendiente)</option></select></div>
-    </div> }
-    <button type="submit" [disabled]="busy() || !config()?.disponible">{{ busy() ? 'Procesando…' : 'Realizar pago' }}</button></form>
+    <form [formGroup]="form" (ngSubmit)="pagar()" class="payment-grid">
+      <section class="payment-panel">
+        <h2>Elige cómo pagar</h2>
+        <fieldset [disabled]="busy()"><legend>Método de pago</legend>
+          <label class="payment-option" [class.selected]="form.controls.metodo.value==='tarjeta'"><input type="radio" formControlName="metodo" value="tarjeta" /><span><strong>Tarjeta de crédito o débito</strong><span class="card-brands"><span>VISA</span><span>Mastercard</span></span></span></label>
+          @if (config()?.simulacion) {
+            <label class="payment-option" [class.selected]="form.controls.metodo.value==='QR'"><input type="radio" formControlName="metodo" value="QR" /><strong>QR</strong></label>
+            <label class="payment-option" [class.selected]="form.controls.metodo.value==='transferencia'"><input type="radio" formControlName="metodo" value="transferencia" /><strong>Transferencia</strong></label>
+          }
+        </fieldset>
+        @if (config()?.proveedor==='stripe') { <p class="muted">Pago con tarjeta mediante Stripe Checkout en USD. Los datos se ingresan directamente en Stripe.</p> }
+        @if (config()?.simulacion) {
+          <div class="sandbox"><p class="muted" role="status">Entorno de prueba/simulación: no ingreses datos financieros reales.</p><p class="muted"><strong>Simulación académica:</strong> el resultado lo genera una pasarela de prueba.</p>
+            <div class="field"><label for="pago-escenario">Resultado simulado</label><select id="pago-escenario" formControlName="escenario"><option value="aprobado">Aprobado</option><option value="rechazado">Rechazado</option><option value="timeout">Sin respuesta (pendiente)</option></select></div>
+          </div>
+        }
+      </section>
+      <aside class="payment-summary"><h2>Tu compra</h2><p>Compra número <strong>{{nroVenta()}}</strong></p><p class="muted">El importe corresponde a tu compra confirmada y se muestra al abrir el pago.</p>
+        <button class="primary wide pay-button" type="submit" [disabled]="busy()||!config()?.disponible">{{busy()?'Procesando…':'Realizar pago'}}</button>
+        <p class="muted">{{config()?.proveedor==='stripe'?'Completarás el pago en Stripe. No ingreses tu tarjeta fuera de esa pasarela.':'Este pago es una simulación, no un cobro real.'}}</p>
+      </aside>
+    </form>
   }
 </app-cu14-layout>

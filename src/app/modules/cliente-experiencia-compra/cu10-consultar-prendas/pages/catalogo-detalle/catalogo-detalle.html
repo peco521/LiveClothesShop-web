@@ -1,41 +1,46 @@
-<app-cu10-layout title="Detalle de prenda" [error]="error()">
-  @if (busy()) { <p role="status">Cargando prenda…</p> }
-  @if (error()) { <button (click)="load(actual())" [disabled]="busy()">Reintentar</button> }
-  @if (item(); as prenda) {
-    <div class="meta">
-      <p><strong>{{ prenda.descripcion }}</strong></p>
-      <p>{{ prenda.marca.nombre }} · {{ prenda.categoria.descripcion }} · {{ prenda.coleccion.descripcion }}</p>
-      @if (prenda.promocion) { <p>Promoción vigente: {{ prenda.promocion.nombre }} ({{ prenda.promocion.tipoDescuento }}: {{ prenda.promocion.valorDescuento }})</p> }
-    </div>
-    <h2>Variantes ({{ prenda.variantes.length }})</h2>
-    @if (!prenda.variantes.length) { <p>Esta prenda no tiene variantes activas por el momento.</p> }
-    @for (variante of prenda.variantes; track variante.idVariante) {
-      <article class="variant" [class.selected]="seleccion() === variante.idVariante">
-        @if (variante.imagen) { <img [src]="variante.imagen" [alt]="prenda.descripcion" loading="lazy" width="160" /> }
-        <p><strong>Talla {{ variante.talla.descripcion }}</strong> · {{ variante.precio }} · <span>{{ variante.sku }}</span></p>
-        <p>@for (color of variante.colores; track color.idColor) { <span class="swatch" [style.background]="color.hex" [title]="color.descripcion"></span> {{ color.descripcion }} } @empty { <span>Sin color registrado</span> }</p>
-        <button type="button" (click)="elegir(variante.idVariante)">Ver disponibilidad</button>
-        @if (seleccion() === variante.idVariante) {
-          <a [routerLink]="['/tienda/reservas/nueva']" [queryParams]="{ idVar: variante.idVariante, cantidad: 1 }">Reservar esta variante</a>
-          <div class="actions">
-            <label>Cantidad <input type="number" [ngModel]="cantidad()" (ngModelChange)="cantidad.set($event)" min="1" step="1" /></label>
-            <button type="button" (click)="agregar()" [disabled]="agregando()">Agregar al carrito</button>
-          </div>
-          @if (agregando()) { <p role="status">Agregando al carrito…</p> }
-          @if (agregado()) { <p role="status">Prenda agregada al carrito. <a routerLink="/tienda/carrito">Ver carrito</a></p> }
-          @if (carritoErrorMsg()) { <p class="field-error" role="alert">{{ carritoErrorMsg() }}</p> }
-        }
-      </article>
+<app-cu10-layout [title]="item()?.descripcion||'Detalle de prenda'" [error]="error()">
+ @if(busy()){<p role="status">Cargando prenda…</p>}
+ @if(error()){<button (click)="load(actual())" [disabled]="busy()">Reintentar</button>}
+ @if(item();as prenda){
+ <div class="product-detail">
+  <section class="product-gallery" aria-label="Imágenes del producto">
+   <div class="hero-image">@if(selected()?.imagen){<img [src]="selected()!.imagen!" [alt]="prenda.descripcion" fetchpriority="high" />}@else{<span class="muted">Imagen no disponible para esta variante</span>}
+    @if(selected();as variant){@if(quote(variant.precio,prenda.promocion).discount>0){<span class="sale-tag">−{{quote(variant.precio,prenda.promocion).percent}}%</span>}}
+   </div>
+   <div class="gallery-thumbs">@for(variant of gallery();track variant.idVariante){<button type="button" (click)="elegir(variant.idVariante)" [class.selected]="selected()?.imagen===variant.imagen" [attr.aria-label]="'Ver imagen: talla '+variant.talla.descripcion"><img [src]="variant.imagen!" [alt]="prenda.descripcion+' · Talla '+variant.talla.descripcion" loading="lazy" /></button>}</div>
+  </section>
+  <section class="product-info" aria-label="Detalles y disponibilidad">
+   <p class="eyebrow">{{prenda.marca.nombre}} · {{prenda.categoria.descripcion}}</p><h2>{{prenda.descripcion}}</h2><p class="muted">{{prenda.coleccion.descripcion}}</p>
+   @if(selected();as variant){@let pricing=quote(variant.precio,prenda.promocion);
+    <div class="product-price"><span class="price" [class.sale-price]="pricing.discount>0">{{money(pricing.total)}}</span>@if(pricing.discount>0){<del class="old-price">{{money(pricing.base)}}</del><span class="saving">Ahorra {{pricing.percent}}%</span>}</div>
+    @if(pricing.discount>0&&prenda.promocion){<p class="saving">{{prenda.promocion.nombre}}</p>}
+   }
+   <h3>Color: {{colorName(selected())}}</h3>
+   <div class="color-options" role="group" aria-label="Seleccionar color">
+    @for(variant of colorOptions();track colorKey(variant)){
+     @let units=stock(variant.idVariante);
+     <button class="color-option" type="button" [class.selected]="selected()&&colorKey(selected()!)===colorKey(variant)" [attr.aria-pressed]="selected()&&colorKey(selected()!)===colorKey(variant)" [disabled]="agregando()" [attr.aria-label]="colorName(variant)+' · Talla '+variant.talla.descripcion+' · '+units+' disponibles'" (click)="elegir(variant.idVariante)">
+      @if(variant.imagen){<img [src]="variant.imagen" [alt]="prenda.descripcion+' · '+colorName(variant)" loading="lazy" />}@else{<span class="color-placeholder">@for(color of variant.colores;track color.idColor){<span class="swatch" [style.background]="color.hex" aria-hidden="true"></span>}<span>Sin imagen</span></span>}
+      <strong>{{colorName(variant)}}</strong>
+      @if(units===0){<span class="low-stock empty-stock">Agotado</span>}@else if(units<10){<span class="low-stock">Quedan {{units}} {{units===1?'unidad':'unidades'}}</span>}
+      @if(variant.talla.idTalla!==selected()?.talla?.idTalla){<span class="option-size">Talla {{variant.talla.descripcion}}</span>}
+     </button>
     }
-    <h2>Disponibilidad por sucursal</h2>
-    @if (!prenda.disponibilidad.length) { <p>Sin existencias disponibles en sucursales activas.</p> }
-    @else { <div class="table-scroll"><table><caption class="visually-hidden">Disponibilidad por sucursal</caption><thead><tr><th>Sucursal</th><th>Ciudad</th><th>Variante</th><th>Disponibles</th></tr></thead><tbody>
-      @for (row of prenda.disponibilidad; track row.nroSuc + '-' + row.idVariante) {
-        @if (!seleccion() || seleccion() === row.idVariante) {
-          <tr><td>{{ row.sucursal }}</td><td>{{ row.ciudad }}</td><td>{{ row.idVariante }}</td><td>{{ row.cantDisp }}</td></tr>
-        }
-      }
-    </tbody></table></div> }
-    <p><a routerLink="/tienda">Volver al catálogo</a></p>
-  }
+   </div>
+   @if(selected();as variant){<h3>Talla: {{variant.talla.descripcion}}</h3><div class="size-options" role="group" aria-label="Seleccionar talla">
+    @for(size of sizeOptions();track size.idVariante){<button type="button" [class.selected]="seleccion()===size.idVariante" [attr.aria-pressed]="seleccion()===size.idVariante" [disabled]="agregando()" (click)="elegir(size.idVariante)">Talla {{size.talla.descripcion}}@if(stock(size.idVariante)===0){<span class="muted">Agotado</span>}</button>}
+   </div><p class="stock-note muted">Existencias para la talla indicada, sumadas en sucursales activas.</p>}
+   @if(!prenda.variantes.length){<p>Esta prenda no tiene variantes activas por el momento.</p>}
+   @if(selected();as variant){
+    <label class="quantity-label" for="product-quantity">Cantidad</label><div class="quantity"><button type="button" (click)="changeQuantity(-1)" [disabled]="cantidad()<=1||agregando()" aria-label="Disminuir cantidad">−</button><input id="product-quantity" type="number" [ngModel]="cantidad()" (ngModelChange)="cantidad.set($event)" min="1" [max]="stock(variant.idVariante)" step="1" [disabled]="agregando()||!available()" /><button type="button" (click)="changeQuantity(1)" [disabled]="agregando()||cantidad()>=stock(variant.idVariante)" aria-label="Aumentar cantidad">+</button></div>
+    <div class="purchase-actions"><button class="primary wide" type="button" (click)="agregar(true)" [disabled]="agregando()||!available()">{{agregando()?'Agregando…':'Comprar ahora'}}</button><button class="wide" type="button" (click)="agregar()" [disabled]="agregando()||!available()">Añadir al carrito</button></div>
+    @if(agregado()){<p class="success-note" role="status">Prenda agregada al carrito. <a routerLink="/tienda/carrito">Ver carrito</a></p>}
+    @if(carritoErrorMsg()){<p class="field-error" role="alert">{{carritoErrorMsg()}}</p>}
+    <div class="branch-section"><h3>Disponibilidad por sucursal</h3>
+     @for(branch of branches();track branch.nroSuc+'-'+branch.idVariante){<article class="branch"><div><strong>{{branch.sucursal}}</strong><span class="muted">{{branch.ciudad}}</span></div><span class="stock" [class.out]="branch.cantDisp<=0">{{branch.cantDisp>0?branch.cantDisp+' disponibles':'Agotado'}}</span></article>}@empty{<p class="muted">Sin existencias en sucursales activas.</p>}
+    </div><a class="reserve-link" [routerLink]="['/tienda/reservas/nueva']" [queryParams]="{idVar:variant.idVariante,cantidad:cantidad()}">Prefiero reservar esta prenda</a>
+   }
+  </section>
+ </div><p><a routerLink="/tienda">← Volver al catálogo</a></p>
+ }
 </app-cu10-layout>

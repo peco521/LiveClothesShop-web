@@ -1,0 +1,65 @@
+<article class="receipt" aria-label="Recibo de pago">
+  <header class="receipt-head">
+    <h2>{{ store() }}</h2>
+    @if (city()) { <p class="receipt-muted">{{ city() }}</p> }
+    <p class="receipt-muted">Recibo de venta N.º {{ sale().nroVenta }}</p>
+  </header>
+
+  <hr class="receipt-rule" />
+
+  <dl class="receipt-meta">
+    <div><dt>Tienda</dt><dd>{{ store() }}</dd></div>
+    <div><dt>Fecha y hora</dt><dd>{{ sale().fechaHora | date:'dd/MM/yyyy HH:mm' }}</dd></div>
+    <div><dt>Empleado</dt><dd>{{ employee() }}</dd></div>
+    <div><dt>Cliente</dt><dd>{{ customer() }}</dd></div>
+  </dl>
+
+  <hr class="receipt-rule" />
+
+  <table class="receipt-table">
+    <caption class="visually-hidden">Prendas vendidas</caption>
+    <thead>
+      <tr><th scope="col">Producto</th><th scope="col" class="num">Cant.</th><th scope="col" class="num">Precio</th><th scope="col" class="num">Costo</th></tr>
+    </thead>
+    <tbody>
+      @for (line of lines(); track line.idDetalleVenta) {
+        <tr>
+          <th scope="row">{{ line.producto }}</th>
+          <td class="num">{{ line.cantidad }}</td>
+          <td class="num">{{ line.precio | number:'1.2-2' }}</td>
+          <td class="num">{{ line.costo | number:'1.2-2' }}</td>
+        </tr>
+      } @empty {
+        <tr><td colspan="4" class="receipt-muted">Venta sin prendas registradas.</td></tr>
+      }
+    </tbody>
+  </table>
+
+  <hr class="receipt-rule" />
+
+  <div class="receipt-row"><span>Subtotal</span><strong>{{ subtotal() | number:'1.2-2' }}</strong></div>
+
+  @if (discounts().length) {
+    <section class="receipt-discounts" aria-label="Descuentos aplicados">
+      <h3>Descuentos</h3>
+      @for (discount of discounts(); track discount.nombre + discount.valor) {
+        <div class="receipt-discount">
+          <p class="receipt-discount-name">{{ discount.nombre }}</p>
+          <p class="receipt-muted">Tipo: {{ discount.tipo }}</p>
+          <p class="receipt-muted">Descuento: {{ discount.valor }}</p>
+          <div class="receipt-row"><span>Aplicado</span><strong>-{{ discount.monto | number:'1.2-2' }}</strong></div>
+        </div>
+      }
+      <div class="receipt-row"><span>Descuento total</span><strong>-{{ sale().descAplicado | number:'1.2-2' }}</strong></div>
+    </section>
+  }
+
+  <div class="receipt-total"><span>Total</span><strong>{{ total() | currency:'USD':'code' }}</strong></div>
+
+  @if (!paid()) { <p class="receipt-flag">Documento sin pago confirmado</p> }
+
+  <footer class="receipt-foot">
+    <hr class="receipt-rule" />
+    <p>Gracias por comprar en {{ store() }}</p>
+  </footer>
+</article>

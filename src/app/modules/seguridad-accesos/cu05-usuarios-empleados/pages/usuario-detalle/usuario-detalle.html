@@ -7,6 +7,7 @@
       <dt>Sexo</dt><dd>{{ user.sexo }}</dd><dt>Fecha de nacimiento</dt><dd>{{ user.fechaNac }}</dd>
       <dt>Correo</dt><dd>{{ user.correo }}</dd><dt>Teléfono</dt><dd>{{ user.telefono }}</dd><dt>Dirección</dt><dd>{{ user.direccion }}</dd>
       <dt>Tipo</dt><dd>{{ user.tipo === 'E' ? 'Empleado' : 'Administrador' }}</dd><dt>Rol</dt><dd>{{ user.rol.descripcion }} ({{ user.nroRol }})</dd>
+      <dt>Estado</dt><dd>{{ user.estado === 'inactivo' ? 'Inactivo (sin acceso)' : (user.estado === 'activo' ? 'Activo' : 'No aplica (administrador)') }}</dd>
       @if (user.empleado; as employee) {
         <dt>Código de empleado</dt><dd>{{ employee.cod_emp }}</dd><dt>Cargo</dt><dd>{{ employee.cargo }}</dd>
         <dt>Sucursal</dt><dd>@if (sucursal(); as branch) { {{ branch.nombre }} (#{{ branch.nro }}) — {{ branch.direccion }} · {{ branch.estado }} } @else { Sucursal #{{ employee.nroSuc }}: datos no disponibles. }</dd>
@@ -14,6 +15,8 @@
       }
       @if (user.admin; as admin) { <dt>Código de administrador</dt><dd>{{ admin.cod_adm }}</dd> }
     </dl>
-    @if (user.tipo === 'E') { <div class="actions"><a [routerLink]="['/admin/empleados', user.idUsuario, 'editar']">Editar empleado</a></div> }
+    @if (user.tipo === 'E') { <div class="actions"><a [routerLink]="['/admin/empleados', user.idUsuario, 'editar']">Editar empleado</a>
+      @if (user.estado) { <button type="button" (click)="cambiarEstado()" [disabled]="busy()">{{ user.estado === 'inactivo' ? 'Reactivar empleado' : 'Desactivar empleado' }}</button> }
+    </div> }
   } @else if (!loading()) { <button (click)="load()">Reintentar</button> }
 </app-cu05-layout>

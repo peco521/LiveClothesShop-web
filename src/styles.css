@@ -34,3 +34,21 @@ input:disabled, select:disabled { opacity: .65; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 @media (max-width: 460px) { .form-grid { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }
+
+/* CU24: el recibo es lo único que sale en papel. El ticket es estrecho (80 mm de
+   impresora térmica) y el resto de la pantalla —navegación, sidebar, títulos,
+   botones, avisos— queda invisible aunque siga ocupando lugar en el documento.
+   Los botones que nunca deben imprimirse llevan la clase `no-print`. */
+@page { size: 80mm auto; margin: 4mm; }
+
+@media print {
+  body { background: #fff; }
+  body * { visibility: hidden !important; }
+  .receipt, .receipt * { visibility: visible !important; }
+  .receipt {
+    position: absolute; inset: 0 0 auto 0; width: 100%; max-width: 80mm; margin: 0 auto;
+    padding: 0; border: 0; border-radius: 0; box-shadow: none; background: #fff; color: #000;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .no-print, .no-print * { display: none !important; }
+}

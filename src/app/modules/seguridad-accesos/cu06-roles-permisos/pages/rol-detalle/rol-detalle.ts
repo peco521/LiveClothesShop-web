@@ -16,7 +16,9 @@ import { accesoRechazado, rolError } from '../../services/rol-error';
     @if (warning()) { <p class="notice" role="alert">{{ warning() }} <a routerLink="/acceso">Verificar mi acceso</a></p> }
     @if (rol(); as current) {
       <h2>{{ current.nro }}</h2><p>{{ current.descripcion }}</p>
+      <p>Estado: {{ current.estado === 'inactivo' ? 'Inactivo (no autoriza funciones)' : 'Activo' }}</p>
       <a [routerLink]="['/admin/roles', current.nro, 'editar']">Editar descripción</a>
+      @if (!current.esRolCliente) { <button type="button" (click)="cambiarEstado()" [disabled]="busy()">{{ current.estado === 'inactivo' ? 'Reactivar rol' : 'Desactivar rol' }}</button> }
       @if (permisos(); as assigned) { <app-permisos-selector [funciones]="funciones()" [actual]="assigned" [busy]="busy() || refreshFailed()" (guardar)="guardar($event)" /> }
     } @else if (!loading()) { <button (click)="load()">Reintentar consulta</button> }
   </app-cu06-layout>`,
@@ -44,6 +46,21 @@ export class RolDetallePage {
         next: value => { this.rol.set(value.rol); this.permisos.set(value.permisos); this.funciones.set(value.funciones); },
         error: (error: unknown) => this.error.set(rolError(error)),
       });
+  }
+  cambiarEstado(): void {
+    const current = this.rol();
+    if (!current || current.esRolCliente || this.busy()) return;
+    this.busy.set(true); this.error.set(''); this.success.set(''); this.warning.set('');
+    this.mutation = this.service.estadoCuenta(current.nro, current.estado === 'inactivo').pipe(
+      takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false)),
+    ).subscribe({
+      next: result => {
+        this.rol.set(result);
+        this.success.set(result.estado === 'inactivo'
+          ? 'Rol desactivado: ya no autoriza funciones.' : 'Rol reactivado.');
+      },
+      error: (error: unknown) => this.error.set(rolError(error)),
+    });
   }
   guardar(ids: string[]): void {
     const current = this.permisos();

@@ -3,7 +3,7 @@ export type EstadoReserva = 'pendiente' | 'confirmada' | 'atendida' | 'cancelada
 export interface ReservaItemCrear { idVar: string; cantidad: number }
 export interface ReservaCrear { nroSuc: number; fechaReserva: string; horaAtencion: string; items: ReservaItemCrear[] }
 
-export interface ReservaItemDetalle { idDetalleRes: number; idVar: string; sku: string; producto: string; cantidad: number }
+export interface ReservaItemDetalle { idDetalleRes: number; idVar: string; sku: string; producto: string; cantidad: number; imagen?: string | null; talla?: string | null; categoria?: string | null; colores?: string[] }
 export interface ReservaSucursal { nro: number; nombre: string; ciudad: string }
 
 export interface ReservaDetalle {

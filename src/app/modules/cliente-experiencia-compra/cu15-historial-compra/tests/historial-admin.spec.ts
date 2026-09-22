@@ -42,6 +42,28 @@ describe('CU15 historial interno página', () => {
     expect(fixture.nativeElement.textContent).toContain('Camisa Oxford');
     expect(fixture.nativeElement.textContent).not.toContain('Finalizar compra');
   });
+  it('abre el detalle en un panel aparte y lo cierra sin perder la lista', () => {
+    const fixture = TestBed.createComponent(HistorialAdminPage); fixture.detectChanges(); const page = fixture.componentInstance;
+    page.select(cliente); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+    const verDetalle = fixture.nativeElement.querySelector('button[aria-haspopup="dialog"]') as HTMLButtonElement;
+    expect(verDetalle).not.toBeNull(); expect(verDetalle.textContent).toContain('Ver detalle');
+    verDetalle.click(); fixture.detectChanges();
+    expect(page.detailOpen()).toBe(true);
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')?.textContent).toContain('Detalle de compra #11');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); fixture.detectChanges();
+    expect(page.detailOpen()).toBe(false);
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Compra #11');
+  });
+  it('cierra el panel del detalle al buscar otro cliente', () => {
+    const fixture = TestBed.createComponent(HistorialAdminPage); fixture.detectChanges(); const page = fixture.componentInstance;
+    page.select(cliente); page.loadDetail(11); fixture.detectChanges();
+    expect(page.detailOpen()).toBe(true);
+    page.form.patchValue({ nombre: 'Ana' }); page.search(); fixture.detectChanges();
+    expect(page.detailOpen()).toBe(false); expect(page.detail()).toBeNull();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+  });
   it('cancela respuestas previas y oculta los datos después de un rechazo', () => {
     const pending = new Subject<typeof historial>(); service.historial.mockReturnValueOnce(pending);
     const fixture = TestBed.createComponent(HistorialAdminPage); const page = fixture.componentInstance;

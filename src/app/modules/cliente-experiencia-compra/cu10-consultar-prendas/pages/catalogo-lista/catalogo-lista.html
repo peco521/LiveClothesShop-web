@@ -67,15 +67,19 @@
     <p class="results-count" role="status">{{ page.total }} prendas encontradas.</p>
     @if (!page.items.length) { <div class="empty-results"><h2>Estamos preparando el catálogo</h2><p>No hay prendas para los filtros aplicados. Prueba otra búsqueda o vuelve pronto.</p></div> }
     @else { <div class="grid">
-      @for (item of page.items; track item.idProd) { <article class="card">
-        @if (item.imagen) { <img [src]="item.imagen" [alt]="item.descripcion" loading="lazy" /> }
-        @else { <div class="image-placeholder" aria-hidden="true">Sin imagen</div> }
-        <h2>{{ item.descripcion }}</h2><p class="muted">{{ item.marca.nombre }} · {{ item.categoria.descripcion }}</p>
-        @if (item.promocion) { <p class="badge">Promoción: {{ item.promocion.nombre }}</p> }
-        <p>@if (item.precioMin !== null) { Desde {{ item.precioMin }} @if (item.precioMax !== null && item.precioMax !== item.precioMin) { hasta {{ item.precioMax }} } } @else { Precio a consultar }</p>
-        <p><span class="badge">{{ item.disponible ? 'Disponible' : 'Agotado' }}</span> <span class="badge">{{ item.totalVariantes }} variantes</span></p>
-        <a [routerLink]="['/tienda/prendas', item.idProd]">Ver detalle</a>
-      </article> }
+      @for(item of page.items;track item.idProd){<article class="card product-card">
+        <a class="card-image" [routerLink]="['/tienda/prendas',item.idProd]" [attr.aria-label]="'Ver '+item.descripcion">
+          @if(item.imagen){<img [src]="item.imagen" [alt]="item.descripcion" loading="lazy" />}@else{<div class="image-placeholder" aria-hidden="true">Sin imagen</div>}
+          @if(item.precioMin!==null){@let pricing=quote(item.precioMin,item.promocion);@if(pricing.discount>0){<span class="sale-tag">−{{pricing.percent}}%</span>}}
+        </a>
+        <p class="card-brand">{{item.marca.nombre}}</p><h2><a [routerLink]="['/tienda/prendas',item.idProd]">{{item.descripcion}}</a></h2>
+        @if(item.precioMin!==null){@let pricing=quote(item.precioMin,item.promocion);
+          <div class="card-prices"><span [class.sale-price]="pricing.discount>0">@if(item.precioMax!==item.precioMin){Desde }{{money(pricing.total)}}</span>@if(pricing.discount>0){<del>{{money(pricing.base)}}</del>}</div>
+          @if(pricing.discount>0){<p class="sale-label">{{item.promocion?.nombre}} · Ahorra {{pricing.percent}}%</p>}
+        }@else{<p>Precio a consultar</p>}
+        <p class="card-availability">{{item.disponible?'Disponible':'Agotado'}} · {{item.totalVariantes}} variantes</p>
+        <a class="card-link" [routerLink]="['/tienda/prendas',item.idProd]">Ver detalle →</a>
+      </article>}
     </div> }
     <nav class="actions" aria-label="Paginación"><button class="small-button" (click)="pagina(page.offset - page.limit)" [disabled]="busy() || page.offset === 0">Anterior</button><span>Desde {{ page.items.length ? page.offset + 1 : 0 }} · máximo {{ page.limit }} por página</span><button class="small-button" (click)="pagina(page.offset + page.limit)" [disabled]="busy() || page.offset + page.limit >= page.total">Siguiente</button></nav>
   }

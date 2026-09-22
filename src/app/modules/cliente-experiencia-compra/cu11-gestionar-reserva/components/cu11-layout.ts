@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
   template: `<section aria-labelledby="cu11-title">
     <nav aria-label="Tienda"><a routerLink="/tienda">Catálogo</a> · <a routerLink="/tienda/reservas">Mis reservas</a></nav>
     <h1 id="cu11-title">{{ title() }}</h1>
-    @if (error()) { <div class="notice error" role="alert"><p>{{ error() }}</p><a routerLink="/login">Iniciar sesión</a></div> }
+    @if (error()) { <div class="notice error" role="alert"><p>{{ error() }}</p>@if (error().toLowerCase().includes('sesión')) { <a routerLink="/login">Iniciar sesión</a> }</div> }
     <ng-content />
   </section>`,
   styles: `:host { display: block; max-width: 1080px; margin: 24px auto; padding: 20px; }

@@ -27,5 +27,19 @@ export interface ClienteEditar {
   fechaNac?: string;
 }
 
+// CU07 alta administrativa: mismos datos que el registro público de CU01.
+export interface ClienteCrear {
+  ci: string;
+  nombres: string;
+  apellidoPat: string;
+  apellidoMat: string;
+  sexo: 'M' | 'F';
+  correo: string;
+  telefono: string;
+  direccion: string;
+  fechaNac: string;
+  contrasena: string;
+}
+
 export interface ClientesFiltros { offset: number; limit: number; q?: string }
 export interface ClientesListado { items: ClienteDetalle[]; total: number; offset: number; limit: number }

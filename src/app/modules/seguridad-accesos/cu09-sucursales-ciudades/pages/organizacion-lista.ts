@@ -4,7 +4,7 @@ import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { EMPTY, expand, finalize, reduce, Subscription } from 'rxjs';
 import { Cu09Layout } from '../components/cu09-layout';
-import { Ciudad, Entidad, entero, esSucursal, Estado, Filtros, identificador, Listado } from '../models/organizacion.models';
+import { Ciudad, Detalle, Entidad, entero, esSucursal, Estado, Filtros, identificador, Listado } from '../models/organizacion.models';
 import { OrganizacionService } from '../services/organizacion.service';
 import { organizacionError } from '../services/organizacion-error';
 
@@ -44,7 +44,9 @@ import { organizacionError } from '../services/organizacion-error';
             <tr>
               @if (kind === 'ciudades') { <td>{{ id(row) }}</td> }
               <td><a [routerLink]="[base, id(row)]">{{ row.nombre }}</a></td>
-              @if (isBranch(row)) { <td>{{ row.ciudad.nombre }}</td><td>{{ row.direccion }}</td><td>{{ row.estado }}</td> }
+              @if (isBranch(row)) { <td>{{ row.ciudad.nombre }}</td>
+                <td>{{ row.direccion }}@if (coordenadas(row); as coords) { <br /><a [href]="mapa(coords)" target="_blank" rel="noopener noreferrer">Ver ubicación ({{ coords }})</a> } @else { <br /><span class="muted">Sin ubicación validada</span> }</td>
+                <td>{{ row.estado }}</td> }
               <td class="actions-cell"><a [routerLink]="[base, id(row), 'editar']" [attr.aria-label]="'Editar ' + row.nombre">Editar</a></td>
             </tr>
           }</tbody>
@@ -74,6 +76,18 @@ export class OrganizacionListaPage {
   readonly cityError = signal('');
   constructor() { this.load(); if (this.kind === 'sucursales') this.loadCities(); }
   cityNames(): string { return this.cities().map(city => city.nombre).join('\n'); }
+  /** CU09: coordenadas válidas o null (nunca se construye un mapa inválido). */
+  coordenadas(row: Detalle): string | null {
+    if (!esSucursal(row) || row.latitud === null || row.latitud === undefined
+        || row.longitud === null || row.longitud === undefined) return null;
+    const lat = Number(row.latitud); const lon = Number(row.longitud);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+  }
+  mapa(coords: string): string {
+    const [lat, lon] = coords.split(', ').map(Number);
+    return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`;
+  }
   loadCities(): void {
     if (this.loadingCities()) return;
     this.loadingCities.set(true); this.cityError.set('');
