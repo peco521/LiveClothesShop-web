@@ -27,7 +27,7 @@ describe('Rutas de Seguridad y Accesos', () => {
     await harness.navigateByUrl('/login', LoginPage);
     expect(harness.routeNativeElement?.textContent).toContain('Qué bueno verte');
     await harness.navigateByUrl('/acceso', AccesoPage);
-    expect(harness.routeNativeElement?.textContent).toContain('Tu espacio LiveClothesShop');
+    expect(harness.routeNativeElement?.textContent).toContain('Tu espacio FashionStore');
   });
 
   it('la raíz y rutas desconocidas llevan al login', async () => {

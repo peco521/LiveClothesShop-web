@@ -4,14 +4,14 @@ import { internalGuard } from './modules/seguridad-accesos/shared/guards/interna
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
-  { path: 'admin/login', title: 'Acceso administrativo | LiveClothesShop', loadComponent: () => import('./modules/seguridad-accesos/pages/admin-login/admin-login').then(m => m.AdminLoginPage) },
+  { path: 'admin/login', title: 'Acceso administrativo | FashionStore', loadComponent: () => import('./modules/seguridad-accesos/pages/admin-login/admin-login').then(m => m.AdminLoginPage) },
   {
     path: 'admin',
     canActivateChild: [internalGuard],
-    title: 'Panel administrativo | LiveClothesShop',
+    title: 'Panel administrativo | FashionStore',
     loadComponent: () => import('./modules/seguridad-accesos/shared/layout/admin-layout').then(m => m.AdminLayout),
     children: [
-      { path: '', pathMatch: 'full', title: 'Panel administrativo | LiveClothesShop', loadComponent: () => import('./modules/seguridad-accesos/pages/dashboard/dashboard').then(m => m.DashboardPage) },
+      { path: '', pathMatch: 'full', title: 'Panel administrativo | FashionStore', loadComponent: () => import('./modules/seguridad-accesos/pages/dashboard/dashboard').then(m => m.DashboardPage) },
       { path: '', loadChildren: () => import('./modules/seguridad-accesos/cu05-usuarios-empleados/routes/cu05.routes').then(m => m.CU05_ROUTES) },
       { path: 'roles', loadChildren: () => import('./modules/seguridad-accesos/cu06-roles-permisos/routes/cu06.routes').then(m => m.CU06_ROUTES) },
       { path: 'clientes', loadChildren: () => import('./modules/seguridad-accesos/cu07-clientes/routes/cu07.routes').then(m => m.CU07_ROUTES) },
@@ -33,7 +33,7 @@ export const routes: Routes = [
   { path: '', loadChildren: () => import('./modules/seguridad-accesos/routes/seguridad-accesos.routes').then(m => m.SEGURIDAD_ACCESOS_ROUTES) },
   {
     path: 'tienda',
-    title: 'Tienda | LiveClothesShop',
+    title: 'Tienda | FashionStore',
     loadComponent: () => import('./modules/cliente-experiencia-compra/shared/layout/shop-layout').then(m => m.ShopLayout),
     children: [
       { path: '', loadChildren: () => import('./modules/cliente-experiencia-compra/cu10-consultar-prendas/routes/cu10.routes').then(m => m.CU10_ROUTES) },

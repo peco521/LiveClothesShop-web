@@ -11,7 +11,7 @@ import { AuthService } from '../../services/auth.service';
   selector: 'app-acceso',
   imports: [AuthLayout, RouterLink],
   template: `
-    <app-auth-layout title="Tu espacio LiveClothesShop" description="Una confirmación de tu acceso, sin pasos adicionales.">
+    <app-auth-layout title="Tu espacio FashionStore" description="Una confirmación de tu acceso, sin pasos adicionales.">
       @if (motivo === 'sin-permiso') { <p class="notice error" role="alert">No tienes el permiso requerido para acceder a esta sección.</p> }
       @if (motivo === 'verificacion') { <p class="notice error" role="alert">No se pudo verificar el acceso. Vuelve a comprobar tu sesión.</p> }
       @if (checking()) {

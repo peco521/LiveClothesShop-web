@@ -7,7 +7,7 @@
     <button class="button primary dashboard-action" type="button" (click)="verify()">Volver a verificar</button>
     <p class="form-footer"><a routerLink="/admin/login">Ir a iniciar sesión</a></p>
   } @else if (auth.session(); as session) {
-    <p class="eyebrow">LiveClothesShop · Administración</p>
+    <p class="eyebrow">FashionStore · Administración</p>
     <h1 id="dashboard-title">Hola, {{ session.usuario.nombres || 'bienvenido/a' }}</h1>
     <p class="description">Sesión iniciada correctamente como {{ session.usuario.correo }}.</p>
     <div class="module-grid">

@@ -30,6 +30,15 @@ describe('AdminLayout', () => {
     expect(fixture.nativeElement.querySelector('a[href="/admin/roles"]')).toBeFalsy();
   });
 
+  it('muestra iconos en el dashboard, las secciones y sus opciones', () => {
+    const fixture = TestBed.createComponent(AdminLayout);
+    fixture.detectChanges();
+    const icons: NodeListOf<SVGUseElement> = fixture.nativeElement.querySelectorAll('.side-nav use');
+    expect(Array.from(icons, icon => icon.getAttribute('href'))).toEqual([
+      '#icon-home', '#icon-shield', '#icon-users', '#icon-store', '#icon-city',
+    ]);
+  });
+
   it('cierra sesión con AuthService.logout sin manipular la cookie', () => {
     const fixture = TestBed.createComponent(AdminLayout);
     fixture.detectChanges();
