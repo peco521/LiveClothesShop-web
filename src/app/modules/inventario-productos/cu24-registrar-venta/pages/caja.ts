@@ -9,11 +9,12 @@ import { ReciboTicket } from '../components/recibo-ticket';
 import { OperacionesService } from '../../shared/operaciones.service';
 import { Customer, Pago, Refs, Reservation, Sale } from '../../shared/operaciones.models';
 import { ProductoDetalle, ProductosListado, VarianteDetalle } from '../../../cliente-experiencia-compra/cu10-consultar-prendas/models/catalogo.models';
+import { PwaSyncService } from '../../../../core/offline/pwa-sync.service';
 
 type ElectronicMethod = 'tarjeta' | 'QR' | 'transferencia';
 // `reservada`/`cantidadReservada` marcan las prendas que llegan de una reserva de CU22:
 // no se pueden quitar ni bajar de la cantidad reservada mientras siga vinculada.
-interface DraftLine { idVar: string; producto: string; talla: string; colores: string; imagen: string | null; cantidad: number;
+interface DraftLine { idVar: string; producto: string; talla: string; colores: string; imagen: string | null; cantidad: number; precio: number;
   reservada?: boolean; cantidadReservada?: number }
 // CU24: alta de cliente en el mostrador (no cambia la sesión del cajero).
 interface NewCustomerDraft { ci: string; nombres: string; apellidoPat: string; apellidoMat: string; sexo: 'M' | 'F';
@@ -26,6 +27,7 @@ export class PuntoDeVentaPage {
   private readonly destroy = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  readonly offlineSync = inject(PwaSyncService);
   readonly refs = signal<Refs | null>(null);
   readonly customers = signal<Customer[]>([]);
   readonly selectedCustomer = signal<Customer | null>(null);
@@ -50,6 +52,7 @@ export class PuntoDeVentaPage {
   operationKey = this.newKey();
   /** CU24: venta ya preparada de la reserva cargada; se retoma en vez de bloquear el cobro. */
   private ventaEnCurso: number | null = null;
+  offlineQueuedId: string | null = null;
   draft: DraftLine[] = [];
   nuevo: NewCustomerDraft = { ci: '', nombres: '', apellidoPat: '', apellidoMat: '', sexo: 'F',
     correo: '', telefono: '', direccion: '', fechaNac: '', contrasena: '' };
@@ -116,7 +119,7 @@ export class PuntoDeVentaPage {
     this.draft = [...this.draft.filter(line => !line.reservada), ...value.items.map(item => ({
       idVar: item.idVar, producto: item.producto, talla: item.talla ?? 'no registrada',
       colores: (item.colores ?? []).join(', ') || 'Sin color', imagen: item.imagen ?? null,
-      cantidad: item.cantidad, reservada: true, cantidadReservada: item.cantidad }))];
+      cantidad: item.cantidad, precio: 0, reservada: true, cantidadReservada: item.cantidad }))];
     if (value.idCliente) { this.reservaCliente.set(value.idCliente); this.loadReservationCustomer(value.idCliente); }
     // CU24: si la caja ya preparó la venta de esta reserva, se retoma esa misma venta.
     this.ventaEnCurso = value.nroVentaEnCurso ?? null;
@@ -214,7 +217,7 @@ export class PuntoDeVentaPage {
     if (existing) existing.cantidad++;
     else this.draft.push({ idVar: variant.idVariante, producto: product.descripcion,
       talla: variant.talla.descripcion, colores: variant.colores.map(c => c.descripcion).join(', ') || 'Sin color',
-      imagen: variant.imagen, cantidad: 1 });
+      imagen: variant.imagen, cantidad: 1, precio: Number(variant.precio) });
     this.success.set('Prenda añadida a la venta.');
   }
 
@@ -238,7 +241,7 @@ export class PuntoDeVentaPage {
   }
 
   prepareSale(): void {
-    if (this.saving()) return;
+    if (this.saving() || this.offlineQueuedId) return;
     if (!this.nroSuc || !this.draft.length || this.draft.some(line => !Number.isInteger(line.cantidad) || line.cantidad < 1)) {
       this.error.set('Selecciona sucursal y prendas con cantidades válidas.'); return;
     }
@@ -257,6 +260,46 @@ export class PuntoDeVentaPage {
           this.success.set('Venta preparada. El inventario se descuenta al confirmar el pago.'); },
         error: e => this.error.set(requestError(e, this.router)),
       });
+  }
+
+  /**
+   * Encola únicamente ventas nuevas de contado con precio capturado previamente
+   * online. El servidor vuelve a validar vigencia del precio, stock y descuentos;
+   * esta acción nunca afirma que inventario o pago ya fueron confirmados.
+   */
+  async enqueueOfflineCashSale(): Promise<void> {
+    if (this.saving() || this.offlineQueuedId) return;
+    if (this.nroReserva || this.draft.some(line => line.reservada)) {
+      this.error.set('Una reserva solo puede convertirse en venta cuando el servidor la valide.'); return;
+    }
+    if (!this.nroSuc || !this.draft.length || this.draft.some(line => !Number.isInteger(line.cantidad)
+        || line.cantidad < 1 || !Number.isFinite(line.precio) || line.precio <= 0)) {
+      this.error.set('Selecciona sucursal y prendas con precios capturados y cantidades válidas.'); return;
+    }
+    const subtotalCapturado = this.draft.reduce((sum, line) => sum + line.precio * line.cantidad, 0);
+    if (!Number.isFinite(Number(this.received)) || Number(this.received) < subtotalCapturado) {
+      this.error.set('Registra el efectivo recibido antes de guardar la venta pendiente.'); return;
+    }
+    this.saving.set(true); this.error.set(''); this.success.set('');
+    try {
+      this.offlineQueuedId = await this.offlineSync.enqueue({
+        tipo: 'venta', sucursal: this.nroSuc, dependeDe: [],
+        datos: {
+          lineas: this.draft.map(line => ({ idVariante: line.idVar, cantidad: line.cantidad, precio: line.precio })),
+          metodo: 'efectivo', idCliente: this.selectedCustomer()?.idUsuario ?? null,
+        },
+      });
+      this.success.set('Venta de contado guardada como pendiente. El servidor aún debe conciliar precio, descuentos y stock; no se confirma inventario ni pago hasta esa aceptación.');
+    } catch {
+      this.error.set('No se pudo persistir la venta offline. No se confirmó el pago ni se modificó el inventario.');
+    } finally { this.saving.set(false); }
+  }
+
+  offlineSales() { return this.offlineSync.operations().filter(operation => operation.tipo === 'venta'); }
+
+  offlineSaleState(id: string): string {
+    const operation = this.offlineSync.operations().find(item => item.id === id);
+    return operation ? `${operation.estado}${operation.codigo ? ` · ${operation.codigo}` : ''}${operation.detalle ? ` · ${operation.detalle}` : ''}` : 'Estado sincronizado no cargado';
   }
 
   cash(): void {
@@ -379,6 +422,7 @@ export class PuntoDeVentaPage {
 
   newSale(): void {
     this.sale.set(null); this.draft = []; this.selectedCustomer.set(null); this.customers.set([]);
+    this.offlineQueuedId = null;
     this.product.set(null); this.received = 0; this.nroReserva = null; this.confirmCancel = false;
     this.reservaCliente.set(null); this.reservation.set(null);
     this.ventaEnCurso = null;

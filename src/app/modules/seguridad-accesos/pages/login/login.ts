@@ -23,6 +23,7 @@ export class LoginPage {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly form = this.fb.group({
+    empresa: ['', [notBlank, Validators.maxLength(30)]],
     correo: ['', [notBlank, normalizedEmail, Validators.maxLength(100)]],
     contrasena: ['', [Validators.required, Validators.maxLength(128)]],
   });

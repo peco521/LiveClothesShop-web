@@ -12,9 +12,18 @@
       <a class="shop-link" routerLink="/tienda/recomendaciones" routerLinkActive="active" ariaCurrentWhenActive="page"><span>Recomendaciones</span></a>
     </nav>
     @if (auth.session(); as session) {
-      <span class="header-user">{{ session.usuario.nombres || session.usuario.correo }}</span>
+      <span class="header-user">{{ session.empresa || 'FashionStore' }} · {{ session.usuario.nombres || session.usuario.correo }}</span>
     }
     <div class="header-actions">
+      <span role="status" aria-live="polite">{{ !sync.online() ? 'Sin conexión' : sync.apiReachable() === false ? 'API sin respuesta' : sync.apiReachable() === null ? 'Comprobando API…' : 'API disponible' }} · {{ sync.pending() }} pendientes@if(sync.conflicts()) { · {{ sync.conflicts() }} por revisar }</span>
+      <button class="button" type="button" (click)="sync.flush()" [disabled]="!sync.online() || sync.apiReachable() === false || sync.busy()">{{ sync.busy() ? 'Sincronizando…' : 'Sincronizar' }}</button>
+      @if (sync.conflictItems().length) {
+        <details class="sync-conflicts"><summary>Ver conflictos/rechazos</summary>
+          <ul>@for (operation of sync.conflictItems(); track operation.id) {
+            <li><code>{{ operation.id }}</code> · {{ operation.codigo || operation.estado }} · {{ operation.detalle || 'Requiere revisión' }}</li>
+          }</ul>
+        </details>
+      }
       <a class="cart-icon" routerLink="/tienda/carrito" routerLinkActive="active" ariaCurrentWhenActive="page" [attr.aria-label]="'Ver carrito, '+(carrito.estado()?.cantidadItems??0)+' prendas'">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 3h3l2.3 12h11.4l2-8H6"/><path d="M8 19h.01M18 19h.01" stroke-width="4" stroke-linecap="round"/></svg>
         <span class="visually-hidden">Carrito@if(carrito.estado()?.cantidadItems){ ({{carrito.estado()?.cantidadItems}}) }</span>

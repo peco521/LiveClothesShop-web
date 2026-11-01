@@ -11,7 +11,11 @@
     <h1 id="admin-login-title">Bienvenido a tu panel</h1>
     <p class="description">Ingresa con tu cuenta de trabajo para acceder a las funciones asignadas.</p>
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="busy()">
-      <fieldset [disabled]="busy()">
+        <fieldset [disabled]="busy()">
+          <div class="field">
+            <label for="admin-empresa">Código de empresa</label>
+            <input id="admin-empresa" type="text" formControlName="empresa" autocomplete="organization" required maxlength="30" />
+          </div>
         <legend class="visually-hidden">Credenciales de acceso administrativo</legend>
         <div class="field">
           <label for="admin-correo">Correo electrónico</label>

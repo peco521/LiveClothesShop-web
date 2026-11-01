@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 100" role="img" aria-labelledby="title desc">
+  <title id="title">Manaco · identidad provisional</title><desc id="desc">Logotipo tipográfico de demostración, no oficial.</desc>
+  <rect width="360" height="100" rx="14" fill="#1B2A4A"/><path d="M28 68V30h12l14 18 14-18h12v38H67V49L54 65 41 49v19z" fill="#C8A24A"/>
+  <text x="96" y="60" fill="#fff" font-family="Arial,sans-serif" font-size="30" font-weight="700">MANACO</text><text x="280" y="83" fill="#C8A24A" font-family="Arial,sans-serif" font-size="10">DEMO</text>
+</svg>

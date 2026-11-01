@@ -38,7 +38,7 @@ describe('CU09 rutas y páginas', () => {
   it.each(paths)('protege sin sesión %s', async path => {
     auth.restore.mockReturnValue(of(null)); auth.session.set(null);
     const harness = await RouterTestingHarness.create(); await harness.navigateByUrl(path);
-    expect(TestBed.inject(Router).url).toBe('/login'); expect(service.listar).not.toHaveBeenCalled(); expect(service.detalle).not.toHaveBeenCalled();
+    expect(TestBed.inject(Router).url).toBe('/admin/login'); expect(service.listar).not.toHaveBeenCalled(); expect(service.detalle).not.toHaveBeenCalled();
   });
   it.each(paths)('sin bypass SuperAdmin en %s', async path => {
     const denied = { ...session, rol: { nro: 'superadmin', descripcion: 'SuperAdmin' }, permisos: ['CU05', 'CU06', 'CU07', 'CU08'] };
@@ -49,7 +49,7 @@ describe('CU09 rutas y páginas', () => {
   it.each([401, 403, 503])('guard falla cerrado HTTP %s', async status => {
     auth.restore.mockReturnValue(throwError(() => new HttpErrorResponse({ status })));
     const harness = await RouterTestingHarness.create(); await harness.navigateByUrl('/admin/sucursales');
-    expect(TestBed.inject(Router).url).toBe(status === 401 ? '/login' : '/acceso?motivo=' + (status === 403 ? 'sin-permiso' : 'verificacion'));
+    expect(TestBed.inject(Router).url).toBe(status === 401 ? '/admin/login' : '/acceso?motivo=' + (status === 403 ? 'sin-permiso' : 'verificacion'));
   });
   it.each([true, false])('panel muestra enlace solo con CU09 %s', async allowed => {
     const current = { ...session, permisos: allowed ? ['CU09'] : [] }; auth.restore.mockReturnValue(of(current)); auth.session.set(current);
@@ -78,12 +78,15 @@ describe('CU09 rutas y páginas', () => {
   it('rechaza filtros inválidos antes de HTTP', async () => {
     const harness = await RouterTestingHarness.create(); const page = await openLeaf(harness, '/admin/sucursales', OrganizacionListaPage);
     for (const idCiud of [-32769, 32768, 1.5]) { page.form.controls.idCiud.setValue(idCiud); page.aplicar(); }
-    page.form.patchValue({ idCiud: null, q: 'x'.repeat(101) }); page.aplicar(); expect(service.listar).toHaveBeenCalledOnce();
+    page.form.patchValue({ idCiud: null, q: 'x'.repeat(101) }); page.aplicar();
+    expect(service.listar.mock.calls.filter(([kind]) => kind === 'sucursales')).toHaveLength(1);
   });
   it('carga, cancela respuesta anterior y muestra vacío', async () => {
-    const pending = new Subject<Listado>(); service.listar.mockReturnValue(pending);
+    const pending = new Subject<Listado>();
+    service.listar.mockImplementation((kind: Entidad) => kind === 'sucursales' ? pending : of(listado));
     const harness = await RouterTestingHarness.create(); const page = await openLeaf(harness, '/admin/sucursales', OrganizacionListaPage); harness.detectChanges();
-    expect(harness.routeNativeElement?.textContent).toContain('Cargando'); page.aplicar(); expect(service.listar).toHaveBeenCalledOnce();
+    expect(harness.routeNativeElement?.textContent).toContain('Cargando');
+    expect(service.listar.mock.calls.filter(([kind]) => kind === 'sucursales')).toHaveLength(1);
     service.listar.mockReturnValue(of({ ...listado, items: [], total: 0 })); page.form.controls.q.setValue('Otra'); page.aplicar();
     expect(pending.observed).toBe(false); pending.next(listado); harness.detectChanges(); expect(harness.routeNativeElement?.textContent).toContain('No hay registros');
   });

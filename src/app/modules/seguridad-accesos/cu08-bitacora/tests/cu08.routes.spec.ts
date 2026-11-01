@@ -118,7 +118,7 @@ describe('CU08 rutas, UI, cancelación y privacidad', () => {
   it.each(['/admin/bitacora', '/admin/bitacora/9007199254740993'])('sin sesión bloquea %s', async path => {
     auth.restore.mockReturnValue(of(null)); auth.session.set(null);
     const harness = await RouterTestingHarness.create(); await harness.navigateByUrl(path);
-    expect(TestBed.inject(Router).url).toBe('/login'); expect(service.listar).not.toHaveBeenCalled(); expect(service.detalle).not.toHaveBeenCalled();
+    expect(TestBed.inject(Router).url).toBe('/admin/login'); expect(service.listar).not.toHaveBeenCalled(); expect(service.detalle).not.toHaveBeenCalled();
   });
   it.each(['/admin/bitacora', '/admin/bitacora/9007199254740993'])('sin CU08 bloquea %s sin bypass de rol', async path => {
     const denied = { ...session, permisos: ['CU05', 'CU06', 'CU07'], rol: { nro: 'superadmin', descripcion: 'SuperAdmin' } };

@@ -20,13 +20,18 @@ export interface RegistroResponse {
 }
 
 export interface LoginRequest {
+  empresa?: string;
   correo: string;
   contrasena: string;
 }
 
 export interface AuthResponse {
-  usuario: { idUsuario: string; tipo?: 'A' | 'C' | 'E'; nombres: string | null; correo: string };
+  empresa?: string | null;
+  plataforma?: boolean;
+  usuario: { idUsuario: string; tipo?: 'A' | 'C' | 'E' | 'S'; nombres: string | null; correo: string };
   rol: { nro: string; descripcion: string };
   permisos: string[];
   expiraEn: string;
+  /** Marca local sin credenciales; permite reabrir solo la caja offline. */
+  offlineOnly?: boolean;
 }

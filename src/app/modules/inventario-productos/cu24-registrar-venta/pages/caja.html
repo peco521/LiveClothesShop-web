@@ -1,4 +1,15 @@
 <app-inventario-panel [title]="sale() ? 'Comprobante de venta' : 'Punto de venta'" [error]="error()" [success]="success()">
+  @if (offlineSales().length) {
+    <section class="card" aria-labelledby="offline-sales-title">
+      <div class="section-heading"><h2 id="offline-sales-title">Ventas offline y conciliación</h2>
+        <button class="btn" type="button" (click)="offlineSync.flush()" [disabled]="!offlineSync.online() || offlineSync.apiReachable() === false || offlineSync.busy()">{{ offlineSync.busy() ? 'Sincronizando…' : 'Sincronizar pendientes' }}</button>
+      </div>
+      <ul>@for (operation of offlineSales(); track operation.id) {
+        <li><code>{{ operation.id }}</code> · {{ offlineSaleState(operation.id) }}</li>
+      }</ul>
+      <p class="muted">Las ventas no descuentan inventario ni se consideran pagadas hasta que el servidor las acepte.</p>
+    </section>
+  }
   @if (!sale()) {
     <div class="form-grid">
       <div class="field"><label for="caja-sucursal">Sucursal</label><select id="caja-sucursal" [(ngModel)]="nroSuc" [ngModelOptions]="{standalone:true}" [disabled]="refs()?.sucursalAsignada !== null || !!nroReserva"><option [ngValue]="0">Selecciona una sucursal</option>@for (s of refs()?.sucursales; track s.nro) { <option [ngValue]="s.nro">{{ s.nombre }} · {{ s.ciudad }}</option> }</select>
@@ -56,12 +67,21 @@
       @for (line of draft; track line.idVar; let i = $index) {
         <article class="product-line">
           @if (line.imagen) { <img [src]="line.imagen" [alt]="line.producto" /> }
-          <div><h3>{{ line.producto }} @if (line.reservada) { <span class="badge">Reservada</span> }</h3><p>Talla {{ line.talla }} · {{ line.colores }}</p></div>
-          <div class="field" style="margin:0;max-width:130px"><label [for]="'caja-cantidad-' + i">Cantidad</label><input [id]="'caja-cantidad-' + i" type="number" [(ngModel)]="line.cantidad" (change)="normalizarCantidad(i)" [ngModelOptions]="{standalone:true}" [min]="line.cantidadReservada ?? 1" step="1" /></div>
-          <button class="btn danger" type="button" (click)="removeDraft(i)" [disabled]="saving() || line.reservada" [title]="line.reservada ? 'Las prendas de la reserva se quitan con «Quitar reserva»' : 'Quitar prenda'">Quitar</button>
+          <div><h3>{{ line.producto }} @if (line.reservada) { <span class="badge">Reservada</span> }</h3><p>Talla {{ line.talla }} · {{ line.colores }} · Capturado: {{ line.precio | currency:'USD':'code' }}</p></div>
+          <div class="field" style="margin:0;max-width:130px"><label [for]="'caja-cantidad-' + i">Cantidad</label><input [id]="'caja-cantidad-' + i" type="number" [(ngModel)]="line.cantidad" (change)="normalizarCantidad(i)" [ngModelOptions]="{standalone:true}" [min]="line.cantidadReservada ?? 1" step="1" [disabled]="saving() || !!offlineQueuedId" /></div>
+          <button class="btn danger" type="button" (click)="removeDraft(i)" [disabled]="saving() || !!offlineQueuedId || line.reservada" [title]="line.reservada ? 'Las prendas de la reserva se quitan con «Quitar reserva»' : 'Quitar prenda'">Quitar</button>
         </article>
       } @empty { <p class="empty">Selecciona las prendas del catálogo para preparar la venta.</p> }
-      <div class="actions"><button class="btn primary" type="button" (click)="prepareSale()" [disabled]="saving()">Revisar total y continuar al cobro</button></div>
+      <div class="actions"><button class="btn primary" type="button" (click)="prepareSale()" [disabled]="saving() || !!offlineQueuedId">Revisar total y continuar al cobro</button></div>
+      @if (!nroReserva && draft.length) {
+        <div class="card">
+          <h3>Contingencia offline — solo efectivo</h3>
+          <p class="muted">Usa precios previamente cargados. No disponible para ventas asociadas a reservas ni pagos electrónicos. Precio, promoción y disponibilidad se concilian al sincronizar.</p>
+          <div class="field"><label for="offline-cash-received">Efectivo recibido</label><input id="offline-cash-received" type="number" [(ngModel)]="received" [ngModelOptions]="{standalone:true}" min="0" step="0.01" [disabled]="saving() || !!offlineQueuedId" /></div>
+          <button class="btn" type="button" (click)="enqueueOfflineCashSale()" [disabled]="saving() || !!offlineQueuedId">{{ offlineQueuedId ? 'Venta pendiente guardada' : 'Guardar venta de contado pendiente' }}</button>
+          @if (offlineQueuedId) { <p role="status">Operación {{ offlineQueuedId }} guardada; usa «Sincronizar pendientes» para reintentar.</p> }
+        </div>
+      }
     </section>
     <section class="card catalog-picker">
       <div class="section-heading"><h2>Seleccionar prendas del catálogo</h2>@if (product()) { <button class="btn" type="button" (click)="product.set(null)">Ocultar variantes</button> }</div>

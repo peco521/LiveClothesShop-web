@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { apiInterceptor } from '../../../core/interceptors/api.interceptor';
 import { AuthService } from './auth.service';
+import { PwaSyncService } from '../../../core/offline/pwa-sync.service';
 import { AuthResponse, RegistroRequest } from '../models/auth.models';
 
 describe('AuthService + interceptor HTTP', () => {
@@ -24,11 +25,16 @@ describe('AuthService + interceptor HTTP', () => {
     TestBed.configureTestingModule({ providers: [
       provideHttpClient(withInterceptors([apiInterceptor])), provideHttpClientTesting(),
       provideRouter([]),
+      { provide: PwaSyncService, useValue: { pause: vi.fn(), activate: vi.fn() } },
     ] });
     service = TestBed.inject(AuthService);
     http = TestBed.inject(HttpTestingController);
   });
-  afterEach(() => { http.verify(); vi.restoreAllMocks(); });
+  afterEach(() => {
+    http.verify(); vi.restoreAllMocks();
+    localStorage.removeItem('fashionstore-offline-cashier-session-v1');
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
+  });
 
   it('CU04 envía correo normalizado sin sesión nueva', () => {
     service.requestRecovery(' ANA@EXAMPLE.COM ').subscribe();
@@ -90,6 +96,26 @@ describe('AuthService + interceptor HTTP', () => {
     service.logout().subscribe();
     http.expectOne('/api/auth/logout').flush(null);
     expect(navigate).toHaveBeenCalledWith('/admin/login');
+  });
+
+  it('restaura únicamente la identidad CU24 cacheada cuando se recarga sin red', () => {
+    const cashier: AuthResponse = { ...session, empresa: 'manaco',
+      usuario: { ...session.usuario, tipo: 'E' }, permisos: ['CU24'],
+      expiraEn: '2099-01-01T00:00:00Z' };
+    service.login({ empresa: 'manaco', correo: 'cashier@example.com', contrasena: 'Prueba' }, 'admin').subscribe();
+    http.expectOne('/api/auth/login/admin').flush(cashier);
+    const stored = JSON.parse(localStorage.getItem('fashionstore-offline-cashier-session-v1')!);
+    expect(stored.usuario.idUsuario).toBe(cashier.usuario.idUsuario);
+    expect(stored).not.toHaveProperty('token');
+    expect(stored).not.toHaveProperty('contrasena');
+
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+    let restored: AuthResponse | null | undefined;
+    service.restore().subscribe(value => restored = value);
+    http.expectOne('/api/auth/me').error(new ProgressEvent('error'));
+    expect(restored?.offlineOnly).toBe(true);
+    expect(restored?.empresa).toBe('manaco');
+    expect(service.session()?.offlineOnly).toBe(true);
   });
 
   it('restaura sesión desde me sin CSRF en GET y sin transfer cache', () => {
@@ -159,7 +185,7 @@ describe('AuthService + interceptor HTTP', () => {
     expect(service.session()).toBeNull();
     expect(navigate).toHaveBeenCalledExactlyOnceWith('/login');
     expect(clear).not.toHaveBeenCalled();
-    expect(remove).not.toHaveBeenCalled();
+    expect(remove).toHaveBeenCalledExactlyOnceWith('fashionstore-offline-cashier-session-v1');
     expect(cookie).not.toHaveBeenCalled();
   });
 

@@ -5,10 +5,15 @@ import { Router } from '@angular/router';
 import { catchError, defer, map, Observable, of, tap, throwError } from 'rxjs';
 import { isInternalSession } from '../models/session-type';
 import { API_BASE_URL } from '../../../core/config/api.config';
+import { PwaSyncService } from '../../../core/offline/pwa-sync.service';
 import { AuthResponse, LoginRequest, RegistroRequest, RegistroResponse } from '../models/auth.models';
+
+const OFFLINE_CASHIER_SESSION = 'fashionstore-offline-cashier-session-v1';
 
 function publicSession(value: AuthResponse): AuthResponse {
   return {
+    ...(value.empresa !== undefined ? { empresa: value.empresa } : {}),
+    ...(value.plataforma !== undefined ? { plataforma: value.plataforma } : {}),
     usuario: { idUsuario: value.usuario.idUsuario, nombres: value.usuario.nombres, correo: value.usuario.correo,
       ...(value.usuario.tipo !== undefined ? { tipo: value.usuario.tipo } : {}) },
     rol: { nro: value.rol.nro, descripcion: value.rol.descripcion },
@@ -17,12 +22,38 @@ function publicSession(value: AuthResponse): AuthResponse {
   };
 }
 
+function cacheCashierSession(session: AuthResponse): void {
+  if (!isInternalSession(session) || session.usuario.tipo !== 'E' || !session.empresa
+      || !session.permisos.includes('CU24') || typeof localStorage === 'undefined') return;
+  // Only a short-lived identity/authorization snapshot is cached, never a token
+  // or password. It is honored only while the browser reports offline.
+  localStorage.setItem(OFFLINE_CASHIER_SESSION, JSON.stringify(session));
+}
+
+function readOfflineCashierSession(): AuthResponse | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const value = JSON.parse(localStorage.getItem(OFFLINE_CASHIER_SESSION) ?? 'null') as AuthResponse | null;
+    if (!value || !isInternalSession(value) || value.usuario.tipo !== 'E' || !value.empresa
+        || !value.permisos.includes('CU24') || !Number.isFinite(Date.parse(value.expiraEn))
+        || Date.parse(value.expiraEn) <= Date.now()) {
+      localStorage.removeItem(OFFLINE_CASHIER_SESSION);
+      return null;
+    }
+    return { ...value, offlineOnly: true };
+  } catch {
+    localStorage.removeItem(OFFLINE_CASHIER_SESSION);
+    return null;
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly platform = inject(PLATFORM_ID);
   private readonly base = `${inject(API_BASE_URL).replace(/\/$/, '')}/auth`;
+  private readonly offlineSync = inject(PwaSyncService);
   private readonly state = signal<AuthResponse | null>(null);
   private revision = 0;
   private loginRevision = 0;
@@ -34,7 +65,7 @@ export class AuthService {
 
   resetPassword(token: string, nueva_contrasena: string): Observable<{ mensaje: string }> {
     return this.http.post<{ mensaje: string }>(`${this.base}/restablecer-contrasena`, { token, nueva_contrasena }).pipe(
-      tap(() => { ++this.revision; this.state.set(null); }),
+      tap(() => { ++this.revision; this.state.set(null); this.clearOfflineSnapshot(); }),
     );
   }
 
@@ -49,26 +80,40 @@ export class AuthService {
     return defer(() => {
       const revision = ++this.revision;
       this.loginRevision = revision;
+      this.clearOfflineSnapshot();
       return this.http.post<RegistroResponse>(`${this.base}/registro`, body).pipe(
         // CU01: el registro público deja la sesión iniciada igual que el login.
         tap((result) => {
-          if (revision === this.revision && result.sesion) this.state.set(publicSession(result.sesion));
+          if (revision === this.revision && result.sesion) {
+            const session = publicSession(result.sesion);
+            this.state.set(session);
+            cacheCashierSession(session);
+            this.offlineSync.activate(session.empresa, session.usuario.idUsuario);
+          }
         }),
       );
     });
   }
 
-  login(input: LoginRequest, portal: 'cliente' | 'admin' = 'cliente'): Observable<AuthResponse> {
+  login(input: LoginRequest, portal: 'cliente' | 'admin' | 'saas' = 'cliente'): Observable<AuthResponse> {
     return defer(() => {
       const revision = ++this.revision;
       this.loginRevision = revision;
-      return this.http.post<AuthResponse>(`${this.base}/login/${portal}`, {
+      this.clearOfflineSnapshot();
+      const path = portal === 'saas' ? '/login/saas' : `/login/${portal}`;
+      return this.http.post<AuthResponse>(`${this.base}${path}`, {
+        ...(portal !== 'saas' && input.empresa ? { empresa: input.empresa.trim().toLowerCase() } : {}),
         correo: input.correo.trim().toLowerCase(), contrasena: input.contrasena,
       }).pipe(
         map(publicSession),
-        tap((session) => { if (revision === this.revision) this.state.set(session); }),
+        tap((session) => { if (revision === this.revision) {
+          this.state.set(session);
+          cacheCashierSession(session);
+          this.offlineSync.activate(session.empresa, session.usuario.idUsuario);
+        } }),
         catchError((error: unknown) => {
           if (revision === this.revision) this.state.set(null);
+          if (revision === this.revision) this.offlineSync.pause();
           return throwError(() => error);
         }),
       );
@@ -79,7 +124,9 @@ export class AuthService {
     return defer(() => {
       const revision = ++this.revision;
       const session = this.state();
-      const loginUrl = session && isInternalSession(session) ? '/admin/login' : '/login';
+      this.offlineSync.pause();
+      this.clearOfflineSnapshot();
+      const loginUrl = session?.plataforma ? '/saas/login' : session && isInternalSession(session) ? '/admin/login' : '/login';
       return this.http.post<void>(`${this.base}/logout`, null).pipe(
         tap(() => {
           // Invalidate even /me requests started during logout, but not a newer login.
@@ -100,13 +147,33 @@ export class AuthService {
       const revision = ++this.revision;
       return this.http.get<AuthResponse>(`${this.base}/me`).pipe(
         map(publicSession),
-        tap((session) => { if (revision === this.revision) this.state.set(session); }),
+        tap((session) => { if (revision === this.revision) {
+          this.state.set(session);
+          cacheCashierSession(session);
+          this.offlineSync.activate(session.empresa, session.usuario.idUsuario);
+        } }),
         catchError((error: unknown) => {
-          if (revision === this.revision) this.state.set(null);
+          if (revision === this.revision) {
+            const offline = error instanceof HttpErrorResponse && error.status === 0
+              && isPlatformBrowser(this.platform) && !navigator.onLine
+              ? readOfflineCashierSession() : null;
+            if (offline) {
+              this.state.set(offline);
+              this.offlineSync.activate(offline.empresa, offline.usuario.idUsuario);
+              return of(offline);
+            }
+            this.state.set(null);
+            this.offlineSync.pause();
+            if (error instanceof HttpErrorResponse && error.status === 401) this.clearOfflineSnapshot();
+          }
           if (error instanceof HttpErrorResponse && error.status === 401) return of(null);
           return throwError(() => error);
         }),
       );
     });
+  }
+
+  private clearOfflineSnapshot(): void {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(OFFLINE_CASHIER_SESSION);
   }
 }

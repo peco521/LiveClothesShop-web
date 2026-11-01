@@ -25,7 +25,7 @@ describe('Acceso administrativo separado', () => {
   it('usa el endpoint interno y entra al panel', () => {
     auth.login.mockReturnValue(of(session));
     const fixture = TestBed.createComponent(AdminLoginPage); fixture.detectChanges();
-    const data = { correo: 'admin@example.com', contrasena: 'Anterior123*' };
+    const data = { empresa: 'manaco', correo: 'admin@example.com', contrasena: 'Anterior123*' };
     fixture.componentInstance.form.setValue(data);
     fixture.componentInstance.submit();
     expect(auth.login).toHaveBeenCalledWith(data, 'admin');
@@ -43,7 +43,7 @@ describe('Acceso administrativo separado', () => {
   it('no navega ante credenciales rechazadas', () => {
     auth.login.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 401 })));
     const fixture = TestBed.createComponent(AdminLoginPage); fixture.detectChanges();
-    fixture.componentInstance.form.setValue({ correo: 'admin@example.com', contrasena: 'incorrecta' });
+    fixture.componentInstance.form.setValue({ empresa: 'manaco', correo: 'admin@example.com', contrasena: 'incorrecta' });
     fixture.componentInstance.submit();
     expect(fixture.componentInstance.error()).toContain('Revisa tu correo');
     expect(TestBed.inject(Router).navigateByUrl).not.toHaveBeenCalled();

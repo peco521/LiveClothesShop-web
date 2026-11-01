@@ -1,8 +1,11 @@
 import { Routes } from '@angular/router';
 
 import { internalGuard } from './modules/seguridad-accesos/shared/guards/internal.guard';
+import { platformGuard } from './modules/plataforma-saas/platform.guard';
 
 export const routes: Routes = [
+  { path: 'saas/login', title: 'Administración SaaS | FashionStore', loadComponent: () => import('./modules/plataforma-saas/saas-login').then(m => m.SaasLoginPage) },
+  { path: 'saas', title: 'Empresas | FashionStore', canActivate: [platformGuard], loadComponent: () => import('./modules/plataforma-saas/saas-dashboard').then(m => m.SaasDashboardPage) },
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: 'admin/login', title: 'Acceso administrativo | FashionStore', loadComponent: () => import('./modules/seguridad-accesos/pages/admin-login/admin-login').then(m => m.AdminLoginPage) },
   {

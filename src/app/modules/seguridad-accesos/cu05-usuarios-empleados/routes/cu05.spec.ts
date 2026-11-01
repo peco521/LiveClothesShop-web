@@ -203,7 +203,7 @@ describe('CU05 páginas y navegación protegida', () => {
   it('lista A/E, muestra detalle para ambos y edición solo E', async () => {
     const { harness } = await open('/admin/usuarios', UsuariosListaPage);
     expect(harness.routeNativeElement?.textContent).toContain('2 usuarios internos');
-    expect(Array.from(harness.routeNativeElement!.querySelectorAll('thead th')).map(th => th.textContent)).toEqual(['Nombre', 'CI', 'Correo', 'Código', 'Tipo', 'Rol', 'Acciones']);
+    expect(Array.from(harness.routeNativeElement!.querySelectorAll('thead th')).map(th => th.textContent)).toEqual(['Nombre', 'CI', 'Correo', 'Código', 'Tipo', 'Rol', 'Estado', 'Acciones']);
     const rows = harness.routeNativeElement!.querySelectorAll('tbody tr');
     expect(rows[0].querySelectorAll('td')[1].textContent).toBe(administrator.ci);
     expect(rows[0].querySelectorAll('td')[3].textContent).toBe(administrator.admin!.cod_adm);
@@ -305,7 +305,7 @@ describe('CU05 páginas y navegación protegida', () => {
   it.each([401, 403, 503])('guard maneja error de restauración HTTP %s', async status => {
     auth.restore.mockReturnValue(throwError(() => new HttpErrorResponse({ status })));
     const harness = await RouterTestingHarness.create(); await harness.navigateByUrl('/admin/usuarios');
-    expect(TestBed.inject(Router).url).toBe(status === 401 ? '/admin/login' : '/acceso?motivo=verificacion');
+    expect(TestBed.inject(Router).url).toBe(status === 401 ? '/admin/login' : `/acceso?motivo=${status === 403 ? 'sin-permiso' : 'verificacion'}`);
     expect(service.listar).not.toHaveBeenCalled();
   });
   it.each([true, false])('enlace panel depende de CU05: %s', async allowed => {

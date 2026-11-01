@@ -13,7 +13,7 @@ describe('CU02 LoginPage', () => {
   const session: AuthResponse = { usuario: { idUsuario: '1', nombres: 'Ana', correo: 'ana@example.com' },
     rol: { nro: 'cliente', descripcion: 'Cliente' }, permisos: [], expiraEn: '2030-01-01T00:00:00Z' };
   const auth = { login: vi.fn(), restore: vi.fn(), session: signal<AuthResponse | null>(null) };
-  const data = { correo: 'ana@example.com', contrasena: 'Frase de prueba 12345' };
+  const data = { empresa: 'manaco', correo: 'ana@example.com', contrasena: 'Frase de prueba 12345' };
 
   beforeEach(async () => {
     auth.login.mockReset(); auth.restore.mockReset().mockReturnValue(of(null)); auth.session.set(null);
@@ -59,7 +59,7 @@ describe('CU02 LoginPage', () => {
   });
 
   it('no aplica política de registro a una contraseña de login corta', () => {
-    page.form.setValue({ correo: data.correo, contrasena: 'abc' });
+    page.form.setValue({ empresa: data.empresa, correo: data.correo, contrasena: 'abc' });
     expect(page.form.valid).toBe(true);
   });
 

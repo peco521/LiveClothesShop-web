@@ -4,6 +4,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../../seguridad-accesos/services/auth.service';
 import { authError } from '../../../seguridad-accesos/services/auth-error';
 import { CarritoService } from '../../cu12-carrito/services/carrito.service';
+import { PwaSyncService } from '../../../../core/offline/pwa-sync.service';
 
 @Component({
   selector: 'app-shop-layout',
@@ -14,6 +15,7 @@ import { CarritoService } from '../../cu12-carrito/services/carrito.service';
 export class ShopLayout {
   readonly auth = inject(AuthService);
   readonly carrito = inject(CarritoService);
+  readonly sync = inject(PwaSyncService);
   private readonly destroyRef = inject(DestroyRef);
   readonly busy = signal(false);
   readonly logoutError = signal('');

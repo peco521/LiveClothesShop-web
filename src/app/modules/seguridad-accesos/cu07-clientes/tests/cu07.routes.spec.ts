@@ -167,7 +167,7 @@ describe('CU07 páginas, navegación y permisos', () => {
     const { harness } = await open('/admin/clientes/cliente-1', ClienteDetallePage);
     const text = harness.routeNativeElement?.textContent;
     expect(text).toContain('Sin registrar');
-    expect(text).toContain('Estado del perfil de cliente (solo lectura)'); expect(text).toContain('inactivo');
+    expect(text).toContain('Estado del cliente'); expect(text).toContain('Inactivo (sin acceso)');
     expect(text).toContain('CL001'); expect(text).toContain('publico-custom');
   });
 
@@ -223,7 +223,7 @@ describe('CU07 páginas, navegación y permisos', () => {
   it.each(['/admin/clientes', '/admin/clientes/cliente-1', '/admin/clientes/cliente-1/editar'])('guard sin sesión protege %s', async path => {
     auth.restore.mockReturnValue(of(null)); auth.session.set(null);
     const harness = await RouterTestingHarness.create(); await harness.navigateByUrl(path);
-    expect(TestBed.inject(Router).url).toBe('/login'); expect(service.listar).not.toHaveBeenCalled(); expect(service.detalle).not.toHaveBeenCalled();
+    expect(TestBed.inject(Router).url).toBe('/admin/login'); expect(service.listar).not.toHaveBeenCalled(); expect(service.detalle).not.toHaveBeenCalled();
   });
   it.each(['/admin/clientes', '/admin/clientes/cliente-1', '/admin/clientes/cliente-1/editar'])('guard sin CU07 protege %s sin bypass SuperAdmin', async path => {
     const denied = { ...session, permisos: ['CU05', 'CU06'], rol: { nro: 'superadmin', descripcion: 'SuperAdmin' } };
@@ -234,7 +234,7 @@ describe('CU07 páginas, navegación y permisos', () => {
   it.each([401, 403, 503])('guard maneja restauración HTTP %s', async status => {
     auth.restore.mockReturnValue(throwError(() => new HttpErrorResponse({ status })));
     const harness = await RouterTestingHarness.create(); await harness.navigateByUrl('/admin/clientes');
-    expect(TestBed.inject(Router).url).toBe(status === 401 ? '/login' : '/acceso?motivo=' + (status === 403 ? 'sin-permiso' : 'verificacion'));
+    expect(TestBed.inject(Router).url).toBe(status === 401 ? '/admin/login' : '/acceso?motivo=' + (status === 403 ? 'sin-permiso' : 'verificacion'));
   });
   it.each([true, false])('enlace panel depende del permiso: %s', async allowed => {
     const current = { ...session, permisos: allowed ? ['CU07'] : [] }; auth.restore.mockReturnValue(of(current)); auth.session.set(current);

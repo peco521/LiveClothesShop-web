@@ -287,7 +287,7 @@ describe('CU06 páginas, rutas y actualización de acceso', () => {
   it.each(['/admin/roles', '/admin/roles/nuevo', '/admin/roles/Gestor/editar', '/admin/roles/Gestor'])('guard protege URL directa %s', async path => {
     auth.restore.mockReturnValue(of(null)); auth.session.set(null);
     const harness = await RouterTestingHarness.create(); await harness.navigateByUrl(path);
-    expect(TestBed.inject(Router).url).toBe('/login'); expect(service.listar).not.toHaveBeenCalled(); expect(service.detalle).not.toHaveBeenCalled();
+    expect(TestBed.inject(Router).url).toBe('/admin/login'); expect(service.listar).not.toHaveBeenCalled(); expect(service.detalle).not.toHaveBeenCalled();
   });
   it.each(['/admin/roles', '/admin/roles/nuevo', '/admin/roles/Gestor/editar', '/admin/roles/Gestor'])('nombre superadmin sin CU06 no da acceso a %s', async path => {
     const denied = { ...session, rol: { nro: 'superadmin', descripcion: 'SuperAdmin' }, permisos: ['CU05'] };
@@ -298,7 +298,7 @@ describe('CU06 páginas, rutas y actualización de acceso', () => {
   it.each([401, 403, 503])('guard maneja fallo de restore %s', async status => {
     auth.restore.mockReturnValue(throwError(() => rejected(status)));
     const harness = await RouterTestingHarness.create(); await harness.navigateByUrl('/admin/roles');
-    expect(TestBed.inject(Router).url).toBe(status === 401 ? '/login' : `/acceso?motivo=${status === 403 ? 'sin-permiso' : 'verificacion'}`);
+    expect(TestBed.inject(Router).url).toBe(status === 401 ? '/admin/login' : `/acceso?motivo=${status === 403 ? 'sin-permiso' : 'verificacion'}`);
     expect(service.listar).not.toHaveBeenCalled();
   });
   it.each([true, false])('enlace panel depende de CU06: %s', async allowed => {

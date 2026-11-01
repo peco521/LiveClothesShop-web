@@ -156,7 +156,7 @@ describe('CU21-CU25 validaciones de pantalla', () => {
     expect(service.send).not.toHaveBeenCalled();
     expect(page.error()).toContain('prendas');
     // CU24: sin cliente la venta queda como anónima (idCliente null) en vez de fallar.
-    page.draft = [{ idVar: 'Var-1', producto: 'Camisa', talla: 'M', colores: 'Rojo', imagen: null, cantidad: 1 }];
+    page.draft = [{ idVar: 'Var-1', producto: 'Camisa', talla: 'M', colores: 'Rojo', imagen: null, cantidad: 1, precio: 10 }];
     page.prepareSale();
     expect(service.send).toHaveBeenCalledWith('caja', expect.objectContaining({ nroSuc: 1, idCliente: null,
       items: [{ idVar: 'Var-1', cantidad: 1 }] }));
@@ -166,7 +166,7 @@ describe('CU21-CU25 validaciones de pantalla', () => {
     setup();
     const page = TestBed.createComponent(PuntoDeVentaPage).componentInstance;
     page.nroSuc = 1; page.nroReserva = 5;
-    page.draft = [{ idVar: 'Var-1', producto: 'Camisa', talla: 'M', colores: 'Rojo', imagen: null, cantidad: 1 }];
+    page.draft = [{ idVar: 'Var-1', producto: 'Camisa', talla: 'M', colores: 'Rojo', imagen: null, cantidad: 1, precio: 10 }];
     page.prepareSale();
     expect(service.send).not.toHaveBeenCalled();
     expect(page.error()).toContain('reserva');
@@ -188,7 +188,7 @@ describe('CU21-CU25 validaciones de pantalla', () => {
     expect(page.selectedCustomer()?.idUsuario).toBe('nuevo-1');
     expect(page.registrando()).toBe(false);
     // La venta anónima se puede elegir explícitamente y no inventa cliente genérico.
-    page.draft = [{ idVar: 'Var-1', producto: 'Camisa', talla: 'M', colores: 'Rojo', imagen: null, cantidad: 1 }];
+    page.draft = [{ idVar: 'Var-1', producto: 'Camisa', talla: 'M', colores: 'Rojo', imagen: null, cantidad: 1, precio: 10 }];
     page.usarSinRegistro();
     expect(page.selectedCustomer()).toBeNull();
   });
@@ -304,7 +304,7 @@ describe('CU21-CU25 validaciones de pantalla', () => {
     cashSetup();
     queryParams.set('reserva', '5');
     const page = TestBed.createComponent(PuntoDeVentaPage).componentInstance;
-    page.draft.push({ idVar: 'Var-X', producto: 'Bufanda', talla: 'Única', colores: 'Azul', imagen: null, cantidad: 1 });
+    page.draft.push({ idVar: 'Var-X', producto: 'Bufanda', talla: 'Única', colores: 'Azul', imagen: null, cantidad: 1, precio: 10 });
     page.prepareSale();
     expect(service.send).toHaveBeenCalledWith('caja', expect.objectContaining({ nroSuc: 1, idCliente: 'cliente-1', nroReserva: 5,
       items: [{ idVar: 'Var-A', cantidad: 2 }, { idVar: 'Var-B', cantidad: 1 }, { idVar: 'Var-C', cantidad: 3 },
