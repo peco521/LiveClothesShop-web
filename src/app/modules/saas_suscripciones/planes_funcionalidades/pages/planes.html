@@ -1,0 +1,58 @@
+<div class="shell">
+  <header class="topbar">
+    <div><span class="brand-mark">F</span><span class="brand">FashionStore <small>PLATAFORMA</small></span></div>
+    <div class="account"><span>Administrador SaaS</span><button type="button" class="quiet" (click)="logout()">Cerrar sesión</button></div>
+  </header>
+  <main class="content">
+    <div class="breadcrumb">PLATAFORMA <span> / </span> PLANES Y FUNCIONALIDADES</div>
+    <div class="heading"><div><p class="eyebrow">SUSCRIPCIONES</p><h1>Planes y funcionalidades</h1><p>Configura los límites y las herramientas disponibles para cada empresa.</p></div><button class="primary" type="button" (click)="create()">+ Crear plan</button></div>
+    @if (error()) { <div class="message error" role="alert">{{ error() }}</div> }
+    @if (notice()) { <div class="message success" role="status">{{ notice() }}</div> }
+    @if (loading()) { <p role="status">Cargando planes…</p> }
+    @else {
+      <section aria-labelledby="plans-title">
+        <div class="section-title"><div><h2 id="plans-title">Planes de la plataforma</h2><p>{{ plans().length }} planes configurados</p></div></div>
+        <div class="cards">
+          @for (plan of plans(); track plan.id) {
+            <article class="plan-card">
+              <div class="card-heading"><span class="icon" aria-hidden="true">◇</span><span class="status" [class.inactive]="plan.estado === 'inactivo'">{{ plan.estado }}</span></div>
+              <h3>{{ plan.nombre }}</h3><p class="plan-id">PLAN #{{ plan.id }}</p>
+              <div class="limit"><strong>{{ plan.maxSucursales }}</strong><span>sucursales<br>máximo</span></div>
+              <p class="list-title">FUNCIONALIDADES</p>
+              <ul>@for (code of plan.funcionalidades; track code) { <li><span aria-hidden="true">✓</span> {{ featureName(code) }}</li> } @empty { <li>Sin funcionalidades asignadas</li> }</ul>
+              <button type="button" class="secondary" [disabled]="plan.estado !== 'activo' || working()" (click)="edit(plan)">{{ plan.estado === 'activo' ? 'Editar configuración' : 'Plan inactivo' }}</button>
+            </article>
+          } @empty { <div class="empty">Aún no hay planes. Crea el primero para comenzar.</div> }
+        </div>
+      </section>
+    }
+
+    @if (editorOpen) {
+      <section class="editor" aria-labelledby="editor-title">
+        <div class="editor-heading"><div><p class="eyebrow">CONFIGURACIÓN</p><h2 id="editor-title">{{ editing === null ? 'Crear plan' : 'Editar plan' }}</h2><p>Define los recursos y funcionalidades de esta versión.</p></div><button type="button" class="quiet" (click)="editorOpen = false" [disabled]="working()">Cerrar</button></div>
+        <div class="fields">
+          <label>Nombre del plan<input type="text" maxlength="30" [(ngModel)]="draft.nombre" (ngModelChange)="invalidate()" placeholder="Ej. Profesional"></label>
+          <label>Límite de sucursales<input type="number" min="1" max="32767" step="1" [(ngModel)]="draft.maxSucursales" (ngModelChange)="invalidate()"></label>
+          <label>Estado<select [(ngModel)]="draft.estado" (ngModelChange)="invalidate()"><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select></label>
+        </div>
+        <fieldset><legend>Funcionalidades habilitadas</legend><p>Selecciona las herramientas que incluye este plan.</p><div class="features">
+          @for (feature of features(); track feature.codigo) { <label class="check"><input type="checkbox" [checked]="draft.funcionalidades.includes(feature.codigo)" (change)="toggleFeature(feature.codigo, $any($event.target).checked)"><span>{{ feature.descripcion }}</span></label> }
+        </div></fieldset>
+        @if (editing !== null) {
+          <fieldset><legend>Empresas con suscripciones vigentes</legend><p>Selecciona las empresas que recibirán la nueva versión. Las demás conservarán su configuración anterior.</p>
+            @if (working()) { <p role="status">Consultando…</p> }
+            @else { <div class="company-list">
+              @for (sub of subscriptions(); track sub.idSuscripcion) { <label class="company"><input type="checkbox" [checked]="selected().includes(sub.idSuscripcion)" (change)="toggleSubscription(sub.idEmpresa, $any($event.target).checked)"><span><strong>{{ sub.empresa }}</strong><small>Suscripción #{{ sub.idSuscripcion }} · versión {{ sub.version }} · {{ sub.sucursalesActivas }} sucursales activas de {{ sub.maxSucursales }}</small></span></label> }
+              @empty { <p>No hay suscripciones vigentes para este plan.</p> }
+            </div> }
+          </fieldset>
+        }
+        @if (impact(); as review) {
+          <div class="review" role="status"><strong>Confirma la actualización</strong><p>{{ review.seleccionadas }} suscripciones recibirán la nueva versión y {{ review.conservanVersion }} conservarán la anterior.</p><button class="primary" type="button" [disabled]="working()" (click)="confirm()">Confirmar y guardar</button></div>
+        } @else {
+          <div class="editor-actions"><button class="primary" type="button" [disabled]="working()" (click)="review()">{{ editing === null ? 'Crear plan' : 'Revisar impacto' }}</button><button class="quiet" type="button" [disabled]="working()" (click)="editorOpen = false">Cancelar</button></div>
+        }
+      </section>
+    }
+  </main>
+</div>

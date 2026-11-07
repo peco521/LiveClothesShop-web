@@ -4,15 +4,15 @@ import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
-import { InventarioPanel, requestError } from '../../shared/panel';
-import { OperacionesService } from '../../shared/operaciones.service';
-import { Refs, Report } from '../../shared/operaciones.models';
+import { InventarioPanel, requestError } from '../../../inventario-productos/shared/panel';
+import { OperacionesService } from '../../../inventario-productos/shared/operaciones.service';
+import { Refs, Report } from '../../../inventario-productos/shared/operaciones.models';
 
 type ReportKind = 'ventas' | 'inventario' | 'reservas' | 'devoluciones';
 type ReportFormat = 'pdf' | 'xlsx';
 
 @Component({ selector: 'app-reportes', imports: [FormsModule, CurrencyPipe, InventarioPanel],
-  templateUrl: './reportes.html', styleUrls: ['../../shared/panel.css', '../../shared/operaciones.css'] })
+  templateUrl: './reportes.html', styleUrls: ['../../../inventario-productos/shared/panel.css', '../../../inventario-productos/shared/operaciones.css'] })
 export class ReportesPage {
   private readonly service = inject(OperacionesService);
   private readonly destroy = inject(DestroyRef);

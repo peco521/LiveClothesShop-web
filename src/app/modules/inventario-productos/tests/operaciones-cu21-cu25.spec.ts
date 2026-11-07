@@ -8,15 +8,15 @@ import { apiInterceptor } from '../../../core/interceptors/api.interceptor';
 import { OperacionesService } from '../shared/operaciones.service';
 import { Reservation, Sale } from '../shared/operaciones.models';
 import { CU21_ROUTES } from '../cu21-gestionar-promociones/routes/cu21.routes';
-import { CU22_ROUTES } from '../cu22-gestionar-reservas-sucursal/routes/cu22.routes';
-import { CU23_ROUTES, CU23_POLITICAS_ROUTES } from '../cu23-gestionar-devoluciones/routes/cu23.routes';
-import { CU24_ROUTES } from '../cu24-registrar-venta/routes/cu24.routes';
-import { CU25_ROUTES } from '../cu25-reportes/routes/cu25.routes';
+import { CU22_ROUTES } from '../../Reservas y Atencion en tienda/cu22-gestionar-reservas-sucursal/routes/cu22.routes';
+import { CU23_ROUTES, CU23_POLITICAS_ROUTES } from '../../Reservas y Atencion en tienda/cu23-gestionar-devoluciones/routes/cu23.routes';
+import { CU24_ROUTES } from '../../ventas_reportes/cu24-registrar-venta/routes/cu24.routes';
+import { CU25_ROUTES } from '../../ventas_reportes/cu25-reportes/routes/cu25.routes';
 import { PromocionesPage } from '../cu21-gestionar-promociones/pages/promociones';
-import { ReservasSucursalPage } from '../cu22-gestionar-reservas-sucursal/pages/reservas-sucursal';
-import { DevolucionesPage } from '../cu23-gestionar-devoluciones/pages/devoluciones';
-import { PuntoDeVentaPage } from '../cu24-registrar-venta/pages/caja';
-import { ReportesPage } from '../cu25-reportes/pages/reportes';
+import { ReservasSucursalPage } from '../../Reservas y Atencion en tienda/cu22-gestionar-reservas-sucursal/pages/reservas-sucursal';
+import { DevolucionesPage } from '../../Reservas y Atencion en tienda/cu23-gestionar-devoluciones/pages/devoluciones';
+import { PuntoDeVentaPage } from '../../ventas_reportes/cu24-registrar-venta/pages/caja';
+import { ReportesPage } from '../../ventas_reportes/cu25-reportes/pages/reportes';
 
 const empty = { items: [], total: 0, offset: 0, limit: 20 };
 

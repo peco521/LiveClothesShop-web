@@ -4,15 +4,15 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
-import { InventarioPanel, requestError } from '../../shared/panel';
-import { OperacionesService } from '../../shared/operaciones.service';
-import { Reservation } from '../../shared/operaciones.models';
-import { Page } from '../../shared/models';
+import { InventarioPanel, requestError } from '../../../inventario-productos/shared/panel';
+import { OperacionesService } from '../../../inventario-productos/shared/operaciones.service';
+import { Reservation } from '../../../inventario-productos/shared/operaciones.models';
+import { Page } from '../../../inventario-productos/shared/models';
 
 type ReservationAction = 'confirmar' | 'atender' | 'reprogramar';
 
 @Component({ selector: 'app-reservas-sucursal', imports: [FormsModule, DatePipe, InventarioPanel],
-  templateUrl: './reservas-sucursal.html', styleUrls: ['../../shared/panel.css', '../../shared/operaciones.css'] })
+  templateUrl: './reservas-sucursal.html', styleUrls: ['../../../inventario-productos/shared/panel.css', '../../../inventario-productos/shared/operaciones.css'] })
 export class ReservasSucursalPage {
   private readonly service = inject(OperacionesService);
   private readonly destroy = inject(DestroyRef);

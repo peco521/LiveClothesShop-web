@@ -126,7 +126,8 @@ export class AuthService {
       const session = this.state();
       this.offlineSync.pause();
       this.clearOfflineSnapshot();
-      const loginUrl = session?.plataforma ? '/saas/login' : session && isInternalSession(session) ? '/admin/login' : '/login';
+      const loginUrl = session?.usuario.tipo === 'S' || session?.plataforma
+        ? '/saas/login' : session && isInternalSession(session) ? '/admin/login' : '/login';
       return this.http.post<void>(`${this.base}/logout`, null).pipe(
         tap(() => {
           // Invalidate even /me requests started during logout, but not a newer login.

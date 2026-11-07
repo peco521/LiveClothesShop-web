@@ -1,12 +1,13 @@
 import { Routes } from '@angular/router';
 
 import { internalGuard } from './modules/seguridad-accesos/shared/guards/internal.guard';
-import { platformGuard } from './modules/plataforma-saas/platform.guard';
+import { saasGuard } from './modules/saas_suscripciones/planes_funcionalidades/guards/saas.guard';
 
 export const routes: Routes = [
-  { path: 'saas/login', title: 'Administración SaaS | FashionStore', loadComponent: () => import('./modules/plataforma-saas/saas-login').then(m => m.SaasLoginPage) },
-  { path: 'saas', title: 'Empresas | FashionStore', canActivate: [platformGuard], loadComponent: () => import('./modules/plataforma-saas/saas-dashboard').then(m => m.SaasDashboardPage) },
   { path: '', pathMatch: 'full', redirectTo: 'login' },
+  { path: 'saas/login', title: 'Acceso SaaS | FashionStore', loadComponent: () => import('./modules/saas_suscripciones/planes_funcionalidades/pages/login').then(m => m.SaasLoginPage) },
+  { path: 'saas', pathMatch: 'full', redirectTo: 'saas/planes' },
+  { path: 'saas/planes', title: 'Planes | FashionStore', canActivate: [saasGuard], loadComponent: () => import('./modules/saas_suscripciones/planes_funcionalidades/pages/planes').then(m => m.SaasPlanesPage) },
   { path: 'admin/login', title: 'Acceso administrativo | FashionStore', loadComponent: () => import('./modules/seguridad-accesos/pages/admin-login/admin-login').then(m => m.AdminLoginPage) },
   {
     path: 'admin',
@@ -26,11 +27,11 @@ export const routes: Routes = [
       { path: 'proveedores', loadChildren: () => import('./modules/inventario-productos/cu19-gestionar-proveedores/routes/cu19.routes').then(m => m.CU19_ROUTES) },
       { path: 'inventario', loadChildren: () => import('./modules/inventario-productos/cu20-gestionar-inventario/routes/cu20.routes').then(m => m.CU20_ROUTES) },
       { path: 'promociones', loadChildren: () => import('./modules/inventario-productos/cu21-gestionar-promociones/routes/cu21.routes').then(m => m.CU21_ROUTES) },
-      { path: 'reservas-sucursal', loadChildren: () => import('./modules/inventario-productos/cu22-gestionar-reservas-sucursal/routes/cu22.routes').then(m => m.CU22_ROUTES) },
-      { path: 'devoluciones', loadChildren: () => import('./modules/inventario-productos/cu23-gestionar-devoluciones/routes/cu23.routes').then(m => m.CU23_ROUTES) },
-      { path: 'politicas-devolucion', loadChildren: () => import('./modules/inventario-productos/cu23-gestionar-devoluciones/routes/cu23.routes').then(m => m.CU23_POLITICAS_ROUTES) },
-      { path: 'caja', loadChildren: () => import('./modules/inventario-productos/cu24-registrar-venta/routes/cu24.routes').then(m => m.CU24_ROUTES) },
-      { path: 'reportes', loadChildren: () => import('./modules/inventario-productos/cu25-reportes/routes/cu25.routes').then(m => m.CU25_ROUTES) },
+      { path: 'reservas-sucursal', loadChildren: () => import('./modules/Reservas y Atencion en tienda/cu22-gestionar-reservas-sucursal/routes/cu22.routes').then(m => m.CU22_ROUTES) },
+      { path: 'devoluciones', loadChildren: () => import('./modules/Reservas y Atencion en tienda/cu23-gestionar-devoluciones/routes/cu23.routes').then(m => m.CU23_ROUTES) },
+      { path: 'politicas-devolucion', loadChildren: () => import('./modules/Reservas y Atencion en tienda/cu23-gestionar-devoluciones/routes/cu23.routes').then(m => m.CU23_POLITICAS_ROUTES) },
+      { path: 'caja', loadChildren: () => import('./modules/ventas_reportes/cu24-registrar-venta/routes/cu24.routes').then(m => m.CU24_ROUTES) },
+      { path: 'reportes', loadChildren: () => import('./modules/ventas_reportes/cu25-reportes/routes/cu25.routes').then(m => m.CU25_ROUTES) },
     ],
   },
   { path: '', loadChildren: () => import('./modules/seguridad-accesos/routes/seguridad-accesos.routes').then(m => m.SEGURIDAD_ACCESOS_ROUTES) },

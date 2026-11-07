@@ -4,10 +4,10 @@ import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
-import { InventarioPanel, requestError } from '../../shared/panel';
+import { InventarioPanel, requestError } from '../../../inventario-productos/shared/panel';
 import { ReciboTicket } from '../components/recibo-ticket';
-import { OperacionesService } from '../../shared/operaciones.service';
-import { Customer, Pago, Refs, Reservation, Sale } from '../../shared/operaciones.models';
+import { OperacionesService } from '../../../inventario-productos/shared/operaciones.service';
+import { Customer, Pago, Refs, Reservation, Sale } from '../../../inventario-productos/shared/operaciones.models';
 import { ProductoDetalle, ProductosListado, VarianteDetalle } from '../../../cliente-experiencia-compra/cu10-consultar-prendas/models/catalogo.models';
 import { PwaSyncService } from '../../../../core/offline/pwa-sync.service';
 
@@ -21,7 +21,7 @@ interface NewCustomerDraft { ci: string; nombres: string; apellidoPat: string; a
   correo: string; telefono: string; direccion: string; fechaNac: string; contrasena: string }
 
 @Component({ selector: 'app-punto-de-venta', imports: [FormsModule, CurrencyPipe, InventarioPanel, ReciboTicket],
-  templateUrl: './caja.html', styleUrls: ['../../shared/panel.css', '../../shared/operaciones.css'] })
+  templateUrl: './caja.html', styleUrls: ['../../../inventario-productos/shared/panel.css', '../../../inventario-productos/shared/operaciones.css'] })
 export class PuntoDeVentaPage {
   private readonly service = inject(OperacionesService);
   private readonly destroy = inject(DestroyRef);
