@@ -4,13 +4,13 @@ import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { InventarioPanel, requestError } from '../../shared/panel';
-import { OperacionesService } from '../../shared/operaciones.service';
-import { Return, Sale } from '../../shared/operaciones.models';
-import { Page } from '../../shared/models';
+import { InventarioPanel, requestError } from '../../../inventario-productos/shared/panel';
+import { OperacionesService } from '../../../inventario-productos/shared/operaciones.service';
+import { Return, Sale } from '../../../inventario-productos/shared/operaciones.models';
+import { Page } from '../../../inventario-productos/shared/models';
 
 @Component({ selector: 'app-devoluciones', imports: [FormsModule, RouterLink, CurrencyPipe, InventarioPanel],
-  templateUrl: './devoluciones.html', styleUrls: ['../../shared/panel.css', '../../shared/operaciones.css'] })
+  templateUrl: './devoluciones.html', styleUrls: ['../../../inventario-productos/shared/panel.css', '../../../inventario-productos/shared/operaciones.css'] })
 export class DevolucionesPage {
   private readonly service = inject(OperacionesService);
   private readonly destroy = inject(DestroyRef);

@@ -58,7 +58,7 @@ export class AuthService {
     });
   }
 
-  login(input: LoginRequest, portal: 'cliente' | 'admin' = 'cliente'): Observable<AuthResponse> {
+  login(input: LoginRequest, portal: 'cliente' | 'admin' | 'saas' = 'cliente'): Observable<AuthResponse> {
     return defer(() => {
       const revision = ++this.revision;
       this.loginRevision = revision;
@@ -79,7 +79,7 @@ export class AuthService {
     return defer(() => {
       const revision = ++this.revision;
       const session = this.state();
-      const loginUrl = session && isInternalSession(session) ? '/admin/login' : '/login';
+      const loginUrl = session?.usuario.tipo === 'S' ? '/saas/login' : session && isInternalSession(session) ? '/admin/login' : '/login';
       return this.http.post<void>(`${this.base}/logout`, null).pipe(
         tap(() => {
           // Invalidate even /me requests started during logout, but not a newer login.

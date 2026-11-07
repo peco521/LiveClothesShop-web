@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReciboTicket } from '../components/recibo-ticket';
-import { Sale } from '../../shared/operaciones.models';
+import { Sale } from '../../../inventario-productos/shared/operaciones.models';
 
 /** Venta de caja pagada, con dos prendas y una promoción del 10 %. */
 const venta: Sale = {

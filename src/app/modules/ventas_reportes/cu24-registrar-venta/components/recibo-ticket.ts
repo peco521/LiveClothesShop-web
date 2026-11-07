@@ -1,6 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
-import { Sale, SaleDiscount } from '../../shared/operaciones.models';
+import { Sale, SaleDiscount } from '../../../inventario-productos/shared/operaciones.models';
 
 /** Descuento listo para imprimir: el tipo y el valor ya se leen en el ticket. */
 interface ReceiptDiscount { nombre: string; tipo: string; valor: string; monto: number }

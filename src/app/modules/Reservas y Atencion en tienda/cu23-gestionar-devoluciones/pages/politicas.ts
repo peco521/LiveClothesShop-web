@@ -4,13 +4,13 @@ import { FormsModule, NgForm } from '@angular/forms';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../../seguridad-accesos/services/auth.service';
-import { InventarioPanel, requestError } from '../../shared/panel';
-import { OperacionesService } from '../../shared/operaciones.service';
-import { Policy, PolicyData } from '../../shared/operaciones.models';
+import { InventarioPanel, requestError } from '../../../inventario-productos/shared/panel';
+import { OperacionesService } from '../../../inventario-productos/shared/operaciones.service';
+import { Policy, PolicyData } from '../../../inventario-productos/shared/operaciones.models';
 import { ProductoDetalle, ProductosListado } from '../../../cliente-experiencia-compra/cu10-consultar-prendas/models/catalogo.models';
 
 @Component({ selector: 'app-politicas-devolucion', imports: [FormsModule, InventarioPanel],
-  templateUrl: './politicas.html', styleUrls: ['../../shared/panel.css', '../../shared/operaciones.css'] })
+  templateUrl: './politicas.html', styleUrls: ['../../../inventario-productos/shared/panel.css', '../../../inventario-productos/shared/operaciones.css'] })
 export class PoliticasPage {
   private readonly service = inject(OperacionesService);
   private readonly destroy = inject(DestroyRef);
