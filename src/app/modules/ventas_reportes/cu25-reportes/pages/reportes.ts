@@ -7,6 +7,7 @@ import { finalize } from 'rxjs';
 import { InventarioPanel, requestError } from '../../../inventario-productos/shared/panel';
 import { OperacionesService } from '../../../inventario-productos/shared/operaciones.service';
 import { Refs, Report } from '../../../inventario-productos/shared/operaciones.models';
+import { AuthService } from '../../../seguridad-accesos/services/auth.service';
 
 type ReportKind = 'ventas' | 'inventario' | 'reservas' | 'devoluciones';
 type ReportFormat = 'pdf' | 'xlsx';
@@ -33,7 +34,15 @@ export class ReportesPage {
   idCat = 0;
   idTemp = 0;
 
-  constructor() { this.loadReferences(); this.load(); }
+  constructor() {
+    // Preserve the first-partial dashboard for legacy sessions. Tenant sessions
+    // use the verified scoped executor, never the legacy unscoped endpoints.
+    if (inject(AuthService).session()?.empresa) {
+      void this.router.navigateByUrl('/admin/reportes/dinamicos');
+      return;
+    }
+    this.loadReferences(); this.load();
+  }
 
   private filters(): Record<string, string | number | undefined> {
     return { fechaIni: this.fechaIni, fechaFin: this.fechaFin, nroSuc: this.nroSuc || undefined,

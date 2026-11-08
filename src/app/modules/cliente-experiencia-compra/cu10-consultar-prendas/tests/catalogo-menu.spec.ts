@@ -1,19 +1,43 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
+import { AuthService } from '../../../seguridad-accesos/services/auth.service';
+import { AuthResponse } from '../../../seguridad-accesos/models/auth.models';
 import { provideRouter } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import { CatalogoListaPage } from '../pages/catalogo-lista/catalogo-lista';
 import { CatalogoService } from '../services/catalogo.service';
 import { ProductosListado } from '../models/catalogo.models';
-import { facetas, list } from './catalogo.fixtures';
+import { clienteSession, facetas, list } from './catalogo.fixtures';
 
 describe('Menú de categorías del catálogo', () => {
   const service = { listar: vi.fn(), faceta: vi.fn() };
+  const auth = { session: signal<AuthResponse | null>(clienteSession) };
   beforeEach(() => {
+    auth.session.set(clienteSession);
     service.listar.mockReset().mockReturnValue(of(list));
     service.faceta.mockReset().mockReturnValue(of(facetas));
-    TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: CatalogoService, useValue: service }] });
+    TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: AuthService, useValue: auth }, { provide: CatalogoService, useValue: service }] });
   });
   function open() { const fixture = TestBed.createComponent(CatalogoListaPage); fixture.detectChanges(); return { fixture, page: fixture.componentInstance }; }
+  it('limpia caché, filtros y respuestas pendientes al cambiar de empresa/cuenta', () => {
+    const { fixture, page } = open();
+    page.explore({ id: 1, nombre: 'Camisas' });
+    expect(page.preview()).toBeTruthy();
+    const pending = new Subject<ProductosListado>();
+    service.listar.mockReturnValueOnce(pending);
+    page.load();
+    service.listar.mockReturnValue(of({ items: [], total: 0, offset: 0, limit: 20 }));
+    auth.session.set({ ...clienteSession, empresa: 'otra', usuario: { ...clienteSession.usuario, idUsuario: 'otro' } });
+    fixture.detectChanges();
+    pending.next(list); pending.complete();
+    expect(page.result()?.total).toBe(0);
+    expect(page.preview()).toBeNull();
+    expect(page.activeCategory()).toBeNull();
+    page.explore({ id: 1, nombre: 'Otra categoría' });
+    expect(page.preview()?.products.total).toBe(0);
+    auth.session.set(null); fixture.detectChanges();
+    expect(page.result()).toBeNull(); expect(page.facetas()).toEqual({}); expect(page.preview()).toBeNull();
+  });
   it('empieza compacto y despliega categorías al pasar el mouse', () => {
     const { fixture, page } = open();
     expect(page.categoriesOpen()).toBe(false); expect(page.advancedOpen()).toBe(false);

@@ -1,5 +1,16 @@
 <app-cu11-layout title="Mis reservas" [error]="error()">
   <p><a routerLink="/tienda/reservas/nueva">Nueva reserva</a></p>
+  @if (offlineReservations().length) {
+    <section aria-label="Reservas guardadas en este dispositivo">
+      <h2>Reservas del dispositivo</h2><p>Una pendiente local no retiene disponibilidad hasta ser aceptada por el servidor.</p>
+      <button type="button" (click)="sincronizar()" [disabled]="sync.busy() || !sync.online()">Sincronizar reservas</button>
+      <ul>@for (operation of offlineReservations(); track operation.id) {
+        <li [attr.data-operation-id]="operation.id">{{ operation.estado }} · {{ operation.codigo || '' }} {{ operation.detalle || '' }}
+          @if (operation.nroReserva) { <a [routerLink]="['/tienda/reservas', operation.nroReserva]">Ver reserva {{ operation.nroReserva }}</a> }
+        </li>
+      }</ul>
+    </section>
+  }
   <form [formGroup]="form" (ngSubmit)="aplicar()"><fieldset><legend>Filtrar por estado</legend>
     <div class="field"><label for="reserva-estado">Estado</label><select id="reserva-estado" formControlName="estado"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="confirmada">Confirmada</option><option value="atendida">Atendida</option><option value="cancelada">Cancelada</option><option value="vencida">Vencida</option></select></div>
   <button type="submit">Aplicar</button></fieldset></form>

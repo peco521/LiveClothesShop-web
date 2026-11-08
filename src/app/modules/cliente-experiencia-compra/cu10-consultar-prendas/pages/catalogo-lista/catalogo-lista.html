@@ -1,4 +1,5 @@
 <app-cu10-layout title="Catálogo" [error]="error()">
+  <app-catalogo-offline-panel [ids]="downloadIds()" />
   <div class="catalog-toolbar">
     <div class="category-browser" (mouseenter)="openCategories()" (mouseleave)="categoriesOpen.set(false)"
       (keydown.escape)="categoriesOpen.set(false)" (focusout)="!$any($event.currentTarget).contains($event.relatedTarget) && categoriesOpen.set(false)">

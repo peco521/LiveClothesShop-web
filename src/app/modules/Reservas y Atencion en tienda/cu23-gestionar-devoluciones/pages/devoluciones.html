@@ -1,6 +1,11 @@
 <app-inventario-panel title="Devoluciones de prendas" [error]="error()" [success]="success()">
   <section class="card">
-    <div class="section-heading"><h2>Registrar una devolución</h2><a class="btn" routerLink="/admin/politicas-devolucion">Políticas de devolución</a></div>
+    <div class="section-heading"><h2>Registrar devolución o cambio</h2><a class="btn" routerLink="/admin/politicas-devolucion">Políticas de devolución</a></div>
+    <fieldset class="toolbar">
+      <legend>Operación</legend>
+      <label><input type="radio" name="operation" value="devolucion" [ngModel]="operation" (ngModelChange)="setOperation($event)" /> Devolución</label>
+      <label><input type="radio" name="operation" value="cambio" [ngModel]="operation" (ngModelChange)="setOperation($event)" /> Cambio de prenda</label>
+    </fieldset>
     <form class="toolbar" (ngSubmit)="findSale()">
       <div class="field" style="margin:0"><label for="devolucion-venta">Número de venta del comprobante</label><input id="devolucion-venta" type="number" name="venta" [(ngModel)]="saleSearch" min="1" step="1" required /></div>
       <button class="btn" type="submit" [disabled]="saving()">Buscar venta</button>
@@ -12,10 +17,22 @@
         <div class="return-line">
           <div><strong>{{ item.producto }}</strong><br /><small class="muted">{{ item.cantidad }} unidades compradas · {{ item.precioUnitario | currency:'USD':'code' }} c/u</small></div>
           <div class="field" style="margin:0"><label [for]="'devolucion-cantidad-' + item.idDetalleVenta">Cantidad a devolver</label><input [id]="'devolucion-cantidad-' + item.idDetalleVenta" type="number" [(ngModel)]="returnQuantities[item.idDetalleVenta]" [ngModelOptions]="{standalone:true}" min="0" [max]="item.cantidad" step="1" /></div>
+          @if (operation === 'cambio') {
+            <div class="field" style="margin:0">
+              <label [for]="'cambio-variante-' + item.idDetalleVenta">Nueva prenda</label>
+              <select [id]="'cambio-variante-' + item.idDetalleVenta" [(ngModel)]="newVariants[item.idDetalleVenta]" [ngModelOptions]="{standalone:true}">
+                <option value="">Selecciona una variante disponible</option>
+                @for (variant of variantsFor(item.idVar); track variant.idVar) {
+                  <option [value]="variant.idVar">{{ variant.producto }} · {{ variant.sku }} · {{ variant.precio | currency:'USD':'code' }} · {{ variant.disponible }} disponibles</option>
+                }
+              </select>
+            </div>
+          }
         </div>
       }
       <div class="field"><label for="devolucion-motivo">Motivo de devolución</label><textarea id="devolucion-motivo" [(ngModel)]="motivo" [ngModelOptions]="{standalone:true}" maxlength="255" required></textarea></div>
-      <div class="actions"><button class="btn primary" type="button" (click)="registerReturn()" [disabled]="saving()">Registrar solicitud</button></div>
+      @if (operation === 'cambio') { <p class="muted">El importe se calcula con el crédito de las prendas devueltas y el precio actual de las nuevas. Las diferencias positivas requieren pago; las negativas, reembolso confirmado.</p> }
+      <div class="actions"><button class="btn primary" type="button" (click)="registerReturn()" [disabled]="saving()">{{ operation === 'cambio' ? 'Registrar cambio' : 'Registrar solicitud' }}</button></div>
     }
   </section>
   <h2>Devoluciones registradas</h2>
@@ -27,15 +44,34 @@
         @for (row of rows.items; track row.nroDev) {
           <tr>
             <td>#{{ row.nroDev }}<br /><small class="muted">Venta #{{ row.nroVenta }}</small></td>
-            <td>@for (item of row.items; track $index) { <strong>{{ item.producto }} · {{ item.cantidad }} unidades</strong><br /> }<small class="muted">{{ row.motivo }}</small></td>
-            <td>{{ row.monto | currency:'USD':'code' }}</td>
+            <td>
+              @for (item of row.items; track item.idDetalleVenta) { <strong>{{ item.producto }} · {{ item.cantidad }} unidades</strong><br /> }
+              <small class="muted">{{ row.motivo }}</small>
+              @if (row.cambio; as exchange) {
+                <br /><small class="muted">Cambio #{{ exchange.nroCambio }} · venta nueva #{{ exchange.nroVentaNueva }} · diferencia {{ exchange.diferencia | currency:'USD':'code' }} · pago {{ exchange.estadoPago || 'pendiente' }}</small>
+              }
+            </td>
+            <td>{{ (row.reembolso?.monto ?? row.monto) | currency:'USD':'code' }}</td>
             <td><span class="badge">{{ row.estado }}</span>@if (row.reembolso) { <br /><small class="muted">Reembolso: {{ row.reembolso.estado }}</small> }</td>
             <td>
               @if (row.estado === 'pendiente') {
-                <label class="checkbox"><input type="checkbox" [(ngModel)]="buenEstado[row.nroDev]" [ngModelOptions]="{standalone:true}" /> Prenda en buen estado</label>
+                @for (item of row.items; track item.idDetalleVenta) {
+                  <div class="field" style="margin:0">
+                    <label [for]="'inspeccion-' + row.nroDev + '-' + item.idDetalleVenta">{{ item.producto }} · condición</label>
+                    <select [id]="'inspeccion-' + row.nroDev + '-' + item.idDetalleVenta"
+                      [ngModel]="inspections()[row.nroDev]?.[item.idDetalleVenta] || ''"
+                      (ngModelChange)="setInspection(row.nroDev, item.idDetalleVenta, $event)"
+                      [ngModelOptions]="{standalone:true}">
+                      <option value="">Pendiente de inspección</option>
+                      <option value="apta">Apta para reingreso a inventario</option>
+                      <option value="danada">Dañada; separar del inventario disponible</option>
+                    </select>
+                  </div>
+                }
                 <div class="actions">
-                  <button class="btn" type="button" (click)="decideReturn(row, true)" [disabled]="saving() || !buenEstado[row.nroDev]">Aceptar</button>
-                  <button class="btn danger" type="button" (click)="decideReturn(row, false)" [disabled]="saving()">Rechazar</button>
+                  <button class="btn" type="button" (click)="decideReturn(row, 'inspeccionar')" [disabled]="saving() || !canApprove(row)">Guardar inspección</button>
+                  <button class="btn" type="button" (click)="decideReturn(row, 'aprobar')" [disabled]="saving() || !canApprove(row)">Aceptar</button>
+                  <button class="btn danger" type="button" (click)="decideReturn(row, 'rechazar')" [disabled]="saving()">Rechazar</button>
                 </div>
               }
               @if (row.reembolso && row.reembolso.estado !== 'aprobado') {

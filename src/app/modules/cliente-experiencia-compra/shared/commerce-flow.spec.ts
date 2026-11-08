@@ -1,4 +1,6 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
+import { AuthService } from '../../seguridad-accesos/services/auth.service';
 import { DOCUMENT } from '@angular/common';
 import { ActivatedRoute, provideRouter, Router, convertToParamMap } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -13,7 +15,7 @@ import { ReservasService } from '../cu11-gestionar-reserva/services/reservas.ser
 import { CatalogoService } from '../cu10-consultar-prendas/services/catalogo.service';
 import { CatalogoDetallePage } from '../cu10-consultar-prendas/pages/catalogo-detalle/catalogo-detalle';
 import { carritoResumen, sucursales, venta } from '../cu13-compra-digital/tests/compra.fixtures';
-import { detail } from '../cu10-consultar-prendas/tests/catalogo.fixtures';
+import { clienteSession, detail } from '../cu10-consultar-prendas/tests/catalogo.fixtures';
 
 describe('Precios visuales sin cambiar el total del servidor',()=>{
  it('porcentaje, importe fijo y redondeo monetario',()=>{
@@ -106,6 +108,9 @@ describe('Seguridad de redirección',()=>{
 });
 
 describe('Galería, sucursales y compra rápida del producto',()=>{
+ beforeEach(()=>TestBed.configureTestingModule({providers:[
+  {provide:AuthService,useValue:{session:signal(clienteSession)}},
+ ]}));
  it('solo muestra fotos del producto y cambia disponibilidad con la variante',()=>{
   TestBed.configureTestingModule({providers:[provideRouter([]),{provide:ActivatedRoute,useValue:{paramMap:of(convertToParamMap({id:detail.idProd}))}},
    {provide:CatalogoService,useValue:{detalle:()=>of(detail)}},{provide:CarritoService,useValue:{agregar:vi.fn()}}]});

@@ -13,7 +13,13 @@
   @if(result.estado==='rechazado'){<div class="actions"><a class="shop-btn primary" routerLink="/tienda/carrito">Volver al carrito</a></div>}
   @if(result.estado==='pendiente'){
    <div class="actions"><button class="primary" (click)="consultar()" [disabled]="busy()">{{busy()?'Consultando…':'Consultar estado'}}</button><button (click)="confirmarCancelacion.set(true)" [disabled]="busy()">Cancelar compra</button></div>
-   <p class="muted">Si cerraste Stripe sin pagar, puedes cancelar la compra para editar tu carrito.</p>
+   @if(simulacion()){
+    <div class="sandbox"><p>Simulación académica sin cargos: reintenta el mismo pago, sin crear otra compra.</p>
+     <label for="retry-scenario">Resultado del reintento simulado</label>
+     <select id="retry-scenario" [(ngModel)]="escenario" [disabled]="busy()"><option value="aprobado">Aprobado</option><option value="rechazado">Rechazado</option><option value="timeout">Pendiente</option></select>
+     <button (click)="reprocesarSimulacion()" [disabled]="busy()">Reintentar pago simulado</button>
+    </div>
+   }@else{<p class="muted">Si cerraste Stripe sin pagar, puedes cancelar la compra para editar tu carrito.</p>}
    @if(confirmarCancelacion()){<div class="cancel-confirm"><p>¿Confirmas cancelar la compra pendiente?</p><div class="actions"><button (click)="cancelar()" [disabled]="busy()">Confirmar cancelación</button><button (click)="confirmarCancelacion.set(false)" [disabled]="busy()">Volver</button></div></div>}
   }
   @if(result.referencia){<details class="payment-reference"><summary>Información de la transacción</summary><p>{{result.referencia}}</p></details>}

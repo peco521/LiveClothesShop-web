@@ -9,7 +9,7 @@ import { BitacoraService } from '../../services/bitacora.service';
 import { bitacoraError } from '../../services/bitacora-error';
 
 @Component({ selector: 'app-bitacora-lista', imports: [Cu08Layout, BitacoraFiltrosComponent, RouterLink], templateUrl: './bitacora-lista.html',
-  styles: `.table-scroll { overflow-x: auto; } table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; } nav { display: flex; gap: 16px; margin-top: 20px; }`,
+  styles: `:host { display: block; } .table-scroll { overflow-x: auto; } table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; } nav { display: flex; gap: 16px; margin-top: 20px; }`,
 })
 export class BitacoraListaPage {
   private readonly service = inject(BitacoraService);

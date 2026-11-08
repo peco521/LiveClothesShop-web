@@ -1,15 +1,16 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { PLATFORM_ID } from '@angular/core';
+import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { apiInterceptor } from '../../../../core/interceptors/api.interceptor';
 import { CatalogoService } from '../services/catalogo.service';
 import { detail, facetas, list } from './catalogo.fixtures';
+import { AuthService } from '../../../seguridad-accesos/services/auth.service';
 
 describe('CU10 servicio y privacidad', () => {
   let service: CatalogoService; let http: HttpTestingController;
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(withInterceptors([apiInterceptor])), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({ providers: [{ provide: AuthService, useValue: { session: signal(null) } }, provideHttpClient(withInterceptors([apiInterceptor])), provideHttpClientTesting()] });
     service = TestBed.inject(CatalogoService); http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => { http.verify(); vi.restoreAllMocks(); });
@@ -53,7 +54,7 @@ describe('CU10 servicio y privacidad', () => {
 
 describe('CU10 servicio SSR', () => {
   it('no hace ninguna petición privada en servidor', () => {
-    TestBed.configureTestingModule({ providers: [{ provide: PLATFORM_ID, useValue: 'server' }, provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({ providers: [{ provide: PLATFORM_ID, useValue: 'server' }, { provide: AuthService, useValue: { session: signal(null) } }, provideHttpClient(), provideHttpClientTesting()] });
     const service = TestBed.inject(CatalogoService);
     service.listar({ offset: 0, limit: 20 }).subscribe();
     service.detalle('prod-001').subscribe();

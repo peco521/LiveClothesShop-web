@@ -1,6 +1,8 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { PLATFORM_ID } from '@angular/core';
+import { PLATFORM_ID, signal } from '@angular/core';
+import { AuthService } from '../../../seguridad-accesos/services/auth.service';
+import { AuthResponse } from '../../../seguridad-accesos/models/auth.models';
 import { TestBed } from '@angular/core/testing';
 import { apiInterceptor } from '../../../../core/interceptors/api.interceptor';
 import { CarritoService } from '../services/carrito.service';
@@ -60,5 +62,31 @@ describe('CU12 servicio SSR', () => {
     service.modificar(1, 2).subscribe(); service.eliminar(1).subscribe();
     TestBed.inject(HttpTestingController).expectNone(() => true);
     expect(service.estado()).toBeNull();
+  });
+});
+
+describe('CU12 aislamiento de caché y respuestas tardías', () => {
+  it('borra el carrito al cambiar de cliente o empresa y descarta la respuesta anterior', () => {
+    const account = (empresa: string, user: string): AuthResponse => ({ empresa,
+      usuario: { idUsuario: user, nombres: 'Prueba', correo: 'test@example.com', tipo: 'C' },
+      rol: { nro: '1', descripcion: 'Cliente' }, permisos: ['CU12'], expiraEn: '2099-01-01T00:00:00Z' });
+    const session = signal<AuthResponse | null>(account('a', 'uno'));
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(),
+      { provide: AuthService, useValue: { session } }] });
+    const service = TestBed.inject(CarritoService);
+    const http = TestBed.inject(HttpTestingController);
+    TestBed.tick();
+    service.obtener().subscribe(); http.expectOne('/api/cliente/carrito').flush(carrito);
+    const received = vi.fn();
+    service.obtener().subscribe(received);
+    const late = http.expectOne('/api/cliente/carrito');
+    session.set(account('a', 'dos')); TestBed.tick();
+    expect(service.estado()).toBeNull();
+    late.flush(carrito);
+    expect(received).not.toHaveBeenCalled(); expect(service.estado()).toBeNull();
+    service.obtener().subscribe(); http.expectOne('/api/cliente/carrito').flush(carrito);
+    session.set(account('b', 'dos')); TestBed.tick();
+    expect(service.estado()).toBeNull();
+    http.verify();
   });
 });

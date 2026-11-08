@@ -9,6 +9,8 @@ import { ReservasService } from '../../services/reservas.service';
 import { reservaError } from '../../services/reserva-error';
 import { CatalogoService } from '../../../cu10-consultar-prendas/services/catalogo.service';
 import { ProductoDetalle, ProductosListado } from '../../../cu10-consultar-prendas/models/catalogo.models';
+import { PwaSyncService } from '../../../../../core/offline/pwa-sync.service';
+import { AuthService } from '../../../../seguridad-accesos/services/auth.service';
 
 function hoy(): string {
   const now = new Date();
@@ -19,6 +21,9 @@ function hoy(): string {
   templateUrl: './reserva-form.html', styleUrl: './nueva-reserva.css',
 })
 export class NuevaReservaPage {
+  private readonly sync = inject(PwaSyncService);
+  private readonly auth = inject(AuthService);
+  readonly pending = signal('');
   private readonly service = inject(ReservasService);
   private readonly catalogo = inject(CatalogoService);
   readonly prendas = signal<Record<string, ProductoDetalle>>({});
@@ -102,13 +107,33 @@ export class NuevaReservaPage {
     this.detailRequest = this.catalogo.detalle(id).pipe(takeUntilDestroyed(this.destroy)).subscribe({ next: product => { this.recordar(product); this.seleccion.set(product); }, error: e => this.error.set(reservaError(e)) });
   }
   guardar(): void {
-    if (this.busy() || this.cargando()) return;
+    if (this.busy() || this.cargando() || this.pending()) return;
     if (this.form.invalid || this.items.length === 0) { this.form.markAllAsTouched(); return; }
     if (this.items.controls.some(row => !this.variante(row.controls.idVar.value))) { this.error.set('No se pudieron cargar los datos de una prenda. Vuelve a consultarla antes de reservar.'); return; }
     if (this.items.controls.some(row => row.controls.cantidad.value > this.disponibles(row.controls.idVar.value))) { this.error.set('La cantidad solicitada supera las unidades disponibles en esta sucursal. Selecciona otra sucursal o reduce la cantidad.'); return; }
     if (this.form.controls.fechaReserva.value < this.minima) { this.error.set('Selecciona una fecha de hoy en adelante.'); return; }
     const value = this.form.getRawValue();
     this.busy.set(true); this.error.set('');
+    if (this.auth.session()?.empresa) {
+      // Persist UUID before the first network attempt, including online. A lost
+      // response must retry the same operation, never create another hold.
+      const owner = this.auth.session();
+      void (async () => {
+        try {
+          const id = await this.sync.enqueue({ tipo: 'reserva', sucursal: value.nroSuc, dependeDe: [],
+            datos: { fecha: value.fechaReserva, hora: value.horaAtencion.length === 5 ? value.horaAtencion + ':00' : value.horaAtencion,
+              lineas: value.items.map(item => ({ idVariante: item.idVar.trim(), cantidad: item.cantidad })) } });
+          if (this.destroy.destroyed || owner !== this.auth.session()) return;
+          this.pending.set(id);
+          await this.sync.flush();
+          const result = (await this.sync.list()).find(item => item.id === id);
+          if (this.destroy.destroyed || owner !== this.auth.session()) return;
+          if (result?.estado === 'sincronizada' && result.nroReserva) void this.router.navigate(['/tienda/reservas', result.nroReserva]);
+        } catch { if (!this.destroy.destroyed && owner === this.auth.session()) this.error.set('No se pudo guardar la reserva localmente.'); }
+        finally { if (!this.destroy.destroyed) this.busy.set(false); }
+      })();
+      return;
+    }
     this.request?.unsubscribe();
     this.request = this.service.crear({ nroSuc: value.nroSuc, fechaReserva: value.fechaReserva,
       horaAtencion: value.horaAtencion, items: value.items.map(item => ({ idVar: item.idVar.trim(), cantidad: item.cantidad })) })

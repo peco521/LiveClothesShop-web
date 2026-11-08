@@ -1,7 +1,7 @@
 <div class="shell">
   <header class="topbar">
     <div><span class="brand-mark">F</span><span class="brand">FashionStore <small>PLATAFORMA</small></span></div>
-    <div class="account"><span>Administrador SaaS</span><button type="button" class="quiet" (click)="logout()">Cerrar sesión</button></div>
+    <div class="account"><span>Administrador SaaS</span><button type="button" class="quiet" (click)="back()">Volver a la plataforma</button><button type="button" class="quiet" (click)="logout()">Cerrar sesión</button></div>
   </header>
   <main class="content">
     <div class="breadcrumb">PLATAFORMA <span> / </span> PLANES Y FUNCIONALIDADES</div>
@@ -13,10 +13,10 @@
       <section aria-labelledby="plans-title">
         <div class="section-title"><div><h2 id="plans-title">Planes de la plataforma</h2><p>{{ plans().length }} planes configurados</p></div></div>
         <div class="cards">
-          @for (plan of plans(); track plan.id) {
+          @for (plan of plans(); track plan.idPlan) {
             <article class="plan-card">
               <div class="card-heading"><span class="icon" aria-hidden="true">◇</span><span class="status" [class.inactive]="plan.estado === 'inactivo'">{{ plan.estado }}</span></div>
-              <h3>{{ plan.nombre }}</h3><p class="plan-id">PLAN #{{ plan.id }}</p>
+              <h3>{{ plan.nombre }}</h3><p class="plan-id">PLAN #{{ plan.idPlan }}</p>
               <div class="limit"><strong>{{ plan.maxSucursales }}</strong><span>sucursales<br>máximo</span></div>
               <p class="list-title">FUNCIONALIDADES</p>
               <ul>@for (code of plan.funcionalidades; track code) { <li><span aria-hidden="true">✓</span> {{ featureName(code) }}</li> } @empty { <li>Sin funcionalidades asignadas</li> }</ul>

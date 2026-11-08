@@ -5,7 +5,7 @@ import { ACCIONES, BitacoraFiltros, esAccion } from '../models/bitacora.models';
 import { microsegundosISO } from '../models/bitacora-fecha';
 
 @Component({ selector: 'app-bitacora-filtros', imports: [ReactiveFormsModule, FieldError], templateUrl: './bitacora-filtros.html',
-  styles: `.filters { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); } label { display: block; } input, select { width: 100%; box-sizing: border-box; } button { margin: 16px 0; }`,
+  styles: `:host { display: block; } .filters { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); } label { display: block; } input, select { width: 100%; box-sizing: border-box; } button { margin: 16px 0; }`,
 })
 export class BitacoraFiltrosComponent {
   readonly acciones = ACCIONES;

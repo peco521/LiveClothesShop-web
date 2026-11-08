@@ -1,8 +1,8 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { finalize, Subscription } from 'rxjs';
 import { Cu10Layout } from '../../components/cu10-layout';
 import { ProductoDetalle, VarianteDetalle } from '../../models/catalogo.models';
 import { CatalogoService } from '../../services/catalogo.service';
@@ -10,8 +10,10 @@ import { catalogoError } from '../../services/catalogo-error';
 import { CarritoService } from '../../../cu12-carrito/services/carrito.service';
 import { money, priceQuote } from '../../../shared/pricing';
 import { carritoError } from '../../../cu12-carrito/services/carrito-error';
+import { AuthService } from '../../../../seguridad-accesos/services/auth.service';
+import { CatalogoOfflinePanel } from '../../components/catalogo-offline-panel';
 
-@Component({ selector: 'app-catalogo-detalle', imports: [Cu10Layout, FormsModule, RouterLink], templateUrl: './catalogo-detalle.html',
+@Component({ selector: 'app-catalogo-detalle', imports: [Cu10Layout, FormsModule, RouterLink, CatalogoOfflinePanel], templateUrl: './catalogo-detalle.html',
   styleUrls:['../../../shared/commerce.css','./catalogo-detalle.css'],
 })
 export class CatalogoDetallePage {
@@ -36,6 +38,9 @@ export class CatalogoDetallePage {
     this.cantidad.set(Math.min(Math.max(1,limit),Math.max(1,(Number.isInteger(value)?value:1)+delta)));
   }
   private readonly service = inject(CatalogoService);
+  private readonly auth = inject(AuthService);
+  private owner = this.auth.session();
+  private request?: Subscription;
   private readonly carrito = inject(CarritoService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroy = inject(DestroyRef);
@@ -46,6 +51,12 @@ export class CatalogoDetallePage {
   readonly agregando = signal(false); readonly agregado = signal(false); readonly carritoErrorMsg = signal('');
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe(params => { this.actual.set(params.get('id') ?? ''); this.load(this.actual()); });
+    effect(() => {
+      const session = this.auth.session();
+      if (session === this.owner) return;
+      this.owner = session;
+      untracked(() => this.load(this.actual()));
+    });
   }
   elegir(idVariante: string): void {
     if(this.agregando()||!this.item()?.variantes.some(v=>v.idVariante===idVariante))return;
@@ -54,10 +65,13 @@ export class CatalogoDetallePage {
     if(!Number.isInteger(this.cantidad())||this.cantidad()>limit)this.cantidad.set(Math.max(1,limit));
   }
   load(id: string): void {
+    this.request?.unsubscribe();
     this.busy.set(true); this.error.set(''); this.item.set(null); this.seleccion.set(null);
     this.agregado.set(false); this.carritoErrorMsg.set(''); this.cantidad.set(1);
-    this.service.detalle(id).pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false))).subscribe({
-      next: value => { this.item.set(value); if (value.variantes.length) this.seleccion.set(value.variantes[0].idVariante); },
+    const owner = this.auth.session();
+    if (!owner) { this.busy.set(false); return; }
+    this.request = this.service.detalle(id).pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false))).subscribe({
+      next: value => { if (owner !== this.auth.session()) return; this.item.set(value); if (value.variantes.length) this.seleccion.set(value.variantes[0].idVariante); },
       error: (error: unknown) => this.error.set(catalogoError(error)),
     });
   }

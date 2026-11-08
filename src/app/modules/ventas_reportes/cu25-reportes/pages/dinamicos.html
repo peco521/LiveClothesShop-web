@@ -1,0 +1,35 @@
+<app-inventario-panel title="Reportes dinámicos de la empresa" [error]="error()" [success]="message()">
+  <p>Consultas permitidas sobre datos reales de tu empresa. No se ejecuta SQL generado por IA.</p>
+  <form (ngSubmit)="execute()">
+    <div class="fields">
+      <label>Reporte<select name="tipo" aria-label="Reporte" [(ngModel)]="plan.tipo">@for(t of types;track t.id){<option [value]="t.id">{{t.label}}</option>}</select></label>
+      <label>Desde<input type="date" name="desde" [(ngModel)]="plan.fechaIni" [disabled]="plan.tipo==='existencias_bajas'" /></label>
+      <label>Hasta<input type="date" name="hasta" [(ngModel)]="plan.fechaFin" [disabled]="plan.tipo==='existencias_bajas'" /></label>
+      <label>Sucursal<select name="sucursal" aria-label="Sucursal" [(ngModel)]="plan.nroSuc"><option [ngValue]="null">Todas las autorizadas</option>@for(b of branches();track b.nro){<option [ngValue]="b.nro">{{b.nombre}}</option>}</select></label>
+      <label>Límite<input type="number" name="limite" [(ngModel)]="plan.limite" min="1" max="100" /></label>
+      @if(plan.tipo==='existencias_bajas'){<label>Disponible máximo<input type="number" name="umbral" [(ngModel)]="plan.umbral" min="0" /></label>}
+    </div><button type="submit" [disabled]="busy()">Calcular reporte</button>
+  </form>
+  <section aria-label="Solicitud mediante IA"><h2>Interpretación IA local · plan Profesional</h2>
+    <p class="note">El modelo propone un plan; tú lo confirmas antes de consultar. Si no está disponible, usa el formulario.</p>
+    <label>Solicitud escrita o reconocida<textarea name="solicitud" [(ngModel)]="text" rows="3" maxlength="1200" placeholder="Ventas por sucursal del 2026-10-01 al 2026-10-31"></textarea></label>
+    <div class="actions"><button type="button" (click)="voice()" [disabled]="listening()">{{listening()?'Escuchando…':'Dictar solicitud'}}</button><button type="button" (click)="interpret()" [disabled]="busy() || !text.trim()">Interpretar texto confirmado</button></div>
+    <p class="note">Voz: Web Speech API del navegador, permiso de micrófono y soporte de plataforma; puede requerir Internet. El audio no se envía a FashionStore.</p>
+    @if(decision();as d){<p role="status">{{d.mensaje}} · {{d.modelo}}</p>@if(d.plan){<p>Plan propuesto: {{d.plan.tipo}} · {{d.plan.fechaIni || 'existencias actuales'}} — {{d.plan.fechaFin || ''}} · sucursal {{d.plan.nroSuc || 'todas las autorizadas'}} · límite {{d.plan.limite}} · umbral disponible {{d.plan.umbral}}</p><button type="button" (click)="confirm()" [disabled]="busy()">Confirmar plan y calcular</button>}}
+  </section>
+  @if(result();as r){<section aria-label="Resultado calculado"><h2>{{r.titulo}}</h2><p>{{r.procedencia}}</p><p class="note">{{r.nota}} · {{r.generadoEn}}</p>
+    <div class="actions"><button type="button" (click)="export('pdf')">Exportar PDF calculado</button><button type="button" (click)="export('xlsx')">Exportar Excel calculado</button></div>
+    <div class="scroll"><table><caption>{{r.titulo}}</caption><thead><tr>@for(c of r.columnas;track c){<th>{{c}}</th>}</tr></thead><tbody>@for(row of r.filas;track $index){<tr>@for(c of r.columnas;track c){<td>{{row[c]}}</td>}</tr>}@empty{<tr><td [attr.colspan]="r.columnas.length">No hay datos para estos filtros.</td></tr>}</tbody></table></div>
+    <div class="bars" aria-label="Gráfico del resultado">@for(row of r.filas;track $index){<div>{{label(row)}}<div class="bar" [style.width.%]="bar(row)"></div></div>}</div>
+  </section>}
+  <section><h2>Analítica ML · demostración sintética</h2><p>Demanda supervisada y patrones no supervisados; no representan precisión sobre ventas reales.</p><button type="button" (click)="loadAnalytics()">Consultar modelos y métricas sintéticas</button>@if(analytics()){<pre>{{analyticsText()}}</pre>}
+    <form (ngSubmit)="predict()"><div class="fields">
+      <label>Categoría sintética<select name="categoriaMl" [(ngModel)]="scenario.category"><option value="camiseta">Camiseta</option><option value="pantalon">Pantalón</option><option value="vestido">Vestido</option></select></label>
+      <label>Día (0 lunes)<input name="diaMl" type="number" min="0" max="6" [(ngModel)]="scenario.day_of_week" /></label>
+      <label>Mes<input name="mesMl" type="number" min="1" max="12" [(ngModel)]="scenario.month" /></label>
+      <label>Precio sintético<input name="precioMl" type="number" min="1" max="500" [(ngModel)]="scenario.price" /></label>
+      <label>Descuento (0–0.7)<input name="descuentoMl" type="number" min="0" max="0.7" step="0.01" [(ngModel)]="scenario.discount" /></label>
+      <label>Promoción (0/1)<input name="promoMl" type="number" min="0" max="1" [(ngModel)]="scenario.promotion" /></label>
+    </div><button type="submit">Predecir escenario sintético</button></form>@if(prediction()){<p role="status">{{prediction()}}</p>}
+  </section>
+</app-inventario-panel>

@@ -8,7 +8,7 @@ import { API_BASE_URL } from '../../../../core/config/api.config';
 import { AuthService } from '../../../seguridad-accesos/services/auth.service';
 
 interface Feature { codigo: string; descripcion: string }
-interface Plan { id: number; nombre: string; maxSucursales: number; estado: 'activo' | 'inactivo'; funcionalidades: string[] }
+interface Plan { idPlan: number; nombre: string; maxSucursales: number; estado: 'activo' | 'inactivo'; funcionalidades: string[] }
 interface Subscription { idSuscripcion: number; idEmpresa: number; empresa: string; version: number; maxSucursales: number; sucursalesActivas: number }
 interface Draft { nombre: string; maxSucursales: number; estado: 'activo' | 'inactivo'; funcionalidades: string[] }
 interface Impact { confirmacionImpacto: string; seleccionadas: number; conservanVersion: number }
@@ -62,11 +62,11 @@ export class SaasPlanesPage {
   }
   edit(plan: Plan): void {
     if (plan.estado !== 'activo' || this.working()) return;
-    this.editing = plan.id;
+    this.editing = plan.idPlan;
     this.draft = { nombre: plan.nombre, maxSucursales: plan.maxSucursales, estado: plan.estado, funcionalidades: [...plan.funcionalidades] };
     this.editorOpen = true; this.selected.set([]); this.subscriptions.set([]); this.impact.set(null); this.error.set(''); this.notice.set('');
     this.working.set(true);
-    this.http.get<Subscription[]>(`${this.base}/${plan.id}/suscripciones`)
+    this.http.get<Subscription[]>(`${this.base}/${plan.idPlan}/suscripciones`)
       .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.working.set(false)))
       .subscribe({ next: rows => this.subscriptions.set(rows), error: error => { this.error.set(this.message(error)); this.editorOpen = false; } });
   }
@@ -110,6 +110,7 @@ export class SaasPlanesPage {
       .subscribe({ next: () => { this.editorOpen = false; this.impact.set(null); this.load(); this.notice.set('Plan actualizado. Las empresas no seleccionadas conservan su versión anterior.'); },
         error: error => { this.impact.set(null); this.error.set(this.message(error)); } });
   }
+  back(): void { void this.router.navigateByUrl('/saas'); }
   logout(): void {
     this.auth.logout().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => void this.router.navigateByUrl('/saas/login'), error: error => this.error.set(this.message(error)),

@@ -1,5 +1,5 @@
 import { money, priceQuote } from '../../../shared/pricing';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -8,15 +8,21 @@ import { Cu10Layout } from '../../components/cu10-layout';
 import { CatalogoFiltros, FacetaItem, FacetasListado, ProductosListado } from '../../models/catalogo.models';
 import { CatalogoService } from '../../services/catalogo.service';
 import { catalogoError } from '../../services/catalogo-error';
+import { AuthService } from '../../../../seguridad-accesos/services/auth.service';
+import { CatalogoOfflinePanel } from '../../components/catalogo-offline-panel';
 
 function integer(control: AbstractControl) { return Number.isInteger(control.value) ? null : { integer: true }; }
 
-@Component({ selector: 'app-catalogo-lista', imports: [Cu10Layout, ReactiveFormsModule, RouterLink], templateUrl: './catalogo-lista.html',
+@Component({ selector: 'app-catalogo-lista', imports: [Cu10Layout, ReactiveFormsModule, RouterLink, CatalogoOfflinePanel], templateUrl: './catalogo-lista.html',
   styleUrls: ['./catalogo-lista.css','./catalogo-cards.css'],
 })
 export class CatalogoListaPage {
   readonly money=money;readonly quote=priceQuote;
+  downloadIds(): string[] { return this.result()?.items.map(item => item.idProd) ?? []; }
   private readonly service = inject(CatalogoService);
+  private readonly auth = inject(AuthService);
+  private owner = this.auth.session();
+  private facetsRequest?: Subscription;
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroy = inject(DestroyRef);
@@ -39,11 +45,21 @@ export class CatalogoListaPage {
     soloDisponibles: [false], sort: ['nombre_asc'],
     limit: [20, [Validators.required, Validators.min(1), Validators.max(100), integer]] });
   constructor() {
-    forkJoin({ categorias: this.service.faceta('categorias'), marcas: this.service.faceta('marcas'),
-      colecciones: this.service.faceta('colecciones'), temporadas: this.service.faceta('temporadas'),
-      tallas: this.service.faceta('tallas'), colores: this.service.faceta('colores') })
-      .pipe(takeUntilDestroyed()).subscribe({ next: value => this.facetas.set(value),
-        error: () => this.facetsError.set('No pudimos cargar las categorías. Recarga la página para intentarlo de nuevo.') });
+    this.loadFacets();
+    effect(() => {
+      const session = this.auth.session();
+      if (session === this.owner) return;
+      this.owner = session;
+      untracked(() => {
+        this.request?.unsubscribe(); this.facetsRequest?.unsubscribe(); this.previewRequest?.unsubscribe();
+        this.previewCache.clear(); this.result.set(null); this.facetas.set({});
+        this.preview.set(null); this.activeCategory.set(null); this.categoriesOpen.set(false);
+        this.previewBusy.set(false); this.previewError.set(''); this.facetsError.set('');
+        this.busy.set(false); this.error.set('');
+        this.form.reset(); this.filters = { offset: 0, limit: 20, sort: 'nombre_asc' };
+        if (session) { this.loadFacets(); this.load(); }
+      });
+    });
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(params => {
       const offset = Number(params.get('offset') ?? 0), limit = Number(params.get('limit') ?? 20);
       this.filters = { ...this.filters, offset: Number.isSafeInteger(offset) && offset >= 0 ? offset : 0,
@@ -51,6 +67,15 @@ export class CatalogoListaPage {
       this.form.controls.limit.setValue(this.filters.limit);
       this.load();
     });
+  }
+  private loadFacets(): void {
+    const owner = this.auth.session();
+    if (!owner) return;
+    this.facetsRequest = forkJoin({ categorias: this.service.faceta('categorias'), marcas: this.service.faceta('marcas'),
+      colecciones: this.service.faceta('colecciones'), temporadas: this.service.faceta('temporadas'),
+      tallas: this.service.faceta('tallas'), colores: this.service.faceta('colores') })
+      .pipe(takeUntilDestroyed(this.destroy)).subscribe({ next: value => { if (owner === this.auth.session()) this.facetas.set(value); },
+        error: () => this.facetsError.set('No pudimos cargar las categorías. Recarga la página para intentarlo de nuevo.') });
   }
   openCategories(): void {
     this.categoriesOpen.set(true);
@@ -62,6 +87,8 @@ export class CatalogoListaPage {
     else this.openCategories();
   }
   explore(category: FacetaItem, retry = false): void {
+    const owner = this.auth.session();
+    if (!owner) return;
     if (!retry && this.activeCategory()?.id === category.id && (this.preview() || this.previewBusy())) return;
     this.previewRequest?.unsubscribe();
     this.activeCategory.set(category); this.previewError.set(''); this.preview.set(null); this.previewBusy.set(false);
@@ -71,7 +98,7 @@ export class CatalogoListaPage {
     this.previewRequest = forkJoin({ brands: this.service.faceta('marcas', category.id),
       products: this.service.listar({ offset: 0, limit: 6, idCat: category.id, sort: 'nombre_asc' }) })
       .pipe(takeUntilDestroyed(this.destroy), finalize(() => this.previewBusy.set(false))).subscribe({
-        next: value => { this.previewCache.set(category.id, value); this.preview.set(value); },
+        next: value => { if (owner === this.auth.session()) { this.previewCache.set(category.id, value); this.preview.set(value); } },
         error: () => this.previewError.set('No pudimos cargar esta categoría. Inténtalo de nuevo.'),
       });
   }
@@ -102,9 +129,11 @@ export class CatalogoListaPage {
   }
   load(): void {
     this.request?.unsubscribe();
+    const owner = this.auth.session();
+    if (!owner) { this.result.set(null); this.busy.set(false); return; }
     this.busy.set(true); this.error.set(''); this.result.set(null);
     this.request = this.service.listar(this.filters).pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false))).subscribe({
-      next: value => this.result.set(value), error: (error: unknown) => this.error.set(catalogoError(error)),
+      next: value => { if (owner === this.auth.session()) this.result.set(value); }, error: (error: unknown) => this.error.set(catalogoError(error)),
     });
   }
 }

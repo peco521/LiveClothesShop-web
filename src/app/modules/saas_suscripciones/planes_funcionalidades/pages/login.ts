@@ -44,7 +44,7 @@ export class SaasLoginPage {
 
   constructor() {
     afterNextRender(() => this.auth.restore().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: session => { if (session?.usuario.tipo === 'S') void this.router.navigateByUrl('/saas/planes'); },
+      next: session => { if (session?.usuario.tipo === 'S') void this.router.navigateByUrl('/saas'); },
       error: () => {},
     }));
   }
@@ -55,7 +55,7 @@ export class SaasLoginPage {
     this.error.set('');
     this.auth.login({ correo: this.correo, contrasena: this.contrasena }, 'saas')
       .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.busy.set(false); this.contrasena = ''; }))
-      .subscribe({ next: () => void this.router.navigateByUrl('/saas/planes'),
+      .subscribe({ next: () => void this.router.navigateByUrl('/saas'),
         error: (error: unknown) => this.error.set(authError(error, 'login')) });
   }
 }

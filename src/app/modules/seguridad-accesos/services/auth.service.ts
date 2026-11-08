@@ -23,8 +23,12 @@ function publicSession(value: AuthResponse): AuthResponse {
 }
 
 function cacheCashierSession(session: AuthResponse): void {
-  if (!isInternalSession(session) || session.usuario.tipo !== 'E' || !session.empresa
-      || !session.permisos.includes('CU24') || typeof localStorage === 'undefined') return;
+  // Keep the historical storage key for compatibility. This public, expiring
+  // snapshot now also lets clients reopen their explicitly downloaded catalog.
+  // It never authenticates HTTP requests or grants cashier privileges.
+  const cashier = isInternalSession(session) && session.usuario.tipo === 'E' && session.permisos.includes('CU24');
+  const client = session.usuario.tipo === 'C' && !session.plataforma;
+  if ((!cashier && !client) || !session.empresa || typeof localStorage === 'undefined') return;
   // Only a short-lived identity/authorization snapshot is cached, never a token
   // or password. It is honored only while the browser reports offline.
   localStorage.setItem(OFFLINE_CASHIER_SESSION, JSON.stringify(session));
@@ -34,8 +38,10 @@ function readOfflineCashierSession(): AuthResponse | null {
   if (typeof localStorage === 'undefined') return null;
   try {
     const value = JSON.parse(localStorage.getItem(OFFLINE_CASHIER_SESSION) ?? 'null') as AuthResponse | null;
-    if (!value || !isInternalSession(value) || value.usuario.tipo !== 'E' || !value.empresa
-        || !value.permisos.includes('CU24') || !Number.isFinite(Date.parse(value.expiraEn))
+    const cashier = value && isInternalSession(value) && value.usuario.tipo === 'E' && value.permisos.includes('CU24');
+    const client = value?.usuario.tipo === 'C' && !value?.plataforma;
+    if (!value || (!cashier && !client) || !value.empresa
+        || !Number.isFinite(Date.parse(value.expiraEn))
         || Date.parse(value.expiraEn) <= Date.now()) {
       localStorage.removeItem(OFFLINE_CASHIER_SESSION);
       return null;

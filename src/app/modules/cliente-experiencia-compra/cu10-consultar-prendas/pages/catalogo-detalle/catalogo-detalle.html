@@ -1,4 +1,5 @@
 <app-cu10-layout [title]="item()?.descripcion||'Detalle de prenda'" [error]="error()">
+ <app-catalogo-offline-panel />
  @if(busy()){<p role="status">Cargando prenda…</p>}
  @if(error()){<button (click)="load(actual())" [disabled]="busy()">Reintentar</button>}
  @if(item();as prenda){

@@ -6,7 +6,7 @@ import { PLATFORM_ID } from '@angular/core';
 import { of, Subject, throwError } from 'rxjs';
 import { apiInterceptor } from '../../../core/interceptors/api.interceptor';
 import { OperacionesService } from '../shared/operaciones.service';
-import { Reservation, Sale } from '../shared/operaciones.models';
+import { Reservation, Return, Sale } from '../shared/operaciones.models';
 import { CU21_ROUTES } from '../cu21-gestionar-promociones/routes/cu21.routes';
 import { CU22_ROUTES } from '../../Reservas y Atencion en tienda/cu22-gestionar-reservas-sucursal/routes/cu22.routes';
 import { CU23_ROUTES, CU23_POLITICAS_ROUTES } from '../../Reservas y Atencion en tienda/cu23-gestionar-devoluciones/routes/cu23.routes';
@@ -24,9 +24,11 @@ describe('CU21-CU25 rutas', () => {
   it('cada caso de uso expone su ruta protegida por permiso', () => {
     const routes = [CU21_ROUTES, CU22_ROUTES, CU23_ROUTES, CU23_POLITICAS_ROUTES, CU24_ROUTES, CU25_ROUTES];
     for (const route of routes) {
-      expect(route.map(item => item.path)).toEqual(['']);
-      expect(route[0].canActivate?.length).toBe(1);
-      expect(route[0].loadComponent).toBeTypeOf('function');
+      expect(route.map(item => item.path)).toEqual(route === CU25_ROUTES ? ['dinamicos', ''] : ['']);
+      for (const item of route) {
+        expect(item.canActivate?.length).toBe(1);
+        expect(item.loadComponent).toBeTypeOf('function');
+      }
     }
   });
 });
@@ -142,7 +144,52 @@ describe('CU21-CU25 validaciones de pantalla', () => {
     page.motivo = 'Talla incorrecta';
     page.registerReturn();
     expect(service.send).toHaveBeenCalledWith('devoluciones', expect.objectContaining({ nroVenta: 1, idCliente: 'cliente-1',
+      idOperacion: expect.stringMatching(/^[0-9a-f-]{36}$/i),
       items: [{ idDetalleVenta: 1, cantidad: 1 }] }));
+  });
+
+  it('CU23 conserva el idempotency key si debe reintentar la misma solicitud', () => {
+    setup();
+    const page = TestBed.createComponent(DevolucionesPage).componentInstance;
+    page.sale.set({ nroVenta: 1, fechaHora: '2026-01-05T10:00:00', estado: 'registrada', idCliente: 'cliente-1',
+      total: 100, descAplicado: 0, sucursal: { nombre: 'Central', ciudad: 'La Paz' },
+      items: [{ idDetalleVenta: 1, idVar: 'Var-1', producto: 'Camisa', cantidad: 2, precioUnitario: 50 }] });
+    page.returnQuantities = { 1: 1 };
+    page.motivo = 'Talla incorrecta';
+    service.send.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 503 })));
+    page.registerReturn();
+    const first = service.send.mock.calls[0][1] as { idOperacion: string };
+    page.registerReturn();
+    const second = service.send.mock.calls[1][1] as { idOperacion: string };
+    expect(second.idOperacion).toBe(first.idOperacion);
+  });
+
+  it('CU23 inspecciona cada prenda con el contrato tenant y registra cambios', () => {
+    setup();
+    const page = TestBed.createComponent(DevolucionesPage).componentInstance;
+    const row: Return = {
+      nroDev: 9, nroVenta: 1, estado: 'pendiente', motivo: 'Talla incorrecta', monto: 40,
+      items: [{ idDetalleVenta: 1, producto: 'Camisa', cantidad: 1, condicion: null }],
+      cambio: null, reembolso: null,
+    };
+    page.setInspection(row.nroDev, 1, 'danada');
+    page.decideReturn(row, 'inspeccionar');
+    expect(service.send).toHaveBeenCalledWith('devoluciones/9/decision', {
+      accion: 'inspeccionar', inspecciones: [{ idDetalleVenta: 1, condicion: 'danada' }],
+    });
+
+    page.sale.set({ nroVenta: 1, fechaHora: '2026-01-05T10:00:00', estado: 'registrada', idCliente: 'cliente-1',
+      total: 100, descAplicado: 0, sucursal: { nombre: 'Central', ciudad: 'La Paz' },
+      items: [{ idDetalleVenta: 1, idVar: 'Var-1', producto: 'Camisa', cantidad: 2, precioUnitario: 50 }] });
+    page.operation = 'cambio';
+    page.returnQuantities = { 1: 1 };
+    page.newVariants = { 1: 'Var-2' };
+    page.motivo = 'Talla incorrecta';
+    service.send.mockClear();
+    page.registerReturn();
+    expect(service.send).toHaveBeenCalledWith('devoluciones/cambios', expect.objectContaining({
+      nroVenta: 1, idCliente: 'cliente-1', items: [{ idDetalleVenta: 1, cantidad: 1, idVarNueva: 'Var-2' }],
+    }));
   });
 
   it('CU24 exige sucursal y prendas, y admite la venta anónima', () => {

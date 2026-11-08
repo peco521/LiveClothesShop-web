@@ -55,7 +55,18 @@ export interface Sale {
 
 export interface Return {
   nroDev: number; nroVenta: number; estado: string; motivo: string; monto: number | string;
-  items: { producto: string; cantidad: number }[]; reembolso: { estado: string; metodo: string; monto: number | string } | null;
+  items: { idDetalleVenta: number; producto: string; cantidad: number; condicion: 'apta' | 'danada' | null }[];
+  cambio: {
+    nroCambio: number; estado: string; nroVentaNueva: number | null; diferencia: number | string;
+    estadoPago: string | null;
+    items: { idDetalleVenta: number; cantidad: number; condicion: 'apta' | 'danada' | null;
+      varianteNueva: string; productoNuevo: string; precioNuevo: number | string }[];
+  } | null;
+  reembolso: { idReembolso: number; estado: string; metodo: string; monto: number | string } | null;
+}
+
+export interface ExchangeVariant {
+  idVar: string; sku: string; producto: string; precio: number | string; disponible: number;
 }
 
 /** Fila de la matriz del reporte de ventas (una sucursal o el TOTAL GENERAL). */

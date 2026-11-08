@@ -98,7 +98,7 @@ describe('AuthService + interceptor HTTP', () => {
     expect(navigate).toHaveBeenCalledWith('/admin/login');
   });
 
-  it('restaura únicamente la identidad CU24 cacheada cuando se recarga sin red', () => {
+  it('restaura la identidad CU24 cacheada cuando se recarga sin red', () => {
     const cashier: AuthResponse = { ...session, empresa: 'manaco',
       usuario: { ...session.usuario, tipo: 'E' }, permisos: ['CU24'],
       expiraEn: '2099-01-01T00:00:00Z' };
@@ -116,6 +116,30 @@ describe('AuthService + interceptor HTTP', () => {
     expect(restored?.offlineOnly).toBe(true);
     expect(restored?.empresa).toBe('manaco');
     expect(service.session()?.offlineOnly).toBe(true);
+  });
+
+  it('cliente puede reabrir su descarga sin red sin obtener privilegios de caja', () => {
+    const client: AuthResponse = { ...session, empresa:'manaco',usuario:{...session.usuario,tipo:'C'},expiraEn:'2099-01-01T00:00:00Z' };
+    service.login({empresa:'manaco',correo:'test@example.com',contrasena:'Prueba'}).subscribe();
+    http.expectOne('/api/auth/login/cliente').flush({...client,token:'no-retener'});
+    Object.defineProperty(navigator,'onLine',{value:false,configurable:true});
+    let restored:AuthResponse|null|undefined;
+    service.restore().subscribe(value=>restored=value);
+    http.expectOne('/api/auth/me').error(new ProgressEvent('error'));
+    expect(restored?.offlineOnly).toBe(true);expect(restored?.usuario.tipo).toBe('C');
+    expect(restored?.permisos).not.toContain('CU24');
+    expect(localStorage.getItem('fashionstore-offline-cashier-session-v1')).not.toContain('no-retener');
+  });
+
+  it('401 online y snapshot expirado no se confunden con operación offline autorizada', () => {
+    const key='fashionstore-offline-cashier-session-v1';
+    localStorage.setItem(key,JSON.stringify({...session,empresa:'manaco',usuario:{...session.usuario,tipo:'C'},expiraEn:'2099-01-01T00:00:00Z'}));
+    service.restore().subscribe();http.expectOne('/api/auth/me').flush({}, {status:401,statusText:'Expired'});
+    expect(service.session()).toBeNull();expect(localStorage.getItem(key)).toBeNull();
+    localStorage.setItem(key,JSON.stringify({...session,empresa:'manaco',usuario:{...session.usuario,tipo:'C'},expiraEn:'2020-01-01T00:00:00Z'}));
+    Object.defineProperty(navigator,'onLine',{value:false,configurable:true});
+    service.restore().subscribe({error:()=>undefined});http.expectOne('/api/auth/me').error(new ProgressEvent('error'));
+    expect(service.session()).toBeNull();expect(localStorage.getItem(key)).toBeNull();
   });
 
   it('restaura sesión desde me sin CSRF en GET y sin transfer cache', () => {

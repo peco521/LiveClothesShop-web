@@ -1,9 +1,10 @@
 import { isPlatformBrowser } from '@angular/common';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { defer, EMPTY, map, Observable } from 'rxjs';
+import { catchError, defer, EMPTY, firstValueFrom, from, map, mergeMap, Observable, of, throwError } from 'rxjs';
 import { API_BASE_URL } from '../../../../core/config/api.config';
 import { CatalogoFiltros, FacetasListado, ProductoDetalle, ProductosListado } from '../models/catalogo.models';
+import { CatalogoDescargado, CatalogoOfflineError, CatalogoOfflineRepository } from './catalogo-offline.repository';
 
 function resumen(value: ProductoDetalle): ProductoDetalle {
   // Explicit allowlist: nunca conservar campos inesperados del catálogo.
@@ -31,8 +32,25 @@ export class CatalogoService {
   private readonly http = inject(HttpClient);
   private readonly platform = inject(PLATFORM_ID);
   private readonly base = `${inject(API_BASE_URL).replace(/\/$/, '')}/catalogo`;
-  private browser<T>(request: () => Observable<T>): Observable<T> {
-    return defer(() => isPlatformBrowser(this.platform) ? request() : EMPTY);
+  private readonly offline = inject(CatalogoOfflineRepository);
+  private browser<T>(request: () => Observable<T>, select: (data: CatalogoDescargado) => T): Observable<T> {
+    return defer(() => {
+      if (!isPlatformBrowser(this.platform)) return EMPTY;
+      const owner = this.offline.owner();
+      const fallback = () => from(this.offline.fallback(owner, select));
+      if (!navigator.onLine) return fallback();
+      return request().pipe(
+        mergeMap(value => {
+          if (owner !== this.offline.owner()) return EMPTY;
+          this.offline.online(owner);
+          return of(value);
+        }),
+        catchError((error: unknown) => {
+          if (owner !== this.offline.owner()) return EMPTY;
+          return error instanceof HttpErrorResponse && error.status === 0 ? fallback() : throwError(() => error);
+        }),
+      );
+    });
   }
   listar(filters: CatalogoFiltros): Observable<ProductosListado> {
     let params = new HttpParams().set('offset', filters.offset).set('limit', filters.limit);
@@ -44,20 +62,44 @@ export class CatalogoService {
     if (filters.maxPrecio !== undefined) params = params.set('maxPrecio', filters.maxPrecio);
     if (filters.soloDisponibles) params = params.set('soloDisponibles', true);
     if (filters.sort) params = params.set('sort', filters.sort);
-    return this.browser(() => this.http.get<ProductosListado>(`${this.base}/productos`, { params })).pipe(
+    return this.browser(() => this.http.get<ProductosListado>(`${this.base}/productos`, { params }), data => this.offline.list(data, filters)).pipe(
       map(value => ({ items: value.items, total: value.total, offset: value.offset, limit: value.limit })),
     );
   }
   detalle(id: string): Observable<ProductoDetalle> {
-    return this.browser(() => this.http.get<ProductoDetalle>(`${this.base}/productos/${encodeURIComponent(id)}`)).pipe(map(resumen));
+    return this.browser(() => this.http.get<ProductoDetalle>(`${this.base}/productos/${encodeURIComponent(id)}`), data => this.find(data, id, false)).pipe(map(resumen));
   }
   detalleVariante(id: string): Observable<ProductoDetalle> {
-    return this.browser(() => this.http.get<ProductoDetalle>(`${this.base}/variantes/${encodeURIComponent(id)}`)).pipe(map(resumen));
+    return this.browser(() => this.http.get<ProductoDetalle>(`${this.base}/variantes/${encodeURIComponent(id)}`), data => this.find(data, id, true)).pipe(map(resumen));
   }
   faceta(grupo: 'categorias' | 'marcas' | 'colecciones' | 'temporadas' | 'tallas' | 'colores', idCat?: number): Observable<FacetasListado> {
     const params = idCat === undefined ? new HttpParams() : new HttpParams().set('idCat', idCat);
-    return this.browser(() => this.http.get<FacetasListado>(`${this.base}/${grupo}`, { params })).pipe(
+    return this.browser(() => this.http.get<FacetasListado>(`${this.base}/${grupo}`, { params }), data => this.offline.facets(data, grupo, idCat)).pipe(
       map(value => ({ items: value.items.map(item => ({ id: item.id, nombre: item.nombre })), total: value.total })),
     );
+  }
+
+  private find(data: CatalogoDescargado, id: string, variant: boolean): ProductoDetalle {
+    const product = data.productos.find(item => variant ? item.variantes.some(row => row.idVariante === id) : item.idProd === id);
+    if (!product) throw new CatalogoOfflineError('Esta prenda no está en el subconjunto descargado. Conéctate para consultarla.');
+    return product;
+  }
+
+  /** Explicit opt-in only. Replace one bounded page atomically, never save mere browsing. */
+  async descargar(ids: string[]): Promise<void> {
+    const owner = this.offline.owner();
+    const unique = [...new Set(ids)];
+    if (!this.offline.current(owner) || !unique.length || unique.length > 100 || !navigator.onLine) {
+      throw new CatalogoOfflineError('Necesitas conexión y una sesión de empresa para descargar entre 1 y 100 prendas.');
+    }
+    const products: ProductoDetalle[] = [];
+    // Sequential requests bound memory/network pressure. An incomplete download never replaces the old snapshot.
+    for (const id of unique) {
+      if (!this.offline.current(owner)) throw new CatalogoOfflineError('La sesión cambió. Descarga de nuevo el catálogo.');
+      const product = await firstValueFrom(this.http.get<ProductoDetalle>(`${this.base}/productos/${encodeURIComponent(id)}`).pipe(map(resumen)));
+      if (!this.offline.current(owner)) throw new CatalogoOfflineError('La sesión cambió. Descarga de nuevo el catálogo.');
+      products.push(product);
+    }
+    await this.offline.save(products, owner);
   }
 }

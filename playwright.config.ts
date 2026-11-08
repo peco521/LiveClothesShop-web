@@ -19,13 +19,14 @@ export default defineConfig({
     {
       command: `"${python}" "${path.join(apiRoot, 'scripts', 'serve_test_api.py')}"`,
       url: 'http://127.0.0.1:8000/health',
-      reuseExistingServer: !process.env.CI,
+      // Never reuse an API whose database destination was not validated by this run.
+      reuseExistingServer: false,
       timeout: 120_000,
     },
     {
       command: 'npm run start -- --host localhost --port 4200',
       url: 'http://localhost:4200/saas/login',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 180_000,
     },
   ],

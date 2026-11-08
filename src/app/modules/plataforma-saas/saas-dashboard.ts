@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { JsonPipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../../core/config/api.config';
 import { AuthService } from '../seguridad-accesos/services/auth.service';
@@ -20,7 +21,7 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
 
 @Component({
   selector: 'app-saas-dashboard',
-  imports: [FormsModule, JsonPipe],
+  imports: [FormsModule, JsonPipe, RouterLink],
   template: `<main class="saas">
     <header><div><p>FASHIONSTORE · PLATAFORMA</p><h1>Administración SaaS</h1>
       <p>Sesión de plataforma: {{ auth.session()?.usuario?.correo }}</p></div>
@@ -94,7 +95,8 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
             <h4>Funcionalidades</h4><ul>@for (feature of plan.funcionalidades; track feature) { <li>{{ feature }}</li> }</ul>
           </article>
         }</div>
-        <p>La definición/catálogo de planes se administra en el backend de plataforma. Desde esta consola se asignan planes y vigencias por empresa.</p>
+        <p>Desde esta consola se asignan planes y vigencias por empresa. La gestión de versiones, límites y funcionalidades está disponible en el editor de planes.</p>
+        @if (can('SAAS-PLANES')) { <a routerLink="/saas/planes">Administrar versiones de planes</a> }
       </section>
     }
 

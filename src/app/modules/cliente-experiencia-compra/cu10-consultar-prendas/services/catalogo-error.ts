@@ -1,6 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { CatalogoOfflineError } from './catalogo-offline.repository';
 
 export function catalogoError(error: unknown): string {
+  if (error instanceof CatalogoOfflineError) return error.message;
   if (error instanceof HttpErrorResponse) {
     switch (error.status) {
       case 401: return 'Tu sesión ha expirado o no es válida. Inicia sesión nuevamente.';

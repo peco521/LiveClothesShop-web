@@ -22,6 +22,7 @@ export interface OfflineOperation {
   siguienteIntento: number;
   codigo?: string;
   detalle?: string;
+  nroReserva?: number;
 }
 
 const DB_NAME = 'fashionstore-offline-v1';
@@ -136,7 +137,7 @@ export class PwaSyncService {
       const batch = operations.slice(index, index + BATCH_SIZE);
       try {
         const response = await firstValueFrom(this.http.post<{
-          resultados: Array<{ id: string; estado: string; codigo?: string; detalle?: string }>;
+          resultados: Array<{ id: string; estado: string; codigo?: string; detalle?: string; nroReserva?: number }>;
         }>(`${this.api}/sync/lote`, {
           dispositivo: 'fashionstore-pwa', origen: 'pwa',
           operaciones: batch.map(({ id, tipo, version, fecha, sucursal, datos, dependeDe }) =>
@@ -149,7 +150,7 @@ export class PwaSyncService {
             : result.estado === 'conflicto' ? 'conflicto'
             : result.estado === 'rechazada' ? 'rechazada' : 'reintento_pendiente';
           await this.write({ ...existing, estado: state, intentos: existing.intentos + 1,
-            codigo: result.codigo, detalle: result.detalle,
+            codigo: result.codigo, detalle: result.detalle, nroReserva: result.nroReserva,
             siguienteIntento: state === 'reintento_pendiente' ? Date.now() + this.backoff(existing.intentos + 1) : 0 });
         }
         this.lastSync.set(new Date().toISOString());

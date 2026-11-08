@@ -35,5 +35,5 @@
       </button>
     </div>
   </header>
-  <main id="shop-main" tabindex="-1"><router-outlet /></main>
+  <main id="shop-main" tabindex="-1">@for (context of sessionViews(); track context) { <router-outlet /> }</main>
 </div>

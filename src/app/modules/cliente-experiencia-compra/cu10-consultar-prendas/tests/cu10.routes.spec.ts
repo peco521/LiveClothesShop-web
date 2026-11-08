@@ -4,7 +4,7 @@ import { By } from '@angular/platform-browser';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { RenderMode } from '@angular/ssr';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { routes } from '../../../../app.routes';
 import { serverRoutes } from '../../../../app.routes.server';
 import { AuthService } from '../../../seguridad-accesos/services/auth.service';
@@ -15,6 +15,7 @@ import { CarritoService } from '../../cu12-carrito/services/carrito.service';
 import { CatalogoListaPage } from '../pages/catalogo-lista/catalogo-lista';
 import { CatalogoDetallePage } from '../pages/catalogo-detalle/catalogo-detalle';
 import { clienteSession, detail, facetas, list } from './catalogo.fixtures';
+import { ProductoDetalle } from '../models/catalogo.models';
 
 describe('CU10 páginas y navegación de tienda', () => {
   let activeHarness: RouterTestingHarness | undefined;
@@ -61,6 +62,25 @@ describe('CU10 páginas y navegación de tienda', () => {
     page.elegir('var-002'); harness.detectChanges(); await harness.fixture.whenStable();
     expect(harness.routeNativeElement?.textContent).not.toContain('var-001');
     expect(harness.routeNativeElement?.textContent).not.toContain('CU10');
+  });
+  it('descarta detalle tardío al cambiar de sesión y borra selección al salir', async () => {
+    const oldResponse = new Subject<ProductoDetalle>(), newResponse = new Subject<ProductoDetalle>();
+    service.detalle.mockReturnValueOnce(oldResponse).mockReturnValue(newResponse);
+    const { harness, page } = await open('/tienda/prendas/prod-001', CatalogoDetallePage);
+    auth.session.set({ ...clienteSession, empresa: 'otra', usuario: { ...clienteSession.usuario, idUsuario: 'otro' } });
+    harness.detectChanges(); await harness.fixture.whenStable();
+    oldResponse.next(detail); oldResponse.complete();
+    expect(page.item()).toBeNull(); expect(page.seleccion()).toBeNull();
+    const current = harness.fixture.debugElement.query(By.directive(CatalogoDetallePage))!.componentInstance as CatalogoDetallePage;
+    expect(current).not.toBe(page);
+    expect(current.item()).toBeNull(); expect(current.seleccion()).toBeNull();
+    newResponse.next({ ...detail, descripcion: 'Prenda de otra empresa' });
+    harness.detectChanges();
+    expect(current.item()?.descripcion).toBe('Prenda de otra empresa');
+    expect(harness.routeNativeElement?.textContent).toContain('Prenda de otra empresa');
+    auth.session.set(null); harness.detectChanges(); await harness.fixture.whenStable();
+    expect(harness.fixture.debugElement.query(By.directive(CatalogoDetallePage))).toBeNull();
+    expect(harness.routeNativeElement?.textContent).not.toContain('Prenda de otra empresa');
   });
   it('sin sesión redirige a login', async () => {
     auth.restore.mockReturnValue(of(null)); auth.session.set(null);

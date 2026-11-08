@@ -1,4 +1,4 @@
-import { afterNextRender, Component, DestroyRef, inject, signal } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../../seguridad-accesos/services/auth.service';
@@ -14,6 +14,10 @@ import { PwaSyncService } from '../../../../core/offline/pwa-sync.service';
 })
 export class ShopLayout {
   readonly auth = inject(AuthService);
+  readonly sessionViews = computed(() => {
+    const value = this.auth.session();
+    return value ? [JSON.stringify([value.empresa, value.usuario.idUsuario, value.expiraEn])] : [];
+  });
   readonly carrito = inject(CarritoService);
   readonly sync = inject(PwaSyncService);
   private readonly destroyRef = inject(DestroyRef);
@@ -22,7 +26,11 @@ export class ShopLayout {
 
   constructor() {
     // Contador real del carrito: se refresca al entrar a la tienda (solo navegador).
-    afterNextRender(() => this.carrito.obtener().pipe(takeUntilDestroyed(this.destroyRef)).subscribe());
+    afterNextRender(() => this.carrito.obtener().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      // CU10 must remain usable while CU12 is intentionally closed in SaaS.
+      // Do not open cart routes or retain an earlier count after a failed read.
+      error: () => this.carrito.estado.set(null),
+    }));
   }
 
   logout(): void {

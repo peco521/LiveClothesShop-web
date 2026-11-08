@@ -1,7 +1,8 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
-import { defer, EMPTY, map, Observable, tap } from 'rxjs';
+import { effect, inject, Injectable, PLATFORM_ID, signal, untracked } from '@angular/core';
+import { catchError, defer, EMPTY, filter, map, Observable, tap, throwError } from 'rxjs';
+import { AuthService } from '../../../seguridad-accesos/services/auth.service';
 import { API_BASE_URL } from '../../../../core/config/api.config';
 import { CarritoDetalle, ItemAgregar, ItemCantidad } from '../models/carrito.models';
 
@@ -24,13 +25,24 @@ function detalle(value: CarritoDetalle): CarritoDetalle {
 
 @Injectable({ providedIn: 'root' })
 export class CarritoService {
+  private readonly auth = inject(AuthService);
   private readonly http = inject(HttpClient);
   private readonly platform = inject(PLATFORM_ID);
   private readonly base = `${inject(API_BASE_URL).replace(/\/$/, '')}/cliente/carrito`;
   // Resumen real del carrito para la navegación (contador del ShopLayout).
   readonly estado = signal<CarritoDetalle | null>(null);
+  private key(): string { const value = this.auth.session(); return JSON.stringify(value ? [value.empresa, value.usuario.idUsuario, value.expiraEn] : null); }
+  constructor() {
+    let previous = this.key();
+    effect(() => { const current = this.key(); if (previous !== current) { previous = current; untracked(() => this.estado.set(null)); } });
+  }
   private browser<T>(request: () => Observable<T>): Observable<T> {
-    return defer(() => isPlatformBrowser(this.platform) ? request() : EMPTY);
+    return defer(() => {
+      if (!isPlatformBrowser(this.platform)) return EMPTY;
+      const owner = this.key();
+      return request().pipe(filter(() => owner === this.key()),
+        catchError(error => owner === this.key() ? throwError(() => error) : EMPTY));
+    });
   }
   obtener(): Observable<CarritoDetalle> {
     return this.browser(() => this.http.get<CarritoDetalle>(this.base)).pipe(

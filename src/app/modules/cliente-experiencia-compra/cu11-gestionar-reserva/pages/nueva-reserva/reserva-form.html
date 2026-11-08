@@ -1,5 +1,6 @@
 <app-cu11-layout title="Nueva reserva" [error]="error()">
   <p class="intro">Elige tus prendas y programa una visita para probarlas en tienda.</p>
+  @if (pending()) { <p role="status" class="local-reservation" [attr.data-operation-id]="pending()">Reserva guardada en este dispositivo. Sigue pendiente y no retiene stock hasta ser aceptada por el servidor. Consulta su aceptación o conflicto en <a routerLink="/tienda/reservas">Mis reservas</a>.</p> }
   <form [formGroup]="form" (ngSubmit)="guardar()" class="reservation-grid">
     <div class="main-column">
       <section class="card" aria-labelledby="appointment-title">

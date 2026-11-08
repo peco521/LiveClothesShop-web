@@ -7,11 +7,15 @@ import { Cu11Layout } from '../../components/cu11-layout';
 import { ReservasFiltros, ReservasListado } from '../../models/reserva.models';
 import { ReservasService } from '../../services/reservas.service';
 import { reservaError } from '../../services/reserva-error';
+import { PwaSyncService } from '../../../../../core/offline/pwa-sync.service';
 
 @Component({ selector: 'app-mis-reservas', imports: [Cu11Layout, ReactiveFormsModule, RouterLink], templateUrl: './mis-reservas.html',
   styles: `.table-scroll { overflow-x: auto; } table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--line); } .actions { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 20px 0; } .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 0.85rem; }`,
 })
 export class MisReservasPage {
+  readonly sync = inject(PwaSyncService);
+  offlineReservations() { return this.sync.operations().filter(item => item.tipo === 'reserva'); }
+  async sincronizar(): Promise<void> { await this.sync.flush(); if (!this.destroy.destroyed) this.load(); }
   private readonly service = inject(ReservasService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);

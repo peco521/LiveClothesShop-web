@@ -1,12 +1,13 @@
 import { Routes } from '@angular/router';
 
 import { internalGuard } from './modules/seguridad-accesos/shared/guards/internal.guard';
+import { platformGuard } from './modules/plataforma-saas/platform.guard';
 import { saasGuard } from './modules/saas_suscripciones/planes_funcionalidades/guards/saas.guard';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: 'saas/login', title: 'Acceso SaaS | FashionStore', loadComponent: () => import('./modules/saas_suscripciones/planes_funcionalidades/pages/login').then(m => m.SaasLoginPage) },
-  { path: 'saas', pathMatch: 'full', redirectTo: 'saas/planes' },
+  { path: 'saas', pathMatch: 'full', title: 'Plataforma SaaS | FashionStore', canActivate: [platformGuard], loadComponent: () => import('./modules/plataforma-saas/saas-dashboard').then(m => m.SaasDashboardPage) },
   { path: 'saas/planes', title: 'Planes | FashionStore', canActivate: [saasGuard], loadComponent: () => import('./modules/saas_suscripciones/planes_funcionalidades/pages/planes').then(m => m.SaasPlanesPage) },
   { path: 'admin/login', title: 'Acceso administrativo | FashionStore', loadComponent: () => import('./modules/seguridad-accesos/pages/admin-login/admin-login').then(m => m.AdminLoginPage) },
   {

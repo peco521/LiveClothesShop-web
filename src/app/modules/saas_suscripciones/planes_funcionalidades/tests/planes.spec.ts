@@ -16,7 +16,7 @@ describe('Gestión SaaS de planes', () => {
   it('solicita el impacto y confirma solamente las empresas seleccionadas', () => {
     const fixture = TestBed.createComponent(SaasPlanesPage);
     const page = fixture.componentInstance;
-    const plan = { id: 1, nombre: 'Profesional', maxSucursales: 10, estado: 'activo' as const, funcionalidades: ['VENTAS'] };
+    const plan = { idPlan: 1, nombre: 'Profesional', maxSucursales: 10, estado: 'activo' as const, funcionalidades: ['VENTAS'] };
     http.expectOne('/api/saas/planes').flush([plan]);
     http.expectOne('/api/saas/planes/funcionalidades').flush([{ codigo: 'VENTAS', descripcion: 'Ventas' }]);
     page.edit(plan);
