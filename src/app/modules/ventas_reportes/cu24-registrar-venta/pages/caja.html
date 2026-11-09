@@ -91,7 +91,7 @@
         @else {
           <div class="product-grid">
             @for (p of rows.items; track p.idProd) {
-              <button class="product-card" type="button" (click)="selectProduct(p.idProd)" [class.selected]="product()?.idProd === p.idProd">
+              <button class="product-card" type="button" (click)="selectProduct(p.idProd)" [class.selected]="product()?.idProd === p.idProd" [attr.data-testid]="'producto-' + p.idProd">
                 @if (p.imagen) { <img [src]="p.imagen" [alt]="p.descripcion" /> }
                 <strong>{{ p.descripcion }}</strong>
                 <small>{{ p.categoria.descripcion }} · {{ p.marca.nombre }}</small>
@@ -110,7 +110,7 @@
         <h3>{{ p.descripcion }} · variantes disponibles</h3>
         <div class="product-grid">
           @for (v of p.variantes; track v.idVariante) {
-            <button class="product-card" type="button" (click)="addVariant(v)" [disabled]="saving()">
+            <button class="product-card" type="button" (click)="addVariant(v)" [disabled]="saving()" [attr.data-testid]="'variante-' + v.sku">
               @if (v.imagen) { <img [src]="v.imagen" [alt]="p.descripcion" /> }
               <strong>Talla {{ v.talla.descripcion }}</strong>
               <small>{{ v.colores.length ? v.colores[0].descripcion : 'Sin color' }} · {{ v.sku }}</small>

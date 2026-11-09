@@ -1,8 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { JsonPipe } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../../core/config/api.config';
 import { AuthService } from '../seguridad-accesos/services/auth.service';
@@ -16,42 +17,127 @@ interface Company {
 }
 interface Plan { idPlan: number; nombre: string; maxSucursales: number; estado: string; funcionalidades: string[] }
 interface AuditEvent { id: number; fecha: string; accion: string; usuarioId: string | null; detalles?: Record<string, unknown> }
+interface PlatformSummary {
+  empresas: { total: number; activas: number; suspendidas: number; inactivas: number };
+  suscripciones: { vigentes: number; vencidas: number; proximasAVencer: number };
+  distribucionPlanes: Array<{ nombre: string; suscripciones: number }>;
+  sucursalesActivas: number;
+  actividadReciente: AuditEvent[];
+  diasProximosAVencer: number;
+}
+interface BackupJob {
+  id: string; estado: 'solicitado' | 'en_proceso' | 'completado' | 'fallido';
+  solicitado: string; completado: string | null; tamanoBytes: number | null; error: string | null;
+}
+interface BackupList {
+  configuracion: { configurado: boolean; estado: string; mensaje: string | null; destino: string; retencionDias: number };
+  respaldos: BackupJob[];
+}
+type SaasSection = 'resumen' | 'empresas' | 'planes' | 'aprovisionar' | 'auditoria' | 'respaldos';
 interface ProvisionedCompany { idEmp: number; codigo: string; nombre: string }
 interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombre: string; estado: string }>; usuarios: Array<{ idUsuario: string; correo: string; tipo: string; nroRol: string }>; aviso: string }
 
 @Component({
   selector: 'app-saas-dashboard',
   imports: [FormsModule, JsonPipe, RouterLink],
-  template: `<main class="saas">
-    <header><div><p>FASHIONSTORE · PLATAFORMA</p><h1>Administración SaaS</h1>
-      <p>Sesión de plataforma: {{ auth.session()?.usuario?.correo }}</p></div>
-      <button type="button" (click)="logout()">Cerrar sesión</button></header>
-    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-    @if (success()) { <p class="success" role="status">{{ success() }}</p> }
-    <nav aria-label="Secciones SaaS">
-      <button type="button" (click)="section.set('empresas')">Empresas</button>
-      <button type="button" (click)="section.set('planes')">Planes y suscripciones</button>
-      <button type="button" (click)="section.set('aprovisionar')">Aprovisionar</button>
-      <button type="button" (click)="section.set('auditoria')">Auditoría</button>
-    </nav>
+  template: `<div class="saas-layout">
+    @if (menuOpen()) { <button class="saas-scrim" type="button" aria-label="Cerrar navegación" (click)="menuOpen.set(false)"></button> }
+    <aside class="saas-sidebar" [class.open]="menuOpen()" aria-label="Navegación de plataforma">
+      <a class="saas-brand" routerLink="/saas" (click)="setSection('resumen')">
+        <span class="saas-mark" aria-hidden="true">F</span><span>FashionStore<small>PLATAFORMA</small></span>
+      </a>
+      <nav class="saas-nav" aria-label="Secciones SaaS">
+        <button type="button" [class.active]="section() === 'resumen'" [attr.aria-current]="section() === 'resumen' ? 'page' : null" (click)="setSection('resumen')">Resumen</button>
+        @if (can('SAAS-EMPRESAS')) { <button type="button" [class.active]="section() === 'empresas'" [attr.aria-current]="section() === 'empresas' ? 'page' : null" (click)="setSection('empresas')">Empresas</button> }
+        @if (can('SAAS-PLANES')) {
+          <button type="button" [class.active]="section() === 'planes'" [attr.aria-current]="section() === 'planes' ? 'page' : null" (click)="setSection('planes')">Planes y suscripciones</button>
+        }
+        @if (can('SAAS-EMPRESAS')) { <button type="button" [class.active]="section() === 'aprovisionar'" [attr.aria-current]="section() === 'aprovisionar' ? 'page' : null" (click)="setSection('aprovisionar')">Registrar empresa</button> }
+        @if (can('SAAS-AUDITORIA')) { <button type="button" [class.active]="section() === 'auditoria'" [attr.aria-current]="section() === 'auditoria' ? 'page' : null" (click)="setSection('auditoria')">Auditoría</button> }
+        @if (can('SAAS-RESPALDOS')) { <button type="button" [class.active]="section() === 'respaldos'" [attr.aria-current]="section() === 'respaldos' ? 'page' : null" (click)="setSection('respaldos')">Respaldos</button> }
+      </nav>
+      <div class="saas-sidebar-foot">
+        <span>Administración de plataforma</span>
+        @if (can('SAAS-PLANES')) { <a routerLink="/saas/planes">Editar versiones de planes</a> }
+      </div>
+    </aside>
+    <div class="saas-content">
+      <header class="saas-topbar">
+        <button class="saas-menu-button" type="button" (click)="menuOpen.update(value => !value)" [attr.aria-expanded]="menuOpen()" aria-label="Abrir navegación">Menú</button>
+        <div><p class="saas-kicker">PLATAFORMA FASHIONSTORE</p><h1>{{ sectionTitle() }}</h1><p class="saas-subtitle">{{ sectionDescription() }}</p></div>
+        <div class="saas-account"><span>{{ auth.session()?.usuario?.correo }}</span><button class="secondary" type="button" (click)="logout()">Cerrar sesión</button></div>
+      </header>
+      <main class="saas-page">
+        @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+        @if (success()) { <p class="notice success" role="status">{{ success() }}</p> }
+
+    @if (section() === 'resumen') {
+      <section class="summary-page" aria-labelledby="summary-heading">
+        <div class="section-heading"><div><p class="saas-kicker">VISTA GENERAL</p><h2 id="summary-heading">Estado de la plataforma</h2><p>Indicadores calculados a partir de empresas, suscripciones y sucursales actuales.</p></div><button class="secondary" type="button" (click)="loadSummary()" [disabled]="loadingSummary()">Actualizar</button></div>
+        @if (!can('SAAS-EMPRESAS')) { <p class="empty-state" role="status">Tu cuenta no tiene permiso para consultar los indicadores de empresas.</p> }
+        @else if (loadingSummary()) { <p role="status">Cargando indicadores…</p> }
+        @else if (summary(); as stats) {
+          <div class="metric-grid">
+            <article class="metric-card"><span>Empresas activas</span><strong>{{ stats.empresas.activas }}</strong><small>{{ stats.empresas.total }} empresas registradas</small></article>
+            <article class="metric-card"><span>Suscripciones vigentes</span><strong>{{ stats.suscripciones.vigentes }}</strong><small>{{ stats.suscripciones.vencidas }} vencidas</small></article>
+            <article class="metric-card warning"><span>Próximas a vencer</span><strong>{{ stats.suscripciones.proximasAVencer }}</strong><small>En los siguientes {{ stats.diasProximosAVencer }} días</small></article>
+            <article class="metric-card"><span>Sucursales activas</span><strong>{{ stats.sucursalesActivas }}</strong><small>En todas las empresas</small></article>
+          </div>
+          <div class="summary-columns">
+            <section class="surface"><div class="surface-heading"><h3>Empresas por estado</h3><span>{{ stats.empresas.total }} total</span></div>
+              <dl class="state-list"><div><dt>Activas</dt><dd>{{ stats.empresas.activas }}</dd></div><div><dt>Suspendidas</dt><dd>{{ stats.empresas.suspendidas }}</dd></div><div><dt>Inactivas</dt><dd>{{ stats.empresas.inactivas }}</dd></div></dl>
+            </section>
+            <section class="surface"><div class="surface-heading"><h3>Distribución por plan</h3><span>Suscripciones vigentes</span></div>
+              <ul class="distribution-list">@for (plan of stats.distribucionPlanes; track plan.nombre) { <li><span>{{ plan.nombre }}</span><strong>{{ plan.suscripciones }}</strong></li> } @empty { <li class="empty-state">No hay suscripciones vigentes.</li> }</ul>
+            </section>
+          </div>
+          <div class="summary-columns">
+            @if (can('SAAS-AUDITORIA')) {
+              <section class="surface"><div class="surface-heading"><h3>Actividad reciente</h3><button class="text-action" type="button" (click)="setSection('auditoria')">Ver auditoría</button></div>
+                <ul class="activity-list">@for (event of stats.actividadReciente; track event.id) { <li><span>{{ actionLabel(event.accion) }}</span><time>{{ formatDate(event.fecha) }}</time></li> } @empty { <li class="empty-state">Aún no hay actividad de plataforma.</li> }</ul>
+              </section>
+            }
+            <section class="surface quick-actions"><div class="surface-heading"><h3>Accesos rápidos</h3></div>
+              @if (can('SAAS-EMPRESAS')) { <button type="button" class="secondary" (click)="setSection('aprovisionar')">Registrar empresa</button> }
+              @if (can('SAAS-PLANES')) { <button type="button" class="secondary" (click)="setSection('empresas')">Revisar empresas y vencimientos</button> }
+              @if (can('SAAS-RESPALDOS')) { <button type="button" class="secondary" (click)="setSection('respaldos')">Consultar respaldos</button> }
+            </section>
+          </div>
+        } @else { <p class="empty-state">No se pudieron cargar los indicadores. <button type="button" (click)="loadSummary()">Reintentar</button></p> }
+      </section>
+    }
 
     @if (section() === 'empresas') {
-      <section><h2>Empresas</h2>
+      <section aria-labelledby="companies-heading"><div class="section-heading"><div><p class="saas-kicker">GESTIÓN DE TENANTS</p><h2 id="companies-heading">Empresas</h2><p>Consulta estado, plan, capacidad de sucursales y vigencia.</p></div><button class="secondary" type="button" (click)="reload()" [disabled]="loading()">Actualizar</button></div>
         @if (loading()) { <p role="status">Cargando empresas…</p> }
-        <div class="company-grid">@for (company of companies(); track company.idEmp) {
-          <button class="company" type="button" [class.selected]="selected()?.idEmp === company.idEmp" (click)="select(company)">
-            <strong>{{ company.nombre }}</strong><span>{{ company.codigo }}@if(company.esDemostracion){ · Demo}</span>
-            <span>{{ company.estado }} · {{ company.plan || 'Sin plan' }}</span>
-            <span>{{ company.sucursalesActivas }} / {{ company.maxSucursales ?? '—' }} sucursales activas</span>
-          </button>
-        }</div>
+        <div class="filter-bar">
+          <label>Buscar empresa<input name="companySearch" [(ngModel)]="companySearch" placeholder="Nombre o código" /></label>
+          <label>Estado<select name="companyState" [(ngModel)]="companyStateFilter"><option value="">Todos</option><option value="activa">Activa</option><option value="suspendida">Suspendida</option><option value="inactiva">Inactiva</option></select></label>
+          <label>Plan<select name="companyPlan" [(ngModel)]="companyPlanFilter"><option value="">Todos los planes</option>@for(plan of plans(); track plan.idPlan){<option [value]="plan.nombre">{{ plan.nombre }}</option>}</select></label>
+        </div>
+        @if (!loading()) {
+          <div class="company-grid">@for (company of visibleCompanies(); track company.idEmp) {
+            <article class="company-card" [class.selected]="selected()?.idEmp === company.idEmp">
+              <button class="company-select" type="button" (click)="select(company)" [attr.aria-label]="'Ver empresa ' + company.nombre">
+                <span class="company-avatar" [style.background-color]="company.colorPrimario || '#0e5967'">{{ company.nombre.charAt(0) }}</span>
+                <span class="company-title"><strong>{{ company.nombre }}</strong><small>{{ company.codigo }}@if(company.esDemostracion){ · Demostración}</small></span>
+                <span class="status-pill" [class.success]="company.estado === 'activa'" [class.warning]="company.estado === 'suspendida'" [class.danger]="company.estado === 'inactiva'">{{ company.estado }}</span>
+              </button>
+              <div class="company-meta"><span>Plan</span><strong>{{ company.plan || 'Sin plan' }}</strong><span>Sucursales activas</span><strong>{{ company.sucursalesActivas }} / {{ company.maxSucursales ?? '—' }}</strong></div>
+              @if (company.maxSucursales) { <div class="usage-track" role="progressbar" [attr.aria-valuenow]="usagePercent(company)" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'Uso de sucursales: ' + company.sucursalesActivas + ' de ' + company.maxSucursales"><span [style.width.%]="usagePercent(company)"></span></div> }
+              @if (company.maxSucursales && company.sucursalesActivas >= company.maxSucursales) { <p class="limit-warning">Límite de sucursales alcanzado</p> }
+              <p class="company-expiry">Vence: {{ company.fechaVencimiento ? formatDateOnly(company.fechaVencimiento) : 'Sin suscripción vigente' }}</p>
+            </article>
+          } @empty { <p class="empty-state">{{ companies().length ? 'No hay empresas que coincidan con los filtros.' : 'Aún no hay empresas registradas.' }}</p> }</div>
+        }
       </section>
       @if (selected(); as company) {
-        <section class="card"><h2>{{ company.nombre }} · estado</h2>
-          <p>Suscripción: {{ company.suscripcionEstado || 'sin suscripción activa' }} · {{ company.fechaInicio || '—' }} a {{ company.fechaVencimiento || '—' }}</p>
+        <section class="surface detail-panel"><div class="section-heading"><div><p class="saas-kicker">DETALLE DE EMPRESA</p><h2>{{ company.nombre }}</h2><p>{{ company.codigo }} · {{ company.estado }}</p></div>
           @if (can('SAAS-EMPRESAS')) {
-            <button type="button" (click)="toggle(company)">{{ company.estado === 'activa' ? 'Suspender empresa' : 'Activar empresa' }}</button>
+            <button class="danger" type="button" (click)="toggle(company)" [disabled]="saving()">{{ company.estado === 'activa' ? 'Suspender empresa' : 'Activar empresa' }}</button>
           }
+        </div>
+          <p>Suscripción: <strong>{{ company.suscripcionEstado || 'sin suscripción activa' }}</strong> · {{ company.fechaInicio ? formatDateOnly(company.fechaInicio) : '—' }} a {{ company.fechaVencimiento ? formatDateOnly(company.fechaVencimiento) : '—' }}</p>
           @if (can('SAAS-EMPRESAS')) {
             <h3>Identidad visual</h3>
             <form #brandForm="ngForm" (ngSubmit)="saveBrand()" class="fields">
@@ -59,25 +145,28 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
               <label>Logo (ruta local /brands/… o URL HTTPS)<input name="logoUrl" [(ngModel)]="brand.logoUrl" maxlength="255" /></label>
               <label>Color primario<input name="primary" [(ngModel)]="brand.colorPrimario" pattern="^#[0-9A-Fa-f]{6}$" placeholder="#112233" /></label>
               <label>Color secundario<input name="secondary" [(ngModel)]="brand.colorSecundario" pattern="^#[0-9A-Fa-f]{6}$" placeholder="#445566" /></label>
-              <button type="submit" [disabled]="brandForm.invalid || saving()">Guardar identidad</button>
+              <button class="primary" type="submit" [disabled]="brandForm.invalid || saving()">Guardar identidad</button>
             </form>
           }
           @if (can('SAAS-PLANES')) {
             <h3>Plan y vigencia</h3>
-            <form #subForm="ngForm" (ngSubmit)="saveSubscription()" class="fields">
+            <form #subForm="ngForm" (ngSubmit)="reviewSubscription()" class="fields">
+              <fieldset class="subscription-fields" [disabled]="saving() || subscriptionReview()">
               <label>Plan<select name="plan" [ngModel]="subscription.idPlan" (ngModelChange)="subscription.idPlan=+$event" required>
                 @for (plan of plans(); track plan.idPlan) { <option [ngValue]="plan.idPlan" [disabled]="plan.estado !== 'activo'">{{ plan.nombre }} · máximo {{ plan.maxSucursales }} sucursales · {{ plan.estado }}</option> }
               </select></label>
               <label>Inicio<input type="date" name="start" [(ngModel)]="subscription.fechaInicio" required /></label>
               <label>Vencimiento<input type="date" name="end" [(ngModel)]="subscription.fechaVencimiento" required /></label>
-              <button type="submit" [disabled]="subForm.invalid || saving() || subscription.fechaVencimiento <= subscription.fechaInicio">Aplicar plan y vigencia</button>
+              <button class="secondary" type="submit" [disabled]="subForm.invalid || saving() || subscription.fechaVencimiento <= subscription.fechaInicio">Revisar cambio</button>
+              </fieldset>
             </form>
+            @if (subscriptionReview()) { <div class="review-card" role="status"><strong>Revisa el cambio de suscripción</strong><p>{{ company.plan || 'Sin plan' }} → {{ selectedPlanName() }} · {{ company.sucursalesActivas }} sucursales activas, nuevo límite {{ selectedPlanLimit() }}.</p><p>Vigencia: {{ formatDateOnly(subscription.fechaInicio) }} a {{ formatDateOnly(subscription.fechaVencimiento) }}. El backend asignará la versión efectiva correspondiente; no se editarán versiones históricas.</p><button class="primary" type="button" (click)="saveSubscription()" [disabled]="saving()">Confirmar cambio</button> <button class="secondary" type="button" (click)="subscriptionReview.set(false)" [disabled]="saving()">Volver a editar</button></div> }
           }
           @if (can('SAAS-SOPORTE')) {
             <h3>Consulta de soporte (solo lectura y auditada)</h3>
             <form (ngSubmit)="support(company)" class="fields">
               <label>Motivo (10–300 caracteres)<input name="supportReason" [(ngModel)]="supportReason" minlength="10" maxlength="300" required /></label>
-              <button type="submit" [disabled]="supportReason.trim().length < 10 || saving()">Consultar resumen</button>
+              <button class="secondary" type="submit" [disabled]="supportReason.trim().length < 10 || saving()">Consultar resumen</button>
             </form>
             @if (supportView(); as view) {
               <p>{{ view.aviso }}</p>
@@ -89,20 +178,19 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
     }
 
     @if (section() === 'planes') {
-      <section><h2>Planes disponibles</h2>
+      <section><div class="section-heading"><div><p class="saas-kicker">CATÁLOGO DE PLANES</p><h2>Planes y suscripciones</h2><p>Las ediciones conservan versiones anteriores; asignar una versión es una acción separada.</p></div>@if (can('SAAS-PLANES')) { <a class="button primary" routerLink="/saas/planes">Administrar versiones</a> }</div>
         <div class="plan-grid">@for (plan of plans(); track plan.idPlan) {
-          <article class="card"><h3>{{ plan.nombre }}</h3><p>Estado: {{ plan.estado }}</p><p>Máximo de sucursales: {{ plan.maxSucursales }}</p>
-            <h4>Funcionalidades</h4><ul>@for (feature of plan.funcionalidades; track feature) { <li>{{ feature }}</li> }</ul>
+          <article class="plan-card"><div class="surface-heading"><span class="status-pill" [class.success]="plan.estado === 'activo'">{{ plan.estado }}</span><small>Plan #{{ plan.idPlan }}</small></div><h3>{{ plan.nombre }}</h3><p><strong>{{ plan.maxSucursales }}</strong> sucursales máximo</p>
+            <h4>Funcionalidades</h4><ul>@for (feature of plan.funcionalidades; track feature) { <li>{{ featureLabel(feature) }}</li> } @empty { <li>Sin funcionalidades asignadas</li> }</ul>
           </article>
         }</div>
-        <p>Desde esta consola se asignan planes y vigencias por empresa. La gestión de versiones, límites y funcionalidades está disponible en el editor de planes.</p>
-        @if (can('SAAS-PLANES')) { <a routerLink="/saas/planes">Administrar versiones de planes</a> }
       </section>
     }
 
     @if (section() === 'aprovisionar' && can('SAAS-EMPRESAS')) {
-      <section class="card"><h2>Aprovisionar empresa y administrador inicial</h2>
-        <form #provisionForm="ngForm" (ngSubmit)="provision()" class="fields">
+      <section class="surface provision-panel"><div class="section-heading"><div><p class="saas-kicker">ALTA DE TENANT</p><h2>Registrar empresa</h2><p>Empresa, administrador inicial y vigencia se crean en una única operación del backend.</p></div></div>
+        <form #provisionForm="ngForm" (ngSubmit)="reviewProvision()" class="fields">
+          <fieldset class="provision-fields" [disabled]="saving() || provisionReview()">
           <label>Código (minúsculas, números y guiones)<input name="code" [(ngModel)]="provisionData.codigo" pattern="^[a-z0-9-]{1,30}$" maxlength="30" required /></label>
           <label>Nombre<input name="companyName" [(ngModel)]="provisionData.nombre" maxlength="100" required /></label>
           <label>NIT (opcional)<input name="nit" [(ngModel)]="provisionData.nit" maxlength="30" /></label>
@@ -124,26 +212,55 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
             <label>Fecha de nacimiento<input type="date" name="adminBirth" [(ngModel)]="provisionData.administrador.fechaNac" required /></label>
             <label>Contraseña inicial (mín. 12 caracteres)<input type="password" name="adminPassword" [(ngModel)]="provisionData.administrador.contrasena" minlength="12" maxlength="128" autocomplete="new-password" required /></label>
           </fieldset>
-          <button type="submit" [disabled]="provisionForm.invalid || saving() || provisionData.fechaVencimiento <= provisionData.fechaInicio">Crear empresa</button>
+          <button class="secondary provision-submit" type="submit" [disabled]="provisionForm.invalid || saving() || provisionData.fechaVencimiento <= provisionData.fechaInicio">Revisar datos</button>
+          </fieldset>
         </form>
+        @if (provisionReview()) { <div class="review-card" role="status"><strong>Confirma el aprovisionamiento</strong><p>{{ provisionData.nombre }} ({{ provisionData.codigo }}) · {{ selectedPlanName(provisionData.idPlan) }} · {{ formatDateOnly(provisionData.fechaInicio) }} a {{ formatDateOnly(provisionData.fechaVencimiento) }}.</p><p>Administrador inicial: {{ provisionData.administrador.correo }}. La contraseña no se mostrará ni se devolverá.</p><button class="primary" type="button" (click)="provision()" [disabled]="saving()">{{ saving() ? 'Registrando…' : 'Confirmar y registrar' }}</button> <button class="secondary" type="button" (click)="provisionReview.set(false)" [disabled]="saving()">Volver a editar</button></div> }
         @if (created(); as result) { <p role="status">Empresa {{ result.nombre }} ({{ result.codigo }}) creada. La clave no se devuelve ni se registra aquí.</p> }
       </section>
     }
 
     @if (section() === 'auditoria') {
-      <section><h2>Auditoría de plataforma</h2>
-        <ul class="audit">@for (event of audit(); track event.id) {
-          <li><time>{{ event.fecha }}</time> · {{ event.accion }} · {{ event.usuarioId || 'sistema' }}
-            @if (event.detalles) { <pre>{{ event.detalles | json }}</pre> }</li>
-        }</ul>
+      <section><div class="section-heading"><div><p class="saas-kicker">TRAZABILIDAD</p><h2>Auditoría de plataforma</h2><p>Eventos globales de plataforma; no incluye la bitácora empresarial.</p></div><button class="secondary" type="button" (click)="loadAudit(auditPage())" [disabled]="auditLoading()">Actualizar</button></div>
+        <form class="audit-filter" (ngSubmit)="loadAudit(0)"><label>Filtrar por acción<input name="auditFilter" [(ngModel)]="auditFilter" maxlength="150" placeholder="Nombre de acción" /></label><button class="secondary" type="submit" [disabled]="auditLoading()">Aplicar filtro</button></form>
+        @if (auditLoading()) { <p role="status">Cargando auditoría…</p> }
+        @else { <div class="table-wrap"><table><thead><tr><th>Fecha y hora</th><th>Acción</th><th>Actor autorizado</th><th>Empresa</th><th>Resultado / detalle</th></tr></thead><tbody>
+          @for (event of audit(); track event.id) { <tr><td><time>{{ formatDate(event.fecha) }}</time></td><td>{{ actionLabel(event.accion) }}</td><td>{{ event.usuarioId || 'Sistema' }}</td><td>{{ auditCompany(event) }}</td><td><details><summary>Ver detalle</summary><pre>{{ event.detalles | json }}</pre></details></td></tr> }
+          @empty { <tr><td colspan="5" class="empty-state">{{ auditFilter ? 'No se encontraron eventos para ese filtro.' : 'No hay eventos de auditoría.' }}</td></tr> }
+        </tbody></table></div>
+          <div class="pagination"><button type="button" class="secondary" [disabled]="auditPage() === 0 || auditLoading()" (click)="loadAudit(auditPage() - 1)">Anterior</button><span>Página {{ auditPage() + 1 }}</span><button type="button" class="secondary" [disabled]="!auditHasNext() || auditLoading()" (click)="loadAudit(auditPage() + 1)">Siguiente</button></div>
+        }
       </section>
     }
-  </main>`,
-  styles: [`.saas{max-width:78rem;margin:2rem auto;padding:1.5rem;font:1rem system-ui;color:#26232a}header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ddd;padding-bottom:1rem}nav,.actions{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}section{margin:1.5rem 0}.company-grid,.plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:.8rem}.company,.card{padding:1rem;border:1px solid #ddd;border-radius:.7rem;background:white}.company{display:grid;text-align:left;gap:.35rem}.company.selected{border-color:#6b3b62;box-shadow:0 0 0 2px #6b3b6222}.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.8rem;margin:1rem 0}.fields label,fieldset{display:grid;gap:.35rem}fieldset{grid-column:1/-1;border:1px solid #ddd;padding:1rem}input,select,button{padding:.6rem;font:inherit}button{cursor:pointer}.error{color:#9b1c1c}.success{color:#17633a}.audit{padding-left:1.2rem}.audit li{margin:.8rem 0}pre{white-space:pre-wrap;overflow-wrap:anywhere}`],
+    @if (section() === 'respaldos') {
+      <section><div class="section-heading"><div><p class="saas-kicker">OPERACIÓN SEGURA</p><h2>Respaldos</h2><p>Respaldo PostgreSQL completo de la base de pruebas; los archivos permanecen en almacenamiento local privado.</p></div><button class="secondary" type="button" (click)="loadBackups()" [disabled]="backupsLoading()">Actualizar</button></div>
+        @if (backupsLoading()) { <p role="status">Consultando estado de respaldos…</p> }
+        @if (backupList(); as data) {
+          <section class="backup-notice" [class.pending]="!data.configuracion.configurado">
+            <h3>Respaldo PostgreSQL de plataforma</h3><p>Destino autorizado: <strong>{{ data.configuracion.destino }}</strong></p>
+            <p>Retención configurada: {{ data.configuracion.retencionDias }} días. Crear un respaldo no verifica la restauración.</p>
+            @if (!data.configuracion.configurado) { <p role="status">{{ data.configuracion.mensaje }}</p> }
+            @else { <p>Identidad de lectura separada; el rol HTTP no recibe credenciales de base de datos.</p> }
+            @if (can('SAAS-RESPALDOS')) { <button class="primary" type="button" (click)="requestBackup()" [disabled]="!data.configuracion.configurado || saving() || backupsLoading()">{{ saving() ? 'Solicitando…' : 'Crear respaldo ahora' }}</button> }
+          </section>
+          <div class="table-wrap"><table><thead><tr><th>Solicitado</th><th>Estado</th><th>Tamaño</th><th>Resultado</th></tr></thead><tbody>
+            @for (job of data.respaldos; track job.id) { <tr><td><time>{{ formatDate(job.solicitado) }}</time></td><td><span class="status-pill" [class.success]="job.estado === 'completado'" [class.warning]="job.estado === 'solicitado' || job.estado === 'en_proceso'" [class.danger]="job.estado === 'fallido'">{{ backupStatus(job.estado) }}</span></td><td>{{ job.tamanoBytes === null ? '—' : formatBytes(job.tamanoBytes) }}</td><td>@if (job.estado === 'completado') { <a [href]="backupDownloadUrl(job.id)" [attr.download]="'fashionstore-backup-' + job.id + '.dump'">Descargar respaldo</a> } @else { {{ job.error || '—' }} }</td></tr> }
+            @empty { <tr><td colspan="4" class="empty-state">Todavía no hay respaldos registrados.</td></tr> }
+          </tbody></table></div>
+          <p class="backup-footnote">El respaldo puede contener datos sensibles. Mantén el archivo fuera de Git y de carpetas públicas. Restauración: no verificada.</p>
+        } @else if (!backupsLoading()) { <p class="empty-state">No se pudo consultar la configuración. <button type="button" (click)="loadBackups()">Reintentar</button></p> }
+      </section>
+    }
+      </main>
+    </div>
+  </div>  `,
 })
 export class SaasDashboardPage implements OnInit {
   readonly auth = inject(AuthService);
   private readonly http = inject(HttpClient);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(API_BASE_URL).replace(/\/$/, '');
   readonly companies = signal<Company[]>([]);
   readonly plans = signal<Plan[]>([]);
@@ -151,19 +268,168 @@ export class SaasDashboardPage implements OnInit {
   readonly selected = signal<Company | null>(null);
   readonly supportView = signal<SupportView | null>(null);
   readonly created = signal<ProvisionedCompany | null>(null);
-  readonly section = signal<'empresas' | 'planes' | 'aprovisionar' | 'auditoria'>('empresas');
+  readonly section = signal<SaasSection>('resumen');
   readonly loading = signal(true);
+  readonly loadingSummary = signal(false);
+  readonly auditLoading = signal(false);
+  readonly backupsLoading = signal(false);
   readonly saving = signal(false);
   readonly error = signal('');
   readonly success = signal('');
+  readonly summary = signal<PlatformSummary | null>(null);
+  readonly backupList = signal<BackupList | null>(null);
+  readonly menuOpen = signal(false);
+  readonly auditPage = signal(0);
+  readonly auditHasNext = signal(false);
+  readonly subscriptionReview = signal(false);
+  readonly provisionReview = signal(false);
   readonly brand = { nombre: '', logoUrl: '', colorPrimario: '', colorSecundario: '' };
   readonly subscription = { idPlan: 1, fechaInicio: this.today(), fechaVencimiento: this.nextYear() };
   readonly provisionData = this.emptyProvision();
+  companySearch = '';
+  companyStateFilter = '';
+  companyPlanFilter = '';
+  auditFilter = '';
   supportReason = '';
 
-  ngOnInit(): void { this.reload(); }
+  ngOnInit(): void {
+    this.route.data.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(data => {
+      const section = data['section'];
+      if (section === 'resumen' || section === 'empresas' || section === 'planes'
+          || section === 'aprovisionar' || section === 'auditoria' || section === 'respaldos') {
+        this.section.set(section);
+        if (section === 'respaldos') this.loadBackups();
+        if (section === 'auditoria') this.loadAudit(0);
+      }
+    });
+    this.reload();
+  }
 
   can(permission: string): boolean { return !!this.auth.session()?.permisos.includes(permission); }
+
+  sectionTitle(): string {
+    return ({
+      resumen: 'Resumen de plataforma',
+      empresas: 'Empresas',
+      planes: 'Planes y suscripciones',
+      aprovisionar: 'Registrar empresa',
+      auditoria: 'Auditoría',
+      respaldos: 'Respaldos',
+    } as const)[this.section()];
+  }
+
+  sectionDescription(): string {
+    return ({
+      resumen: 'Una lectura operativa del estado actual de FashionStore SaaS.',
+      empresas: 'Consulta empresas, vigencia de suscripciones y uso de sucursales.',
+      planes: 'Revisa planes actuales y administra sus versiones contratadas.',
+      aprovisionar: 'Registra una empresa y su administrador inicial.',
+      auditoria: 'Consulta acciones de plataforma registradas en auditoría.',
+      respaldos: 'Administra respaldos completos del entorno de pruebas.',
+    } as const)[this.section()];
+  }
+
+  setSection(section: SaasSection): void {
+    this.menuOpen.set(false);
+    const paths: Record<SaasSection, string> = {
+      resumen: '/saas',
+      empresas: '/saas/empresas',
+      planes: '/saas/planes-suscripciones',
+      aprovisionar: '/saas/registro',
+      auditoria: '/saas/auditoria',
+      respaldos: '/saas/respaldos',
+    };
+    const path = paths[section];
+    if (this.router.url === path) {
+      this.section.set(section);
+      this.error.set('');
+      this.success.set('');
+      if (section === 'resumen') this.loadSummary();
+      if (section === 'empresas') this.reload();
+      if (section === 'auditoria') this.loadAudit(0);
+      if (section === 'respaldos') this.loadBackups();
+      return;
+    }
+    void this.router.navigateByUrl(path);
+  }
+
+  visibleCompanies(): Company[] {
+    const query = this.companySearch.trim().toLocaleLowerCase();
+    return this.companies().filter(company =>
+      (!query || `${company.nombre} ${company.codigo}`.toLocaleLowerCase().includes(query))
+      && (!this.companyStateFilter || company.estado === this.companyStateFilter)
+      && (!this.companyPlanFilter || company.plan === this.companyPlanFilter));
+  }
+
+  usagePercent(company: Company): number {
+    const limit = company.maxSucursales ?? 0;
+    return limit > 0 ? Math.min(100, Math.round(company.sucursalesActivas / limit * 100)) : 0;
+  }
+
+  selectedPlanName(id = this.subscription.idPlan): string {
+    return this.plans().find(plan => plan.idPlan === id)?.nombre || 'Plan no disponible';
+  }
+
+  selectedPlanLimit(id = this.subscription.idPlan): number | string {
+    return this.plans().find(plan => plan.idPlan === id)?.maxSucursales ?? 'sin límite disponible';
+  }
+
+  formatDate(value: string): string {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('es-BO', {
+      dateStyle: 'medium', timeStyle: 'short',
+    }).format(date);
+  }
+
+  formatDateOnly(value: string): string {
+    const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+    return new Intl.DateTimeFormat('es-BO', { dateStyle: 'medium' }).format(new Date(year, month - 1, day));
+  }
+
+  formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  backupStatus(status: BackupJob['estado']): string {
+    return ({ solicitado: 'Solicitado', en_proceso: 'En proceso', completado: 'Completado', fallido: 'Fallido' } as const)[status];
+  }
+
+  backupDownloadUrl(id: string): string {
+    return `${this.api}/saas/respaldos/${encodeURIComponent(id)}/descarga`;
+  }
+
+  actionLabel(action: string): string {
+    const labels: Record<string, string> = {
+      empresa_aprovisionada: 'Empresa aprovisionada',
+      empresa_estado_actualizado: 'Estado de empresa actualizado',
+      empresa_identidad_actualizada: 'Identidad de empresa actualizada',
+      empresa_plan_cambiado: 'Plan de empresa cambiado',
+      respaldo_plataforma_solicitado: 'Respaldo solicitado',
+      respaldo_plataforma_descargado: 'Respaldo descargado',
+      soporte_acceso_empresa: 'Consulta de soporte',
+    };
+    return labels[action] || action.replaceAll('_', ' ');
+  }
+
+  featureLabel(code: string): string {
+    const labels: Record<string, string> = {
+      CU05: 'Usuarios y empleados', CU06: 'Roles y permisos', CU07: 'Clientes',
+      CU08: 'Bitácora empresarial', CU09: 'Sucursales y ciudades', CU10: 'Catálogo',
+      CU11: 'Reservas', CU12: 'Carrito', CU13: 'Compra digital', CU14: 'Pagos',
+      CU15: 'Historial de compras', CU18: 'Gestión de catálogo',
+      CU19: 'Proveedores', CU20: 'Inventario', CU21: 'Promociones',
+      CU22: 'Reservas en sucursal', CU23: 'Devoluciones', CU24: 'Venta presencial',
+      CU25: 'Reportes gerenciales',
+    };
+    return labels[code] || code;
+  }
+
+  auditCompany(event: AuditEvent): string {
+    const companyId = event.detalles?.['idEmp'];
+    return typeof companyId === 'number' ? `Empresa #${companyId}` : '—';
+  }
 
   private today(): string { return new Date().toISOString().slice(0, 10); }
   private nextYear(): string { const date = new Date(); date.setFullYear(date.getFullYear() + 1); return date.toISOString().slice(0, 10); }
@@ -174,27 +440,75 @@ export class SaasDashboardPage implements OnInit {
   }
 
   reload(): void {
-    this.loading.set(true); this.error.set('');
-    this.http.get<Company[]>(`${this.api}/saas/empresas`).subscribe({
-      next: rows => { this.companies.set(rows); this.loading.set(false); if (this.selected()) this.select(rows.find(row => row.idEmp === this.selected()!.idEmp) || null); },
-      error: () => { this.error.set('No se pudieron cargar las empresas.'); this.loading.set(false); },
-    });
+    this.error.set('');
+    this.loadSummary();
+    if (this.can('SAAS-EMPRESAS')) {
+      this.loading.set(true);
+      this.http.get<Company[]>(`${this.api}/saas/empresas`).subscribe({
+        next: rows => { this.companies.set(rows); this.loading.set(false); if (this.selected()) this.select(rows.find(row => row.idEmp === this.selected()!.idEmp) || null); },
+        error: () => { this.error.set('No se pudieron cargar las empresas.'); this.loading.set(false); },
+      });
+    } else {
+      this.loading.set(false);
+    }
     if (this.can('SAAS-PLANES')) this.http.get<Plan[]>(`${this.api}/saas/planes`).subscribe({
       next: rows => { this.plans.set(rows); if (rows[0] && !this.plans().some(plan => plan.idPlan === this.subscription.idPlan)) this.subscription.idPlan = rows[0].idPlan; if (rows[0]) this.provisionData.idPlan = rows[0].idPlan; },
       error: () => this.error.set('No se pudieron cargar los planes.'),
     });
-    this.loadAudit();
+    if (this.can('SAAS-AUDITORIA')) this.loadAudit(0);
   }
 
-  private loadAudit(): void {
+  loadSummary(): void {
+    if (!this.can('SAAS-EMPRESAS')) return;
+    this.loadingSummary.set(true);
+    this.http.get<PlatformSummary>(`${this.api}/saas/resumen`).subscribe({
+      next: result => { this.summary.set(result); this.loadingSummary.set(false); },
+      error: () => { this.summary.set(null); this.error.set('No se pudieron cargar los indicadores de plataforma.'); this.loadingSummary.set(false); },
+    });
+  }
+
+  loadAudit(page = 0): void {
     if (!this.can('SAAS-AUDITORIA')) return;
-    this.http.get<AuditEvent[]>(`${this.api}/saas/auditoria`).subscribe({
-      next: rows => this.audit.set(rows), error: () => this.error.set('No se pudo cargar la auditoría.'),
+    this.auditLoading.set(true);
+    const filter = this.auditFilter.trim();
+    const params = `?limite=21&desplazamiento=${page * 20}${filter ? `&accion=${encodeURIComponent(filter)}` : ''}`;
+    this.http.get<AuditEvent[]>(`${this.api}/saas/auditoria${params}`).subscribe({
+      next: rows => { this.audit.set(rows.slice(0, 20)); this.auditHasNext.set(rows.length > 20); this.auditPage.set(page); this.auditLoading.set(false); },
+      error: () => { this.error.set('No se pudo cargar la auditoría.'); this.auditLoading.set(false); },
+    });
+  }
+
+  loadBackups(): void {
+    if (!this.can('SAAS-RESPALDOS')) return;
+    this.backupsLoading.set(true);
+    this.http.get<BackupList>(`${this.api}/saas/respaldos`).subscribe({
+      next: response => { this.backupList.set(response); this.backupsLoading.set(false); },
+      error: () => { this.backupList.set(null); this.error.set('No se pudo consultar la configuración de respaldos.'); this.backupsLoading.set(false); },
+    });
+  }
+
+  requestBackup(): void {
+    if (this.saving() || !this.can('SAAS-RESPALDOS') || !this.backupList()?.configuracion.configurado) return;
+    this.saving.set(true);
+    this.error.set('');
+    this.success.set('');
+    this.http.post<BackupJob>(`${this.api}/saas/respaldos`, {}).subscribe({
+      next: () => {
+        this.success.set('Solicitud de respaldo registrada y auditada.');
+        this.saving.set(false);
+        this.loadBackups();
+      },
+      error: (error: { error?: { error?: { message?: string } } }) => {
+        this.error.set(error.error?.error?.message || 'No se pudo solicitar el respaldo.');
+        this.saving.set(false);
+        this.loadBackups();
+      },
     });
   }
 
   select(company: Company | null): void {
     this.selected.set(company); this.supportView.set(null);
+    this.subscriptionReview.set(false);
     if (!company) return;
     this.brand.nombre = company.nombre; this.brand.logoUrl = company.logoUrl || '';
     this.brand.colorPrimario = company.colorPrimario || ''; this.brand.colorSecundario = company.colorSecundario || '';
@@ -205,7 +519,7 @@ export class SaasDashboardPage implements OnInit {
 
   private finish<T>(request: Observable<T>, success: string, apply: (value: T) => void): void {
     this.saving.set(true); this.error.set(''); this.success.set('');
-    request.subscribe({ next: value => { apply(value); this.success.set(success); this.saving.set(false); this.loadAudit(); },
+    request.subscribe({ next: value => { apply(value); this.success.set(success); this.saving.set(false); if (this.can('SAAS-AUDITORIA')) this.loadAudit(0); },
       error: () => { this.error.set('La operación fue rechazada. Verifica autorización, datos y auditoría.'); this.saving.set(false); } });
   }
 
@@ -229,17 +543,43 @@ export class SaasDashboardPage implements OnInit {
   }
 
   saveSubscription(): void {
-    const company = this.selected(); if (!company || this.subscription.fechaVencimiento <= this.subscription.fechaInicio) return;
+    const company = this.selected();
+    if (!company || !this.subscriptionReview() || this.subscription.fechaVencimiento <= this.subscription.fechaInicio) return;
+    this.subscriptionReview.set(false);
     this.finish(this.http.post<Company>(`${this.api}/saas/empresas/${company.idEmp}/suscripcion`, this.subscription),
       'Plan y vigencia actualizados y auditados.', updated => this.updateCompany(updated));
   }
 
+  reviewSubscription(): void {
+    if (this.saving() || this.subscription.fechaVencimiento <= this.subscription.fechaInicio) return;
+    this.subscriptionReview.set(true);
+  }
+
+  reviewProvision(): void {
+    const data = this.provisionData;
+    const admin = data.administrador;
+    if (this.saving() || data.fechaVencimiento <= data.fechaInicio) return;
+    if (!/^[a-z0-9-]{1,30}$/.test(data.codigo.trim().toLowerCase())
+        || !data.nombre.trim() || !data.idPlan
+        || !admin.idUsuario.trim() || !admin.ci.trim() || !admin.nombre.trim()
+        || !admin.apellidoPat.trim() || !admin.apellidoMat.trim()
+        || !admin.correo.includes('@') || !admin.telefono.trim() || !admin.direccion.trim()
+        || !admin.fechaNac || admin.contrasena.length < 12) {
+      this.error.set('Completa los campos obligatorios con valores válidos antes de revisar.');
+      return;
+    }
+    this.error.set('');
+    this.provisionReview.set(true);
+  }
+
   provision(): void {
-    if (this.provisionData.fechaVencimiento <= this.provisionData.fechaInicio) return;
+    if (this.saving() || !this.provisionReview()
+        || this.provisionData.fechaVencimiento <= this.provisionData.fechaInicio) return;
     const payload = { ...this.provisionData, codigo: this.provisionData.codigo.trim().toLowerCase(),
       nombre: this.provisionData.nombre.trim(), nit: this.provisionData.nit.trim() || null,
       administrador: { ...this.provisionData.administrador, contrasena: this.provisionData.administrador.contrasena } };
     this.created.set(null);
+    this.provisionReview.set(false);
     this.finish(this.http.post<Company>(`${this.api}/saas/empresas`, payload), 'Empresa aprovisionada y operación auditada.', value => {
       this.created.set({ idEmp: value.idEmp, codigo: value.codigo, nombre: value.nombre }); this.provisionData.administrador.contrasena = '';
       this.reload();
@@ -251,5 +591,10 @@ export class SaasDashboardPage implements OnInit {
     this.finish(this.http.post<SupportView>(`${this.api}/saas/soporte/acceso`, body), 'Resumen de solo lectura generado y auditado.', value => this.supportView.set(value));
   }
 
-  logout(): void { this.auth.logout().subscribe({ error: () => this.error.set('No se pudo cerrar la sesión en el servidor.') }); }
+  logout(): void {
+    if (this.saving()) return;
+    this.auth.logout().subscribe({
+      error: () => this.error.set('No se pudo cerrar la sesión en el servidor.'),
+    });
+  }
 }

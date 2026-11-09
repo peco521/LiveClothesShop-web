@@ -8,6 +8,9 @@ import { InventarioPanel, requestError } from '../../../inventario-productos/sha
 import { OperacionesService } from '../../../inventario-productos/shared/operaciones.service';
 import { ExchangeVariant, Return, Sale } from '../../../inventario-productos/shared/operaciones.models';
 import { Page } from '../../../inventario-productos/shared/models';
+import { AuthService } from '../../../seguridad-accesos/services/auth.service';
+
+const PENDING_OPERATION_PREFIX = 'fashionstore-pending-devolucion-';
 
 @Component({ selector: 'app-devoluciones', imports: [FormsModule, RouterLink, CurrencyPipe, InventarioPanel],
   templateUrl: './devoluciones.html', styleUrls: ['../../../inventario-productos/shared/panel.css', '../../../inventario-productos/shared/operaciones.css'] })
@@ -15,6 +18,9 @@ export class DevolucionesPage {
   private readonly service = inject(OperacionesService);
   private readonly destroy = inject(DestroyRef);
   private readonly router = inject(Router);
+  // Auth es opcional: la página debe funcionar también si no hay sesión inyectada
+  // (por ejemplo en pruebas de transporte); en ese caso se usa solo memoria.
+  private readonly auth = inject(AuthService, { optional: true });
   readonly page = signal<Page<Return> | null>(null);
   readonly sale = signal<Sale | null>(null);
   readonly exchangeVariants = signal<ExchangeVariant[]>([]);
@@ -31,6 +37,33 @@ export class DevolucionesPage {
   private pendingOperation: { fingerprint: string; id: string } | null = null;
 
   constructor() { this.load(); }
+
+  private storageKey(): string | null {
+    const session = this.auth?.session();
+    if (!session?.empresa || !session?.usuario?.idUsuario) return null;
+    return `${PENDING_OPERATION_PREFIX}${session.empresa}-${session.usuario.idUsuario}`;
+  }
+
+  private readPendingOperation(): { fingerprint: string; id: string } | null {
+    const key = this.storageKey();
+    if (!key || typeof sessionStorage === 'undefined') return null;
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { fingerprint?: unknown; id?: unknown };
+      if (typeof parsed.fingerprint === 'string' && typeof parsed.id === 'string') {
+        return { fingerprint: parsed.fingerprint, id: parsed.id };
+      }
+    } catch { return null; }
+    return null;
+  }
+
+  private writePendingOperation(op: { fingerprint: string; id: string } | null): void {
+    const key = this.storageKey();
+    if (!key || typeof sessionStorage === 'undefined') return;
+    if (op) sessionStorage.setItem(key, JSON.stringify(op));
+    else sessionStorage.removeItem(key);
+  }
 
   load(offset = 0): void {
     if (this.busy()) return;
@@ -57,7 +90,8 @@ export class DevolucionesPage {
   findSale(): void {
     if (!Number.isInteger(this.saleSearch) || (this.saleSearch ?? 0) < 1) { this.error.set('Ingresa el número de venta del comprobante.'); return; }
     this.sale.set(null); this.exchangeVariants.set([]); this.returnQuantities = {}; this.newVariants = {};
-    this.motivo = ''; this.pendingOperation = null; this.error.set(''); this.success.set('');
+    this.motivo = ''; this.pendingOperation = null; this.writePendingOperation(null);
+    this.error.set(''); this.success.set('');
     this.service.get<Sale>(`devoluciones/ventas/${this.saleSearch}`)
       .pipe(takeUntilDestroyed(this.destroy)).subscribe({
         next: value => {
@@ -72,6 +106,7 @@ export class DevolucionesPage {
   setOperation(operation: 'devolucion' | 'cambio'): void {
     this.operation = operation;
     this.pendingOperation = null;
+    this.writePendingOperation(null);
     if (operation === 'cambio' && this.sale()) this.loadExchangeVariants(this.sale()!.nroVenta);
   }
 
@@ -115,16 +150,20 @@ export class DevolucionesPage {
       body['items'] = exchangeItems;
     }
     const fingerprint = JSON.stringify(body);
-    if (this.pendingOperation?.fingerprint !== fingerprint) {
-      this.pendingOperation = { fingerprint, id: crypto.randomUUID() };
+    let pending = this.pendingOperation ?? this.readPendingOperation();
+    if (!pending || pending.fingerprint !== fingerprint) {
+      pending = { fingerprint, id: crypto.randomUUID() };
+      this.pendingOperation = pending;
+      this.writePendingOperation(pending);
     }
-    body['idOperacion'] = this.pendingOperation.id;
+    body['idOperacion'] = pending.id;
     this.saving.set(true); this.error.set(''); this.success.set('');
     const path = this.operation === 'cambio' ? 'devoluciones/cambios' : 'devoluciones';
     this.service.send(path, body)
       .pipe(takeUntilDestroyed(this.destroy), finalize(() => this.saving.set(false))).subscribe({
         next: () => {
           this.pendingOperation = null;
+          this.writePendingOperation(null);
           this.sale.set(null); this.motivo = ''; this.returnQuantities = {}; this.newVariants = {};
           this.success.set(this.operation === 'cambio'
             ? 'Cambio registrado. La nueva venta puede requerir pago o confirmación del reembolso.'
