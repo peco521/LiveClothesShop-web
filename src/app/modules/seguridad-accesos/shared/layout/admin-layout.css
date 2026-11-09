@@ -1,5 +1,5 @@
 :host { display: block; }
-.admin-shell { display: grid; grid-template-columns: 272px minmax(0, 1fr); min-height: 100dvh; background: #f7f7f2; }
+.admin-shell { display: grid; grid-template-columns: 272px minmax(0, 1fr); min-height: 100dvh; background: #f3f6f7; }
 .skip-link { position: absolute; left: 10px; top: -80px; padding: 12px; background: white; z-index: 30; }
 .skip-link:focus { top: 10px; }
 .sidebar { display: flex; flex-direction: column; gap: 20px; padding: 26px 20px; background: var(--paper); border-right: 1px solid var(--line); position: sticky; top: 0; height: 100dvh; z-index: 20; }
@@ -13,7 +13,7 @@
 .dashboard-link { min-height: 42px; }
 .side-link.sub { padding-left: 22px; }
 .module-button { width: 100%; display: flex; justify-content: space-between; gap: 10px; align-items: center; text-align: left; padding: 14px 12px; margin-top: 12px; background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: .83rem; font-weight: 600; cursor: pointer; transition: background-color 180ms ease, border-color 180ms ease; }
-.module-button:hover, .module-button[aria-expanded="true"] { background: #edf3e9; }
+.module-button:hover, .module-button[aria-expanded="true"] { background: var(--accent-soft); }
 .module-label { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .module-chevron { flex: 0 0 auto; transition: transform 280ms cubic-bezier(.2, 0, 0, 1); }
 .module-button[aria-expanded="true"] .module-chevron { transform: rotate(180deg); }
@@ -22,9 +22,9 @@
 .module-content { min-height: 0; overflow: hidden; }
 .module-content .side-link:first-child { margin-top: 6px; }
 .header-logout { width: auto; min-height: 40px; padding: 9px 14px; font-size: .8rem; }
-.side-link:hover { background: #f1f1e9; }
+.side-link:hover { background: #f3f7f8; }
 .side-link { transition: background-color 160ms ease; }
-.side-link.active { background: #edf3e9; border: 1px solid #d1dfc9; font-weight: 600; }
+.side-link.active { background: var(--accent-soft); border: 1px solid #c8dadd; font-weight: 600; }
 .side-icon { flex: 0 0 18px; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
 .module-label .side-icon { color: var(--accent); }
 .side-link.sub { gap: 10px; padding-left: 16px; font-size: .84rem; }
