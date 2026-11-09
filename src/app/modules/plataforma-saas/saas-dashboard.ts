@@ -29,10 +29,10 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
     @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
     @if (success()) { <p class="success" role="status">{{ success() }}</p> }
     <nav aria-label="Secciones SaaS">
-      <button type="button" (click)="section.set('empresas')">Empresas</button>
-      <button type="button" (click)="section.set('planes')">Planes y suscripciones</button>
-      <button type="button" (click)="section.set('aprovisionar')">Aprovisionar</button>
-      <button type="button" (click)="section.set('auditoria')">Auditoría</button>
+      @if (can('SAAS-EMPRESAS')) { <button type="button" (click)="section.set('empresas')">Empresas</button> }
+      @if (can('SAAS-PLANES')) { <button type="button" (click)="section.set('planes')">Planes y suscripciones</button> }
+      @if (can('SAAS-EMPRESAS')) { <button type="button" (click)="section.set('aprovisionar')">Aprovisionar</button> }
+      @if (can('SAAS-AUDITORIA')) { <button type="button" (click)="section.set('auditoria')">Auditoría</button> }
     </nav>
 
     @if (section() === 'empresas') {
@@ -95,8 +95,8 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
             <h4>Funcionalidades</h4><ul>@for (feature of plan.funcionalidades; track feature) { <li>{{ feature }}</li> }</ul>
           </article>
         }</div>
-        <p>Desde esta consola se asignan planes y vigencias por empresa. La gestión de versiones, límites y funcionalidades está disponible en el editor de planes.</p>
-        @if (can('SAAS-PLANES')) { <a routerLink="/saas/planes">Administrar versiones de planes</a> }
+        <p>Desde esta consola se asignan planes y vigencias por empresa. La gestión de límites y funcionalidades está disponible en el editor de planes.</p>
+        @if (can('SAAS-PLANES')) { <a routerLink="/saas/planes">Administrar planes y funcionalidades</a> }
       </section>
     }
 
@@ -161,7 +161,10 @@ export class SaasDashboardPage implements OnInit {
   readonly provisionData = this.emptyProvision();
   supportReason = '';
 
-  ngOnInit(): void { this.reload(); }
+  ngOnInit(): void {
+    if (!this.can('SAAS-EMPRESAS') && this.can('SAAS-PLANES')) this.section.set('planes');
+    this.reload();
+  }
 
   can(permission: string): boolean { return !!this.auth.session()?.permisos.includes(permission); }
 
@@ -175,10 +178,12 @@ export class SaasDashboardPage implements OnInit {
 
   reload(): void {
     this.loading.set(true); this.error.set('');
-    this.http.get<Company[]>(`${this.api}/saas/empresas`).subscribe({
-      next: rows => { this.companies.set(rows); this.loading.set(false); if (this.selected()) this.select(rows.find(row => row.idEmp === this.selected()!.idEmp) || null); },
-      error: () => { this.error.set('No se pudieron cargar las empresas.'); this.loading.set(false); },
-    });
+    if (this.can('SAAS-EMPRESAS')) {
+      this.http.get<Company[]>(`${this.api}/saas/empresas`).subscribe({
+        next: rows => { this.companies.set(rows); this.loading.set(false); if (this.selected()) this.select(rows.find(row => row.idEmp === this.selected()!.idEmp) || null); },
+        error: () => { this.error.set('No se pudieron cargar las empresas.'); this.loading.set(false); },
+      });
+    } else { this.loading.set(false); }
     if (this.can('SAAS-PLANES')) this.http.get<Plan[]>(`${this.api}/saas/planes`).subscribe({
       next: rows => { this.plans.set(rows); if (rows[0] && !this.plans().some(plan => plan.idPlan === this.subscription.idPlan)) this.subscription.idPlan = rows[0].idPlan; if (rows[0]) this.provisionData.idPlan = rows[0].idPlan; },
       error: () => this.error.set('No se pudieron cargar los planes.'),

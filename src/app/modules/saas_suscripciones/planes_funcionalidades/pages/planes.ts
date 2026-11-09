@@ -9,9 +9,9 @@ import { AuthService } from '../../../seguridad-accesos/services/auth.service';
 
 interface Feature { codigo: string; descripcion: string }
 interface Plan { idPlan: number; nombre: string; maxSucursales: number; estado: 'activo' | 'inactivo'; funcionalidades: string[] }
-interface Subscription { idSuscripcion: number; idEmpresa: number; empresa: string; version: number; maxSucursales: number; sucursalesActivas: number }
+interface Subscription { idSuscripcion: number; idEmpresa: number; empresa: string; maxSucursales: number; sucursalesActivas: number }
 interface Draft { nombre: string; maxSucursales: number; estado: 'activo' | 'inactivo'; funcionalidades: string[] }
-interface Impact { confirmacionImpacto: string; seleccionadas: number; conservanVersion: number }
+interface Impact { confirmacionImpacto: string; suscripcionesActivas: number; empresasActivas: number; suscripcionesAsociadas: number }
 
 @Component({
   selector: 'app-saas-planes',
@@ -33,7 +33,6 @@ export class SaasPlanesPage {
   readonly error = signal('');
   readonly notice = signal('');
   readonly impact = signal<Impact | null>(null);
-  readonly selected = signal<number[]>([]);
   editing: number | null = null;
   editorOpen = false;
   draft: Draft = this.empty();
@@ -42,7 +41,7 @@ export class SaasPlanesPage {
   private empty(): Draft { return { nombre: '', maxSucursales: 1, estado: 'activo', funcionalidades: [] }; }
   private message(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
-      if (error.status === 503) return 'El servicio no está disponible. Comprueba que la configuración de versiones de planes esté habilitada.';
+      if (error.status === 503) return 'El servicio no está disponible. Comprueba la conexión de plataforma.';
       if (error.status === 0) return 'No se pudo conectar con el servidor.';
       if (typeof error.error?.error?.message === 'string') return error.error.error.message;
     }
@@ -57,14 +56,14 @@ export class SaasPlanesPage {
         error: error => this.error.set(this.message(error)) });
   }
   create(): void {
-    this.editing = null; this.draft = this.empty(); this.subscriptions.set([]); this.selected.set([]);
+    this.editing = null; this.draft = this.empty(); this.subscriptions.set([]);
     this.impact.set(null); this.error.set(''); this.notice.set(''); this.editorOpen = true;
   }
   edit(plan: Plan): void {
     if (plan.estado !== 'activo' || this.working()) return;
     this.editing = plan.idPlan;
     this.draft = { nombre: plan.nombre, maxSucursales: plan.maxSucursales, estado: plan.estado, funcionalidades: [...plan.funcionalidades] };
-    this.editorOpen = true; this.selected.set([]); this.subscriptions.set([]); this.impact.set(null); this.error.set(''); this.notice.set('');
+    this.editorOpen = true; this.subscriptions.set([]); this.impact.set(null); this.error.set(''); this.notice.set('');
     this.working.set(true);
     this.http.get<Subscription[]>(`${this.base}/${plan.idPlan}/suscripciones`)
       .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.working.set(false)))
@@ -73,11 +72,6 @@ export class SaasPlanesPage {
   featureName(code: string): string { return this.features().find(item => item.codigo === code)?.descripcion ?? code; }
   toggleFeature(code: string, checked: boolean): void {
     this.draft.funcionalidades = checked ? [...this.draft.funcionalidades, code] : this.draft.funcionalidades.filter(value => value !== code);
-    this.invalidate();
-  }
-  toggleSubscription(companyId: number, checked: boolean): void {
-    const ids = this.subscriptions().filter(item => item.idEmpresa === companyId).map(item => item.idSuscripcion);
-    this.selected.update(current => checked ? [...new Set([...current, ...ids])] : current.filter(value => !ids.includes(value)));
     this.invalidate();
   }
   invalidate(): void { this.impact.set(null); }
@@ -93,7 +87,7 @@ export class SaasPlanesPage {
     if (this.working() || !this.valid()) return;
     this.error.set(''); this.working.set(true);
     const request: Observable<Plan | Impact> = this.editing === null ? this.http.post<Plan>(this.base, this.payload())
-      : this.http.post<Impact>(`${this.base}/${this.editing}/impacto`, { ...this.payload(), suscripcionesSeleccionadas: this.selected() });
+      : this.http.post<Impact>(`${this.base}/${this.editing}/impacto`, this.payload());
     request.pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.working.set(false))).subscribe({
       next: result => {
         if ('confirmacionImpacto' in result) this.impact.set(result);
@@ -105,9 +99,9 @@ export class SaasPlanesPage {
     const impact = this.impact();
     if (this.working() || this.editing === null || !impact || !this.valid()) return;
     this.error.set(''); this.working.set(true);
-    this.http.put<Plan>(`${this.base}/${this.editing}`, { ...this.payload(), suscripcionesSeleccionadas: this.selected(), confirmacionImpacto: impact.confirmacionImpacto })
+    this.http.put<Plan>(`${this.base}/${this.editing}`, { ...this.payload(), confirmacionImpacto: impact.confirmacionImpacto })
       .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.working.set(false)))
-      .subscribe({ next: () => { this.editorOpen = false; this.impact.set(null); this.load(); this.notice.set('Plan actualizado. Las empresas no seleccionadas conservan su versión anterior.'); },
+      .subscribe({ next: () => { this.editorOpen = false; this.impact.set(null); this.load(); this.notice.set('Plan actualizado para todas las empresas asociadas.'); },
         error: error => { this.impact.set(null); this.error.set(this.message(error)); } });
   }
   back(): void { void this.router.navigateByUrl('/saas'); }

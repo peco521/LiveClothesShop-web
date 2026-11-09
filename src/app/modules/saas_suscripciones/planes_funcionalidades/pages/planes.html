@@ -29,7 +29,7 @@
 
     @if (editorOpen) {
       <section class="editor" aria-labelledby="editor-title">
-        <div class="editor-heading"><div><p class="eyebrow">CONFIGURACIÓN</p><h2 id="editor-title">{{ editing === null ? 'Crear plan' : 'Editar plan' }}</h2><p>Define los recursos y funcionalidades de esta versión.</p></div><button type="button" class="quiet" (click)="editorOpen = false" [disabled]="working()">Cerrar</button></div>
+        <div class="editor-heading"><div><p class="eyebrow">CONFIGURACIÓN</p><h2 id="editor-title">{{ editing === null ? 'Crear plan' : 'Editar plan' }}</h2><p>Define los recursos y funcionalidades de este plan.</p></div><button type="button" class="quiet" (click)="editorOpen = false" [disabled]="working()">Cerrar</button></div>
         <div class="fields">
           <label>Nombre del plan<input type="text" maxlength="30" [(ngModel)]="draft.nombre" (ngModelChange)="invalidate()" placeholder="Ej. Profesional"></label>
           <label>Límite de sucursales<input type="number" min="1" max="32767" step="1" [(ngModel)]="draft.maxSucursales" (ngModelChange)="invalidate()"></label>
@@ -39,16 +39,16 @@
           @for (feature of features(); track feature.codigo) { <label class="check"><input type="checkbox" [checked]="draft.funcionalidades.includes(feature.codigo)" (change)="toggleFeature(feature.codigo, $any($event.target).checked)"><span>{{ feature.descripcion }}</span></label> }
         </div></fieldset>
         @if (editing !== null) {
-          <fieldset><legend>Empresas con suscripciones vigentes</legend><p>Selecciona las empresas que recibirán la nueva versión. Las demás conservarán su configuración anterior.</p>
+          <fieldset><legend>Empresas con suscripciones activas</legend><p>Los cambios se aplicarán a todas las empresas con este plan y también se reflejarán en las suscripciones asociadas.</p>
             @if (working()) { <p role="status">Consultando…</p> }
             @else { <div class="company-list">
-              @for (sub of subscriptions(); track sub.idSuscripcion) { <label class="company"><input type="checkbox" [checked]="selected().includes(sub.idSuscripcion)" (change)="toggleSubscription(sub.idEmpresa, $any($event.target).checked)"><span><strong>{{ sub.empresa }}</strong><small>Suscripción #{{ sub.idSuscripcion }} · versión {{ sub.version }} · {{ sub.sucursalesActivas }} sucursales activas de {{ sub.maxSucursales }}</small></span></label> }
-              @empty { <p>No hay suscripciones vigentes para este plan.</p> }
+              @for (sub of subscriptions(); track sub.idSuscripcion) { <div class="company"><span><strong>{{ sub.empresa }}</strong><small>Suscripción #{{ sub.idSuscripcion }} · {{ sub.sucursalesActivas }} sucursales activas de {{ sub.maxSucursales }}</small></span></div> }
+              @empty { <p>No hay suscripciones activas para este plan.</p> }
             </div> }
           </fieldset>
         }
         @if (impact(); as review) {
-          <div class="review" role="status"><strong>Confirma la actualización</strong><p>{{ review.seleccionadas }} suscripciones recibirán la nueva versión y {{ review.conservanVersion }} conservarán la anterior.</p><button class="primary" type="button" [disabled]="working()" (click)="confirm()">Confirmar y guardar</button></div>
+          <div class="review" role="status"><strong>Confirma la actualización</strong><p>El cambio afectará a {{ review.empresasActivas }} empresas con {{ review.suscripcionesActivas }} suscripciones activas. El plan también figura en {{ review.suscripcionesAsociadas }} suscripciones en total, incluidas las anteriores.</p><button class="primary" type="button" [disabled]="working()" (click)="confirm()">Confirmar y guardar</button></div>
         } @else {
           <div class="editor-actions"><button class="primary" type="button" [disabled]="working()" (click)="review()">{{ editing === null ? 'Crear plan' : 'Revisar impacto' }}</button><button class="quiet" type="button" [disabled]="working()" (click)="editorOpen = false">Cancelar</button></div>
         }
