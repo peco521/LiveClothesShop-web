@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://liveclothesshop-api.onrender.com/api/:path*"
+      "destination": "https://liveclothesshop-api-okjg.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",
