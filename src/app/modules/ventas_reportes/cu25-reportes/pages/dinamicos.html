@@ -22,7 +22,24 @@
     <div class="scroll"><table><caption>{{r.titulo}}</caption><thead><tr>@for(c of r.columnas;track c){<th>{{c}}</th>}</tr></thead><tbody>@for(row of r.filas;track $index){<tr>@for(c of r.columnas;track c){<td>{{row[c]}}</td>}</tr>}@empty{<tr><td [attr.colspan]="r.columnas.length">No hay datos para estos filtros.</td></tr>}</tbody></table></div>
     <div class="bars" aria-label="Gráfico del resultado">@for(row of r.filas;track $index){<div>{{label(row)}}<div class="bar" [style.width.%]="bar(row)"></div></div>}</div>
   </section>}
-  <section><h2>Analítica ML · demostración sintética</h2><p>Demanda supervisada y patrones no supervisados; no representan precisión sobre ventas reales.</p><button type="button" (click)="loadAnalytics()">Consultar modelos y métricas sintéticas</button>@if(analytics()){<pre>{{analyticsText()}}</pre>}
+  <section><h2>Analítica ML · demostración sintética</h2><p>Demanda supervisada y patrones no supervisados; no representan precisión sobre ventas reales.</p><button type="button" (click)="loadAnalytics()">Consultar modelos y métricas sintéticas</button>
+    @if(analytics()){
+      <div class="ml-grid">
+        @for(m of supervisedMetrics();track m.model){
+          <div class="ml-card">
+            <h3>Supervisado: {{m.model}}</h3>
+            <p class="note">R²: <strong>{{m.r2}}</strong> · MAE: <strong>{{m.mae}}</strong> · RMSE: <strong>{{m.rmse}}</strong></p>
+          </div>
+        }
+        @if(unsupervisedSummary();as u){
+          <div class="ml-card">
+            <h3>No supervisado (K-Means + IsolationForest)</h3>
+            <p class="note">Silhouette: <strong>{{u.silhouette}}</strong> · Anomalías detectadas: <strong>{{u.anomalies}}</strong></p>
+          </div>
+        }
+      </div>
+      <details><summary>Ver detalle técnico JSON</summary><pre>{{analyticsText()}}</pre></details>
+    }
     <form (ngSubmit)="predict()"><div class="fields">
       <label>Categoría sintética<select name="categoriaMl" [(ngModel)]="scenario.category"><option value="camiseta">Camiseta</option><option value="pantalon">Pantalón</option><option value="vestido">Vestido</option></select></label>
       <label>Día (0 lunes)<input name="diaMl" type="number" min="0" max="6" [(ngModel)]="scenario.day_of_week" /></label>

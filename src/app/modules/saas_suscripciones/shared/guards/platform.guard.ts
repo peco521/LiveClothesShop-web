@@ -2,7 +2,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { inject, PLATFORM_ID } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
-import { AuthService } from '../seguridad-accesos/services/auth.service';
+import { AuthService } from '../../../seguridad-accesos/services/auth.service';
 
 export const platformGuard: CanActivateFn = () => {
   const router = inject(Router);

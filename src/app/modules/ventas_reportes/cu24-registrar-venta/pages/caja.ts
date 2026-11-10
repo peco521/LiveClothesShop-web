@@ -38,7 +38,7 @@ export class PuntoDeVentaPage {
   readonly sale = signal<Sale | null>(null);
   readonly busy = signal(false);
   readonly saving = signal(false);
-  readonly picker = signal(false);
+  readonly picker = signal(true);
   readonly registrando = signal(false);
   readonly error = signal('');
   readonly success = signal('');
@@ -66,9 +66,19 @@ export class PuntoDeVentaPage {
 
   loadReferences(): void {
     this.service.get<Refs>('caja/referencias').pipe(takeUntilDestroyed(this.destroy)).subscribe({
-      next: refs => { this.refs.set(refs); if (typeof refs.sucursalAsignada === 'number') this.nroSuc = refs.sucursalAsignada; },
+      next: refs => {
+        this.refs.set(refs);
+        if (typeof refs?.sucursalAsignada === 'number') this.nroSuc = refs.sucursalAsignada;
+        if (Array.isArray(refs?.sucursales) && !this.productRows()) this.searchProducts();
+      },
       error: e => this.error.set(requestError(e, this.router)),
     });
+  }
+
+  toggleCatalog(): void {
+    const next = !this.picker();
+    this.picker.set(next);
+    if (next) this.searchProducts();
   }
 
   /**
@@ -422,7 +432,7 @@ export class PuntoDeVentaPage {
 
   newSale(): void {
     this.sale.set(null); this.draft = []; this.selectedCustomer.set(null); this.customers.set([]);
-    this.offlineQueuedId = null;
+    this.offlineQueuedId = null; this.picker.set(true);
     this.product.set(null); this.received = 0; this.nroReserva = null; this.confirmCancel = false;
     this.reservaCliente.set(null); this.reservation.set(null);
     this.ventaEnCurso = null;

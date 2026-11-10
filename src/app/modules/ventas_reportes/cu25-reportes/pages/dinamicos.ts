@@ -13,7 +13,7 @@ interface Decision { estado: string; mensaje: string; plan: Plan|null; modelo: s
 interface Recognition { lang: string; interimResults: boolean; onresult: ((event: { results: ArrayLike<ArrayLike<{transcript: string}>> })=>void)|null; onerror: (()=>void)|null; onend: (()=>void)|null; start(): void; stop(): void; }
 
 @Component({selector:'app-reportes-dinamicos', imports:[FormsModule,InventarioPanel], templateUrl:'./dinamicos.html',
-  styles:`.fields{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}label{display:grid;gap:5px}input,select,textarea,button{font:inherit;padding:9px}textarea{width:100%;box-sizing:border-box}table{width:100%;border-collapse:collapse}td,th{padding:9px;text-align:left;border-bottom:1px solid #ccc}.scroll{overflow:auto}.bars{display:grid;gap:8px;padding:12px;background:#f5f5ef}.bar{height:12px;background:#426c47;max-width:100%}.note{font-size:.9rem}.actions{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}pre{white-space:pre-wrap}`})
+  styles:`.fields{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}label{display:grid;gap:5px}input,select,textarea,button{font:inherit;padding:9px}textarea{width:100%;box-sizing:border-box}table{width:100%;border-collapse:collapse}td,th{padding:9px;text-align:left;border-bottom:1px solid #ccc}.scroll{overflow:auto}.bars{display:grid;gap:8px;padding:12px;background:#f5f5ef}.bar{height:12px;background:#426c47;max-width:100%}.note{font-size:.9rem}.actions{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}pre{white-space:pre-wrap}.ml-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:14px 0}.ml-card{padding:14px;border:1px solid #d4d8ce;border-radius:10px;background:#fafaf6}.ml-card h3{margin:0 0 8px;font-size:1rem}`})
 export class ReportesDinamicosPage {
   private readonly http=inject(HttpClient); private readonly auth=inject(AuthService); private readonly destroy=inject(DestroyRef);
   private readonly base=inject(API_BASE_URL).replace(/\/$/,'')+'/admin/reportes';
@@ -47,6 +47,16 @@ export class ReportesDinamicosPage {
       next:blob=>{if(owner!==this.owner())return;const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='fashionstore-reporte.'+format;a.click();URL.revokeObjectURL(url);},error:e=>{if(owner===this.owner())this.fail(e);}});}
   loadAnalytics():void {const owner=this.owner();this.error.set('');this.http.get<Record<string,unknown>>(this.base+'/analitica').pipe(takeUntilDestroyed(this.destroy)).subscribe({next:r=>{if(owner===this.owner())this.analytics.set(r);},error:e=>{if(owner===this.owner())this.fail(e);}});}
   analyticsText():string{return JSON.stringify(this.analytics(),null,2);}
+  supervisedMetrics():Array<{model:string;mae:number;rmse:number;r2:number}>{
+    const sup=this.analytics()?.['supervised'] as {metrics?:Record<string,{mae:number;rmse:number;r2:number}>}|undefined;
+    if(!sup?.metrics)return[];
+    return Object.entries(sup.metrics).map(([model,m])=>({model,mae:m.mae,rmse:m.rmse,r2:m.r2}));
+  }
+  unsupervisedSummary():{silhouette?:number;anomalies?:number;clusters?:Array<Record<string,unknown>>}|null{
+    const unsup=this.analytics()?.['unsupervised'] as {kmeans_silhouette?:number;anomalies_detected?:number;clusters?:Array<Record<string,unknown>>}|undefined;
+    if(!unsup)return null;
+    return {silhouette:unsup.kmeans_silhouette,anomalies:unsup.anomalies_detected,clusters:unsup.clusters};
+  }
   predict():void {const owner=this.owner();this.error.set('');this.http.post<{synthetic:boolean;predicted_daily_units:number;limitation:string}>(this.base+'/analitica/predecir',this.scenario).pipe(takeUntilDestroyed(this.destroy)).subscribe({
     next:r=>{if(owner===this.owner())this.prediction.set('Escenario sintético: '+r.predicted_daily_units+' unidades/día estimadas. '+r.limitation);},error:e=>{if(owner===this.owner())this.fail(e);}});}
   bar(row:Record<string,string|number>):number {const rows=this.result()?.filas??[];const key=this.result()?.plan.tipo==='existencias_bajas'?'disponible':'importe';const max=Math.max(1,...rows.map(r=>Number(r[key])||0));return 100*(Number(row[key])||0)/max;}

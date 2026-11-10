@@ -1,10 +1,11 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { finalize, of } from 'rxjs';
 import { AuthLayout } from '../../components/auth-layout';
 import { FieldError } from '../../components/field-error';
+import { EmpresaAcceso } from '../../models/auth.models';
 import { normalizedEmail, notBlank, pastDate } from '../../models/auth.validation';
 import { authError } from '../../services/auth-error';
 import { AuthService } from '../../services/auth.service';
@@ -13,8 +14,9 @@ import { AuthService } from '../../services/auth.service';
   selector: 'app-registro',
   imports: [ReactiveFormsModule, RouterLink, AuthLayout, FieldError],
   templateUrl: './registro.html',
+  styleUrl: '../admin-login/admin-login.css',
 })
-export class RegistroPage {
+export class RegistroPage implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -22,6 +24,12 @@ export class RegistroPage {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly success = signal(false);
+  readonly empresa = signal('');
+  readonly companies = signal<EmpresaAcceso[]>([]);
+  readonly loadingCompanies = signal(false);
+  readonly companiesError = signal('');
+  readonly companyMenuOpen = signal(false);
+  private readonly companyMenuPinned = signal(false);
   readonly form = this.fb.group({
     ci: ['', [notBlank, Validators.maxLength(100)]],
     nombres: ['', [notBlank, Validators.maxLength(100)]],
@@ -45,14 +53,94 @@ export class RegistroPage {
     { name: 'fechaNac', label: 'Fecha de nacimiento', type: 'date', autocomplete: 'bday', max: null },
   ] as const;
 
+  ngOnInit(): void {
+    this.loadCompanies();
+  }
+
+  loadCompanies(): void {
+    if (this.loadingCompanies()) return;
+    const source = this.auth.listCompanies?.() ?? of([]);
+    this.loadingCompanies.set(true);
+    this.companiesError.set('');
+    source.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.loadingCompanies.set(false)),
+    ).subscribe({
+      next: (items) => {
+        const list = Array.isArray(items) ? items : [];
+        this.companies.set(list);
+        if (list.length === 1 && !this.empresa()) {
+          this.empresa.set(list[0].codigo);
+        }
+      },
+      error: () => {
+        this.companies.set([]);
+        this.companiesError.set('No se pudo cargar la lista de empresas.');
+      },
+    });
+  }
+
+  hoverCompanies(): void {
+    if (this.busy()) return;
+    if (!this.companies().length && !this.loadingCompanies() && !this.companiesError()) {
+      this.loadCompanies();
+    }
+    if (!this.companyMenuPinned()) {
+      this.companyMenuOpen.set(true);
+    }
+  }
+
+  leaveCompanies(): void {
+    if (!this.companyMenuPinned()) {
+      this.companyMenuOpen.set(false);
+    }
+  }
+
+  toggleCompanies(): void {
+    if (this.busy()) return;
+    if (!this.companies().length && !this.loadingCompanies()) {
+      this.loadCompanies();
+    }
+    if (this.companyMenuPinned()) {
+      this.closeCompanies();
+    } else {
+      this.companyMenuPinned.set(true);
+      this.companyMenuOpen.set(true);
+    }
+  }
+
+  closeCompanies(): void {
+    this.companyMenuPinned.set(false);
+    this.companyMenuOpen.set(false);
+  }
+
+  selectCompany(company: EmpresaAcceso): void {
+    this.empresa.set(company.codigo);
+    this.closeCompanies();
+  }
+
+  selectedCompany(): EmpresaAcceso | null {
+    const code = this.empresa().trim().toLowerCase();
+    if (!code) return null;
+    return this.companies().find((item) => item.codigo.toLowerCase() === code) ?? null;
+  }
+
   submit(): void {
     if (this.busy() || this.success()) return;
     this.error.set('');
+    this.closeCompanies();
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    if (this.companies().length > 1 && !this.empresa()) {
+      this.error.set('Selecciona la empresa en la que deseas registrarte.');
+      return;
+    }
     const input = this.form.getRawValue();
     if (input.sexo !== 'M' && input.sexo !== 'F') return;
     this.busy.set(true);
-    this.auth.register({ ...input, sexo: input.sexo }).pipe(
+    const payload = this.empresa()
+      ? { ...input, sexo: input.sexo, empresa: this.empresa() }
+      : { ...input, sexo: input.sexo };
+    this.auth.register(payload).pipe(
       takeUntilDestroyed(this.destroyRef),
       finalize(() => { this.busy.set(false); this.form.controls.contrasena.reset(); }),
     ).subscribe({

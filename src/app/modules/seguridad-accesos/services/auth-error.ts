@@ -1,6 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { TimeoutError } from 'rxjs';
 
 export function authError(error: unknown, action: 'registro' | 'login' | 'sesion'): string {
+  if (error instanceof TimeoutError) return 'El servidor tardó demasiado en responder. Intenta iniciar sesión de nuevo.';
   if (error instanceof HttpErrorResponse) {
     if (error.status === 409 && action === 'registro') return 'Este correo ya está registrado. Puedes iniciar sesión.';
     if (error.status === 401 && action === 'login') return 'No pudimos iniciar sesión. Revisa tu correo y contraseña.';

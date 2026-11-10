@@ -26,6 +26,9 @@ textarea { width:100%; min-height:90px; padding:11px 13px; border:1px solid #c8c
 .receipt-line { display:flex; justify-content:space-between; gap:14px; border-bottom:1px dashed var(--line); padding:8px 0; font-size:.88rem; }
 .receipt-line small { display:block; color:var(--muted); font-size:.78rem; }.receipt-line.total { border-bottom:0; font-size:1.05rem; }
 .checkout-grid, .report-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px; align-items:start; }
+.pos-grid { display:grid; grid-template-columns:minmax(320px,1fr) minmax(360px,1.15fr); gap:24px; align-items:start; }
+.pos-col { min-width:0; }
+.pos-col > .card:first-child { margin-top:0; }
 .summary { border:1px solid var(--line); border-radius:12px; padding:22px; background:var(--paper); }.summary h2 { font-size:1.05rem; margin:0 0 16px; }
 .export-row { display:flex; justify-content:space-between; align-items:center; gap:14px; border-bottom:1px solid var(--line); padding:10px 0; }
 .reprogram { margin-top:14px; }.catalog-picker { border-style:dashed; }
@@ -36,4 +39,5 @@ textarea { width:100%; min-height:90px; padding:11px 13px; border:1px solid #c8c
 .matrix tbody th { font-weight:600; white-space:nowrap; }
 .matrix tr.total th, .matrix tr.total td { font-weight:700; background:#edf3e9; }
 @media print { .tabs, .toolbar, .btn, nav, form { display:none !important; } }
+@media(max-width:900px) { .pos-grid { grid-template-columns:1fr; } }
 @media(max-width:600px) { .checkout-grid, .report-grid, .form-grid { grid-template-columns:1fr; }.return-line { flex-direction:column; align-items:flex-start; } }

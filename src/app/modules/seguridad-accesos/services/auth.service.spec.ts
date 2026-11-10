@@ -188,6 +188,31 @@ describe('AuthService + interceptor HTTP', () => {
     expect(service.session()).toEqual(session);
   });
 
+  it.each(['saas', 'admin'] as const)('libera el login %s cuando el servidor no responde', portal => {
+    vi.useFakeTimers();
+    try {
+      const rejected = vi.fn();
+      service.login({ correo: 'test@example.com', contrasena: 'Test' }, portal).subscribe({ error: rejected });
+      const request = http.expectOne(`/api/auth/login/${portal}`);
+      vi.advanceTimersByTime(20001);
+      expect(request.cancelled).toBe(true);
+      expect(rejected).toHaveBeenCalledOnce();
+      expect(service.session()).toBeNull();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('limita la espera de restauracion de sesion que usan los guards', () => {
+    vi.useFakeTimers();
+    try {
+      const rejected = vi.fn();
+      service.restore().subscribe({ error: rejected });
+      const request = http.expectOne('/api/auth/me');
+      vi.advanceTimersByTime(20001);
+      expect(request.cancelled).toBe(true);
+      expect(rejected).toHaveBeenCalledOnce();
+    } finally { vi.useRealTimers(); }
+  });
+
   it('logout usa POST protegido, limpia solo auth y redirige tras éxito', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     service.restore().subscribe();
@@ -259,6 +284,15 @@ describe('AuthService + interceptor HTTP', () => {
     logout.flush(null, { status: 204, statusText: 'No Content' });
     expect(service.session()).toEqual(session);
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('consulta la lista de empresas disponibles para el acceso administrativo', () => {
+    let companies: Array<{ codigo: string; nombre: string }> = [];
+    service.listCompanies().subscribe(items => companies = items);
+    const req = http.expectOne('/api/auth/empresas');
+    expect(req.request.method).toBe('GET');
+    req.flush([{ codigo: 'piloto', nombre: 'Empresa Piloto (datos del Parcial 1)' }]);
+    expect(companies).toEqual([{ codigo: 'piloto', nombre: 'Empresa Piloto (datos del Parcial 1)' }]);
   });
 
   it('no envía credenciales ni CSRF a servicios ajenos a la API', () => {

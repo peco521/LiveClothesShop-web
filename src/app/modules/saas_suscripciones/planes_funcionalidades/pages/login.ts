@@ -44,7 +44,7 @@ export class SaasLoginPage {
 
   constructor() {
     afterNextRender(() => this.auth.restore().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: session => { if (session?.usuario.tipo === 'S') void this.router.navigateByUrl('/saas'); },
+      next: session => { if (!this.busy() && this.auth.session() === session && session?.usuario.tipo === 'S' && session.plataforma) void this.router.navigateByUrl('/saas'); },
       error: () => {},
     }));
   }

@@ -18,7 +18,7 @@ export function requestError(error: unknown, router: Router): string {
     @else { <a routerLink="/admin">Mi acceso</a> }
   </nav><h1>{{ title() }}</h1>@if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
   @if (success()) { <p class="notice success" role="status">✓ {{ success() }}</p> }<ng-content /></section>`,
-  styles: `:host { display:block; max-width:1160px; margin:32px auto; padding:20px; }
+  styles: `:host { display:block; max-width:1380px; margin:32px auto; padding:20px; }
     .panel { background:var(--paper); padding:clamp(16px,4vw,40px); border:1px solid var(--line); border-radius:12px; }
     h1 { font-size:1.7rem; }.tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:24px; }
     .tabs a { text-decoration:none; font-size:.85rem; padding:9px 12px; border-radius:8px; border:1px solid var(--line); }

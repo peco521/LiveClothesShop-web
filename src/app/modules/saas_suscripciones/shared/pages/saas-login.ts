@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
-import { AuthService } from '../seguridad-accesos/services/auth.service';
+import { AuthService } from '../../../seguridad-accesos/services/auth.service';
 
 @Component({
   selector: 'app-saas-login',

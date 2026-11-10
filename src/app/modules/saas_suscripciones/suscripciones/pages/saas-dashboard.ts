@@ -1,12 +1,14 @@
-import { HttpClient } from '@angular/common/http';
+import { SaasSessionRecovery } from '../../shared/components/session-recovery';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { JsonPipe } from '@angular/common';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
-import { API_BASE_URL } from '../../core/config/api.config';
-import { AuthService } from '../seguridad-accesos/services/auth.service';
+import { CatalogoPlanesSaasComponent } from '../../planes_funcionalidades/components/catalogo-planes';
+import { API_BASE_URL } from '../../../../core/config/api.config';
+import { AuthService } from '../../../seguridad-accesos/services/auth.service';
 
 interface Company {
   idEmp: number; codigo: string; nombre: string; estado: string;
@@ -39,8 +41,9 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
 
 @Component({
   selector: 'app-saas-dashboard',
-  imports: [FormsModule, JsonPipe, RouterLink],
-  template: `<div class="saas-layout">
+  imports: [SaasSessionRecovery, FormsModule, JsonPipe, RouterLink, CatalogoPlanesSaasComponent],
+  template: `
+    @if (sessionExpired()) { <app-saas-session-recovery (recovered)="sessionExpired.set(false); error.set('')" /> }<div class="saas-layout">
     @if (menuOpen()) { <button class="saas-scrim" type="button" aria-label="Cerrar navegación" (click)="menuOpen.set(false)"></button> }
     <aside class="saas-sidebar" [class.open]="menuOpen()" aria-label="Navegación de plataforma">
       <a class="saas-brand" routerLink="/saas" (click)="setSection('resumen')">
@@ -58,7 +61,7 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
       </nav>
       <div class="saas-sidebar-foot">
         <span>Administración de plataforma</span>
-        @if (can('SAAS-PLANES')) { <a routerLink="/saas/planes">Editar versiones de planes</a> }
+        @if (can('SAAS-PLANES')) { <a routerLink="/saas/planes">Administrar planes y funcionalidades</a> }
       </div>
     </aside>
     <div class="saas-content">
@@ -160,7 +163,7 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
               <button class="secondary" type="submit" [disabled]="subForm.invalid || saving() || subscription.fechaVencimiento <= subscription.fechaInicio">Revisar cambio</button>
               </fieldset>
             </form>
-            @if (subscriptionReview()) { <div class="review-card" role="status"><strong>Revisa el cambio de suscripción</strong><p>{{ company.plan || 'Sin plan' }} → {{ selectedPlanName() }} · {{ company.sucursalesActivas }} sucursales activas, nuevo límite {{ selectedPlanLimit() }}.</p><p>Vigencia: {{ formatDateOnly(subscription.fechaInicio) }} a {{ formatDateOnly(subscription.fechaVencimiento) }}. El backend asignará la versión efectiva correspondiente; no se editarán versiones históricas.</p><button class="primary" type="button" (click)="saveSubscription()" [disabled]="saving()">Confirmar cambio</button> <button class="secondary" type="button" (click)="subscriptionReview.set(false)" [disabled]="saving()">Volver a editar</button></div> }
+            @if (subscriptionReview()) { <div class="review-card" role="status"><strong>Revisa el cambio de suscripción</strong><p>{{ company.plan || 'Sin plan' }} → {{ selectedPlanName() }} · {{ company.sucursalesActivas }} sucursales activas, nuevo límite {{ selectedPlanLimit() }}.</p><p>Vigencia: {{ formatDateOnly(subscription.fechaInicio) }} a {{ formatDateOnly(subscription.fechaVencimiento) }}. La suscripción utilizará la configuración actual del plan seleccionado.</p><button class="primary" type="button" (click)="saveSubscription()" [disabled]="saving()">Confirmar cambio</button> <button class="secondary" type="button" (click)="subscriptionReview.set(false)" [disabled]="saving()">Volver a editar</button></div> }
           }
           @if (can('SAAS-SOPORTE')) {
             <h3>Consulta de soporte (solo lectura y auditada)</h3>
@@ -178,21 +181,15 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
     }
 
     @if (section() === 'planes') {
-      <section><div class="section-heading"><div><p class="saas-kicker">CATÁLOGO DE PLANES</p><h2>Planes y suscripciones</h2><p>Las ediciones conservan versiones anteriores; asignar una versión es una acción separada.</p></div>@if (can('SAAS-PLANES')) { <a class="button primary" routerLink="/saas/planes">Administrar versiones</a> }</div>
-        <div class="plan-grid">@for (plan of plans(); track plan.idPlan) {
-          <article class="plan-card"><div class="surface-heading"><span class="status-pill" [class.success]="plan.estado === 'activo'">{{ plan.estado }}</span><small>Plan #{{ plan.idPlan }}</small></div><h3>{{ plan.nombre }}</h3><p><strong>{{ plan.maxSucursales }}</strong> sucursales máximo</p>
-            <h4>Funcionalidades</h4><ul>@for (feature of plan.funcionalidades; track feature) { <li>{{ featureLabel(feature) }}</li> } @empty { <li>Sin funcionalidades asignadas</li> }</ul>
-          </article>
-        }</div>
-      </section>
+      <app-catalogo-planes-saas [plans]="plans()" [canManage]="can('SAAS-PLANES')" />
     }
 
     @if (section() === 'aprovisionar' && can('SAAS-EMPRESAS')) {
       <section class="surface provision-panel"><div class="section-heading"><div><p class="saas-kicker">ALTA DE TENANT</p><h2>Registrar empresa</h2><p>Empresa, administrador inicial y vigencia se crean en una única operación del backend.</p></div></div>
         <form #provisionForm="ngForm" (ngSubmit)="reviewProvision()" class="fields">
           <fieldset class="provision-fields" [disabled]="saving() || provisionReview()">
-          <label>Código (minúsculas, números y guiones)<input name="code" [(ngModel)]="provisionData.codigo" pattern="^[a-z0-9-]{1,30}$" maxlength="30" required /></label>
-          <label>Nombre<input name="companyName" [(ngModel)]="provisionData.nombre" maxlength="100" required /></label>
+          <label>Nombre<input name="companyName" [(ngModel)]="provisionData.nombre" (ngModelChange)="onCompanyNameChange($event)" maxlength="100" required /></label>
+          <label>Código de empresa<input name="code" [ngModel]="provisionData.codigo" readonly placeholder="Se genera al escribir el nombre (ej. Bat-2222)" /><small class="field-hint">Código asignado automáticamente según el nombre de la empresa.</small></label>
           <label>NIT (opcional)<input name="nit" [(ngModel)]="provisionData.nit" maxlength="30" /></label>
           <label>Plan<select name="provisionPlan" [ngModel]="provisionData.idPlan" (ngModelChange)="provisionData.idPlan=+$event" required>
             @for (plan of plans(); track plan.idPlan) { <option [ngValue]="plan.idPlan" [disabled]="plan.estado !== 'activo'">{{ plan.nombre }}</option> }
@@ -200,7 +197,7 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
           <label>Inicio<input type="date" name="provisionStart" [(ngModel)]="provisionData.fechaInicio" required /></label>
           <label>Vencimiento<input type="date" name="provisionEnd" [(ngModel)]="provisionData.fechaVencimiento" required /></label>
           <fieldset><legend>Administrador inicial de empresa</legend>
-            <label>ID de usuario<input name="adminId" [(ngModel)]="provisionData.administrador.idUsuario" maxlength="100" required /></label>
+            <label>Código de administrador<input name="adminCode" type="text" [value]="predictedAdminCode()" readonly /><small class="field-hint">Código previsto. Se asigna automáticamente al guardar.</small></label>
             <label>CI<input name="adminCi" [(ngModel)]="provisionData.administrador.ci" maxlength="100" required /></label>
             <label>Nombres<input name="adminName" [(ngModel)]="provisionData.administrador.nombre" maxlength="100" required /></label>
             <label>Apellido paterno<input name="adminPat" [(ngModel)]="provisionData.administrador.apellidoPat" maxlength="50" required /></label>
@@ -215,7 +212,7 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
           <button class="secondary provision-submit" type="submit" [disabled]="provisionForm.invalid || saving() || provisionData.fechaVencimiento <= provisionData.fechaInicio">Revisar datos</button>
           </fieldset>
         </form>
-        @if (provisionReview()) { <div class="review-card" role="status"><strong>Confirma el aprovisionamiento</strong><p>{{ provisionData.nombre }} ({{ provisionData.codigo }}) · {{ selectedPlanName(provisionData.idPlan) }} · {{ formatDateOnly(provisionData.fechaInicio) }} a {{ formatDateOnly(provisionData.fechaVencimiento) }}.</p><p>Administrador inicial: {{ provisionData.administrador.correo }}. La contraseña no se mostrará ni se devolverá.</p><button class="primary" type="button" (click)="provision()" [disabled]="saving()">{{ saving() ? 'Registrando…' : 'Confirmar y registrar' }}</button> <button class="secondary" type="button" (click)="provisionReview.set(false)" [disabled]="saving()">Volver a editar</button></div> }
+        @if (provisionReview()) { <div class="review-card" role="status"><strong>Confirma el aprovisionamiento</strong><p>{{ provisionData.nombre }} ({{ provisionData.codigo }}) · {{ selectedPlanName(provisionData.idPlan) }} · {{ formatDateOnly(provisionData.fechaInicio) }} a {{ formatDateOnly(provisionData.fechaVencimiento) }}.</p><p>Administrador inicial ({{ predictedAdminCode() }}): {{ provisionData.administrador.correo }}. La contraseña no se mostrará ni se devolverá.</p><button class="primary" type="button" (click)="provision()" [disabled]="saving()">{{ saving() ? 'Registrando…' : 'Confirmar y registrar' }}</button> <button class="secondary" type="button" (click)="provisionReview.set(false)" [disabled]="saving()">Volver a editar</button></div> }
         @if (created(); as result) { <p role="status">Empresa {{ result.nombre }} ({{ result.codigo }}) creada. La clave no se devuelve ni se registra aquí.</p> }
       </section>
     }
@@ -233,15 +230,15 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
       </section>
     }
     @if (section() === 'respaldos') {
-      <section><div class="section-heading"><div><p class="saas-kicker">OPERACIÓN SEGURA</p><h2>Respaldos</h2><p>Respaldo PostgreSQL completo de la base de pruebas; los archivos permanecen en almacenamiento local privado.</p></div><button class="secondary" type="button" (click)="loadBackups()" [disabled]="backupsLoading()">Actualizar</button></div>
+      <section><div class="section-heading"><div><p class="saas-kicker">OPERACIÓN SEGURA</p><h2>Respaldos</h2><p>Respaldo de las tablas, datos y funciones de la aplicación (esquema public). Los archivos se guardan en el servidor.</p></div><button class="secondary" type="button" (click)="loadBackups()" [disabled]="backupsLoading()">Actualizar</button></div>
         @if (backupsLoading()) { <p role="status">Consultando estado de respaldos…</p> }
         @if (backupList(); as data) {
           <section class="backup-notice" [class.pending]="!data.configuracion.configurado">
             <h3>Respaldo PostgreSQL de plataforma</h3><p>Destino autorizado: <strong>{{ data.configuracion.destino }}</strong></p>
-            <p>Retención configurada: {{ data.configuracion.retencionDias }} días. Crear un respaldo no verifica la restauración.</p>
+            <p>Conservación: sin eliminación automática. El archivo se valida antes de habilitar la descarga.</p>
             @if (!data.configuracion.configurado) { <p role="status">{{ data.configuracion.mensaje }}</p> }
-            @else { <p>Identidad de lectura separada; el rol HTTP no recibe credenciales de base de datos.</p> }
-            @if (can('SAAS-RESPALDOS')) { <button class="primary" type="button" (click)="requestBackup()" [disabled]="!data.configuracion.configurado || saving() || backupsLoading()">{{ saving() ? 'Solicitando…' : 'Crear respaldo ahora' }}</button> }
+            @else { <p>La copia se genera con una conexión de solo lectura. No incluye los archivos de Supabase Storage ni los esquemas internos de Supabase.</p> }
+            @if (can('SAAS-RESPALDOS')) { <button class="primary" type="button" (click)="requestBackup()" [disabled]="!data.configuracion.configurado || saving() || backupsLoading() || backupRunning()">{{ saving() ? 'Solicitando…' : 'Crear respaldo ahora' }}</button> }
           </section>
           <div class="table-wrap"><table><thead><tr><th>Solicitado</th><th>Estado</th><th>Tamaño</th><th>Resultado</th></tr></thead><tbody>
             @for (job of data.respaldos; track job.id) { <tr><td><time>{{ formatDate(job.solicitado) }}</time></td><td><span class="status-pill" [class.success]="job.estado === 'completado'" [class.warning]="job.estado === 'solicitado' || job.estado === 'en_proceso'" [class.danger]="job.estado === 'fallido'">{{ backupStatus(job.estado) }}</span></td><td>{{ job.tamanoBytes === null ? '—' : formatBytes(job.tamanoBytes) }}</td><td>@if (job.estado === 'completado') { <a [href]="backupDownloadUrl(job.id)" [attr.download]="'fashionstore-backup-' + job.id + '.dump'">Descargar respaldo</a> } @else { {{ job.error || '—' }} }</td></tr> }
@@ -275,6 +272,7 @@ export class SaasDashboardPage implements OnInit {
   readonly backupsLoading = signal(false);
   readonly saving = signal(false);
   readonly error = signal('');
+  readonly sessionExpired = signal(false);
   readonly success = signal('');
   readonly summary = signal<PlatformSummary | null>(null);
   readonly backupList = signal<BackupList | null>(null);
@@ -292,7 +290,46 @@ export class SaasDashboardPage implements OnInit {
   auditFilter = '';
   supportReason = '';
 
+  private backupPoll?: ReturnType<typeof setTimeout>;
+  private auditRequest = 0;
+  private provisionCodeSuffix = this.newCodeSuffix();
+
+  private newCodeSuffix(): string {
+    return String(Math.floor(1000 + Math.random() * 9000));
+  }
+
+  predictedAdminCode(): string {
+    return 'Adm-000001';
+  }
+
+  onCompanyNameChange(nombre: string): void {
+    this.provisionData.nombre = nombre;
+    this.provisionData.codigo = this.generateCompanyCode(nombre);
+  }
+
+  generateCompanyCode(nombre: string): string {
+    const clean = (nombre || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Za-z0-9]/g, '');
+    if (!clean) return '';
+    const padded = clean.length >= 3 ? clean.slice(0, 3) : clean.padEnd(3, 'x');
+    const prefix = padded.charAt(0).toUpperCase() + padded.slice(1, 3).toLowerCase();
+    const existing = new Set(this.companies().map(company => company.codigo.toLowerCase()));
+    let suffix = this.provisionCodeSuffix;
+    let candidate = `${prefix}-${suffix}`;
+    let attempts = 0;
+    while (existing.has(candidate.toLowerCase()) && attempts < 25) {
+      suffix = this.newCodeSuffix();
+      this.provisionCodeSuffix = suffix;
+      candidate = `${prefix}-${suffix}`;
+      attempts++;
+    }
+    return candidate;
+  }
+
   ngOnInit(): void {
+    this.destroyRef.onDestroy(() => clearTimeout(this.backupPoll));
     this.route.data.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(data => {
       const section = data['section'];
       if (section === 'resumen' || section === 'empresas' || section === 'planes'
@@ -322,7 +359,7 @@ export class SaasDashboardPage implements OnInit {
     return ({
       resumen: 'Una lectura operativa del estado actual de FashionStore SaaS.',
       empresas: 'Consulta empresas, vigencia de suscripciones y uso de sucursales.',
-      planes: 'Revisa planes actuales y administra sus versiones contratadas.',
+      planes: 'Revisa los planes actuales y sus funcionalidades.',
       aprovisionar: 'Registra una empresa y su administrador inicial.',
       auditoria: 'Consulta acciones de plataforma registradas en auditoría.',
       respaldos: 'Administra respaldos completos del entorno de pruebas.',
@@ -413,19 +450,6 @@ export class SaasDashboardPage implements OnInit {
     return labels[action] || action.replaceAll('_', ' ');
   }
 
-  featureLabel(code: string): string {
-    const labels: Record<string, string> = {
-      CU05: 'Usuarios y empleados', CU06: 'Roles y permisos', CU07: 'Clientes',
-      CU08: 'Bitácora empresarial', CU09: 'Sucursales y ciudades', CU10: 'Catálogo',
-      CU11: 'Reservas', CU12: 'Carrito', CU13: 'Compra digital', CU14: 'Pagos',
-      CU15: 'Historial de compras', CU18: 'Gestión de catálogo',
-      CU19: 'Proveedores', CU20: 'Inventario', CU21: 'Promociones',
-      CU22: 'Reservas en sucursal', CU23: 'Devoluciones', CU24: 'Venta presencial',
-      CU25: 'Reportes gerenciales',
-    };
-    return labels[code] || code;
-  }
-
   auditCompany(event: AuditEvent): string {
     const companyId = event.detalles?.['idEmp'];
     return typeof companyId === 'number' ? `Empresa #${companyId}` : '—';
@@ -470,25 +494,36 @@ export class SaasDashboardPage implements OnInit {
   loadAudit(page = 0): void {
     if (!this.can('SAAS-AUDITORIA')) return;
     this.auditLoading.set(true);
+    const request = ++this.auditRequest;
     const filter = this.auditFilter.trim();
     const params = `?limite=21&desplazamiento=${page * 20}${filter ? `&accion=${encodeURIComponent(filter)}` : ''}`;
     this.http.get<AuditEvent[]>(`${this.api}/saas/auditoria${params}`).subscribe({
-      next: rows => { this.audit.set(rows.slice(0, 20)); this.auditHasNext.set(rows.length > 20); this.auditPage.set(page); this.auditLoading.set(false); },
-      error: () => { this.error.set('No se pudo cargar la auditoría.'); this.auditLoading.set(false); },
+      next: rows => { if (request !== this.auditRequest) return; this.audit.set(rows.slice(0, 20)); this.auditHasNext.set(rows.length > 20); this.auditPage.set(page); this.auditLoading.set(false); },
+      error: () => { if (request !== this.auditRequest) return; this.error.set('No se pudo cargar la auditoría.'); this.auditLoading.set(false); },
     });
   }
 
+  backupRunning(): boolean {
+    return !!this.backupList()?.respaldos.some(job => job.estado === 'solicitado' || job.estado === 'en_proceso');
+  }
+
   loadBackups(): void {
+    clearTimeout(this.backupPoll);
     if (!this.can('SAAS-RESPALDOS')) return;
     this.backupsLoading.set(true);
     this.http.get<BackupList>(`${this.api}/saas/respaldos`).subscribe({
-      next: response => { this.backupList.set(response); this.backupsLoading.set(false); },
+      next: response => {
+        this.backupList.set(response); this.backupsLoading.set(false);
+        if (this.backupRunning() && this.section() === 'respaldos') {
+          this.backupPoll = setTimeout(() => { if (this.section() === 'respaldos') this.loadBackups(); }, 2000);
+        }
+      },
       error: () => { this.backupList.set(null); this.error.set('No se pudo consultar la configuración de respaldos.'); this.backupsLoading.set(false); },
     });
   }
 
   requestBackup(): void {
-    if (this.saving() || !this.can('SAAS-RESPALDOS') || !this.backupList()?.configuracion.configurado) return;
+    if (this.saving() || this.backupRunning() || !this.can('SAAS-RESPALDOS') || !this.backupList()?.configuracion.configurado) return;
     this.saving.set(true);
     this.error.set('');
     this.success.set('');
@@ -520,7 +555,15 @@ export class SaasDashboardPage implements OnInit {
   private finish<T>(request: Observable<T>, success: string, apply: (value: T) => void): void {
     this.saving.set(true); this.error.set(''); this.success.set('');
     request.subscribe({ next: value => { apply(value); this.success.set(success); this.saving.set(false); if (this.can('SAAS-AUDITORIA')) this.loadAudit(0); },
-      error: () => { this.error.set('La operación fue rechazada. Verifica autorización, datos y auditoría.'); this.saving.set(false); } });
+      error: (error: unknown) => {
+        if (error instanceof HttpErrorResponse && error.status === 401) {
+          this.sessionExpired.set(true); this.error.set('La sesión SaaS venció. Renueva tu acceso para guardar.');
+        } else {
+          this.error.set(error instanceof HttpErrorResponse && typeof error.error?.error?.message === 'string'
+            ? error.error.error.message : 'No se pudo completar la operación. Inténtalo de nuevo.');
+        }
+        this.saving.set(false);
+      } });
   }
 
   private updateCompany(updated: Company): void {
@@ -559,9 +602,12 @@ export class SaasDashboardPage implements OnInit {
     const data = this.provisionData;
     const admin = data.administrador;
     if (this.saving() || data.fechaVencimiento <= data.fechaInicio) return;
-    if (!/^[a-z0-9-]{1,30}$/.test(data.codigo.trim().toLowerCase())
+    if (data.nombre.trim() && !data.codigo.trim()) {
+      data.codigo = this.generateCompanyCode(data.nombre);
+    }
+    if (!/^[a-z0-9-]{1,30}$/i.test(data.codigo.trim())
         || !data.nombre.trim() || !data.idPlan
-        || !admin.idUsuario.trim() || !admin.ci.trim() || !admin.nombre.trim()
+        || !admin.ci.trim() || !admin.nombre.trim()
         || !admin.apellidoPat.trim() || !admin.apellidoMat.trim()
         || !admin.correo.includes('@') || !admin.telefono.trim() || !admin.direccion.trim()
         || !admin.fechaNac || admin.contrasena.length < 12) {
@@ -575,13 +621,27 @@ export class SaasDashboardPage implements OnInit {
   provision(): void {
     if (this.saving() || !this.provisionReview()
         || this.provisionData.fechaVencimiento <= this.provisionData.fechaInicio) return;
-    const payload = { ...this.provisionData, codigo: this.provisionData.codigo.trim().toLowerCase(),
-      nombre: this.provisionData.nombre.trim(), nit: this.provisionData.nit.trim() || null,
-      administrador: { ...this.provisionData.administrador, contrasena: this.provisionData.administrador.contrasena } };
+    if (this.provisionData.nombre.trim() && !this.provisionData.codigo.trim()) {
+      this.provisionData.codigo = this.generateCompanyCode(this.provisionData.nombre);
+    }
+    const { idUsuario, ...adminFields } = this.provisionData.administrador;
+    const payload = {
+      ...this.provisionData,
+      codigo: this.provisionData.codigo.trim().toLowerCase(),
+      nombre: this.provisionData.nombre.trim(),
+      nit: this.provisionData.nit.trim() || null,
+      administrador: {
+        ...adminFields,
+        ...(idUsuario.trim() ? { idUsuario: idUsuario.trim() } : {}),
+        contrasena: this.provisionData.administrador.contrasena,
+      },
+    };
     this.created.set(null);
     this.provisionReview.set(false);
     this.finish(this.http.post<Company>(`${this.api}/saas/empresas`, payload), 'Empresa aprovisionada y operación auditada.', value => {
-      this.created.set({ idEmp: value.idEmp, codigo: value.codigo, nombre: value.nombre }); this.provisionData.administrador.contrasena = '';
+      this.created.set({ idEmp: value.idEmp, codigo: value.codigo, nombre: value.nombre });
+      this.provisionData.administrador.contrasena = '';
+      this.provisionCodeSuffix = this.newCodeSuffix();
       this.reload();
     });
   }

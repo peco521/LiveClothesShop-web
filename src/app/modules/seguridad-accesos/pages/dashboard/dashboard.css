@@ -10,3 +10,13 @@ h1 { margin: 0; font-size: clamp(1.9rem, 3vw, 2.5rem); letter-spacing: -.04em; l
 .module-name { font-size: 1rem; font-weight: 700; letter-spacing: -.02em; }
 .module-hint { font-size: .8rem; color: var(--muted); }
 .dashboard-action { max-width: 320px; }
+.subscription-card { margin: 0 0 28px; padding: 20px 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); display: grid; gap: 14px; }
+.subscription-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.subscription-eyebrow { font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+.subscription-plan { margin: 4px 0 0; font-size: 1.35rem; letter-spacing: -.02em; }
+.subscription-badge { padding: 4px 11px; border-radius: 999px; font-size: .76rem; font-weight: 700; text-transform: uppercase; background: #eee; color: #444; }
+.subscription-badge.active { background: #e3f1e6; color: #1f5c2e; }
+.subscription-metrics { display: flex; gap: 28px; flex-wrap: wrap; }
+.subscription-metrics small, .subscription-features small { display: block; font-size: .75rem; color: var(--muted); margin-bottom: 3px; }
+.feature-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.feature-chip { padding: 4px 10px; border-radius: 8px; background: #eef4f6; color: var(--ink); font-size: .76rem; font-weight: 650; }

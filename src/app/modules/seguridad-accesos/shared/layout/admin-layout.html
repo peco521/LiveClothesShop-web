@@ -40,7 +40,7 @@
   <div class="admin-body">
     <header class="admin-header">
       <button class="menu-button" type="button" (click)="toggleMenu()" [attr.aria-expanded]="menuOpen()" aria-controls="admin-nav" aria-label="Abrir o cerrar el menú"><span aria-hidden="true">☰</span></button>
-      <span class="header-title">Panel administrativo</span>
+      <span class="header-title">Panel administrativo@if (auth.session()?.empresa; as emp) { · {{ emp }} }</span>
       @if (auth.session(); as session) { <span class="header-user">{{ session.usuario.nombres || session.usuario.correo }}</span> }
       <button class="button primary header-logout" type="button" (click)="logout()" [disabled]="busy()">{{ busy() ? 'Cerrando…' : 'Cerrar sesión' }}</button>
     </header>

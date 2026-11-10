@@ -41,6 +41,7 @@ import { Alta, Cambios, Ciudad, Detalle, DIAS_SEMANA, Entidad, entero, esSucursa
                     <button class="day-button" type="button" [class.selected]="range.controls.dias.value.includes(day.id)" [attr.aria-pressed]="range.controls.dias.value.includes(day.id)" (click)="toggleDay(i, day.id)" [disabled]="busy()">{{ day.nombre }}</button>
                   }
                 </div>
+                <p class="days-summary" aria-live="polite">{{ range.controls.dias.value.length ? 'Seleccionados: ' + dayNames(range.controls.dias.value) : 'Ningún día seleccionado' }}</p>
                 @if (suggestions().length) {
                   <div class="field"><label [for]="'sugerencia-' + i">Usar un horario existente (opcional)</label>
                     <select [id]="'sugerencia-' + i" [value]="''" (change)="applySuggestion(i, $any($event.target).value)">
@@ -61,7 +62,7 @@ import { Alta, Cambios, Ciudad, Detalle, DIAS_SEMANA, Entidad, entero, esSucursa
         <button class="button primary" type="submit" [disabled]="busy() || (kind() === 'sucursales' && (loadingCities() || !cities().length))">{{ busy() ? 'Guardando…' : 'Guardar' }}</button>
       </fieldset>
     </form>`,
-  styles: `.day-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 20px; } .day-button, .schedule-button { padding: 10px 15px; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); cursor: pointer; font-weight: 600; } .day-button:hover, .schedule-button:hover { background: #edf3e9; border-color: var(--accent); } .day-button.selected { background: var(--accent); color: white; border-color: var(--accent); } .schedule-button { margin: 0 8px 18px 0; } button:disabled { opacity: .6; cursor: not-allowed; } [formGroupName] { padding: 18px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 16px; } legend { font-weight: 600; padding-top: 12px; }`,
+  styles: `.day-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 20px; } .day-button, .schedule-button { padding: 10px 15px; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); cursor: pointer; font-weight: 600; transition: background .15s, color .15s, border-color .15s, box-shadow .15s; } .day-button:not(.selected):hover, .schedule-button:hover { background: #edf3e9; border-color: var(--accent); } .day-button.selected, .day-button.selected:hover, .day-button.selected:focus-visible { background: var(--accent) !important; color: #fff !important; border-color: var(--accent-strong) !important; box-shadow: 0 0 0 2px #0e596733; } .day-button.selected::before { content: '✓ '; } .days-summary { margin: -12px 0 16px; font-size: .85rem; color: var(--accent-strong); } .schedule-button { margin: 0 8px 18px 0; } button:disabled { opacity: .6; cursor: not-allowed; } [formGroupName] { padding: 18px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 16px; } legend { font-weight: 600; padding-top: 12px; }`,
 })
 export class OrganizacionFormulario implements OnChanges {
   private readonly service = inject(OrganizacionService);
@@ -82,7 +83,11 @@ export class OrganizacionFormulario implements OnChanges {
   }
   toggleDay(index: number, day: number): void {
     const control = this.form.controls.horarios.at(index).controls.dias;
-    control.setValue(control.value.includes(day) ? control.value.filter(value => value !== day) : [...control.value, day].sort());
+    control.setValue(control.value.includes(day) ? control.value.filter(value => value !== day) : [...control.value, day].sort((a, b) => a - b));
+    control.markAsDirty();
+  }
+  dayNames(ids: number[]): string {
+    return this.days.filter(day => ids.includes(day.id)).map(day => day.nombre).join(', ');
   }
   applySuggestion(index: number, id: string): void {
     const suggestion = this.suggestions().find(row => row.idAten === Number(id));
@@ -116,17 +121,17 @@ export class OrganizacionFormulario implements OnChanges {
     if (!changes['initial'] && !changes['kind']) return;
     if (changes['kind'] && this.kind() === 'sucursales') { this.loadCities(); this.loadSuggestions(); }
     const row = this.initial();
-    this.form.controls.horarios.clear();
-    if (row && esSucursal(row)) for (const range of row.horarios ?? []) this.addHours(range);
-    if (this.kind() === 'sucursales' && (!row || !this.form.controls.horarios.length)) this.addHours();
     this.error.set('');
+    this.form.controls.horarios.clear();
     this.form.reset({ nombre: row?.nombre ?? '',
       direccion: row && esSucursal(row) ? row.direccion : '', idCiud: row && esSucursal(row) ? row.idCiud : null,
       estado: row && esSucursal(row) ? row.estado : 'activo' });
+    if (row && esSucursal(row)) for (const range of row.horarios ?? []) this.addHours(range);
+    if (this.kind() === 'sucursales' && (!row || !this.form.controls.horarios.length)) this.addHours();
   }
   addHours(range?: HorarioSucursal): void {
     this.form.controls.horarios.push(new FormGroup({
-      dias: new FormControl(range?.dias ? [...range.dias] : range ? [1, 2, 3, 4, 5, 6, 7] : [], { nonNullable: true }),
+      dias: new FormControl(range?.dias ? [...range.dias].map(Number).sort((a, b) => a - b) : range ? [1, 2, 3, 4, 5, 6, 7] : [], { nonNullable: true }),
       horaIni: new FormControl(range?.horaIni ?? '', { nonNullable: true, validators: [Validators.required] }),
       horaFin: new FormControl(range?.horaFin ?? '', { nonNullable: true, validators: [Validators.required] }),
     }));

@@ -11,12 +11,97 @@
     <h1 id="admin-login-title">Bienvenido a tu panel</h1>
     <p class="description">Ingresa con tu cuenta de trabajo para acceder a las funciones asignadas.</p>
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="busy()">
-        <fieldset [disabled]="busy()">
-          <div class="field">
-            <label for="admin-empresa">Código de empresa</label>
-            <input id="admin-empresa" type="text" formControlName="empresa" autocomplete="organization" required maxlength="30" />
-          </div>
+      <fieldset [disabled]="busy()">
         <legend class="visually-hidden">Credenciales de acceso administrativo</legend>
+        <div
+          class="field company-selector-field"
+          (mouseenter)="hoverCompanies()"
+          (mouseleave)="leaveCompanies()"
+          (keydown.escape)="closeCompanies()">
+          <label id="admin-empresa-label" for="admin-empresa">Empresa</label>
+          <input
+            id="admin-empresa"
+            class="visually-hidden"
+            type="text"
+            formControlName="empresa"
+            autocomplete="organization"
+            required
+            maxlength="30"
+            aria-label="Código de empresa"
+            tabindex="-1" />
+          <button
+            type="button"
+            class="company-trigger"
+            [class.open]="companyMenuOpen()"
+            [class.has-selection]="!!form.controls.empresa.value"
+            [attr.aria-expanded]="companyMenuOpen()"
+            aria-haspopup="listbox"
+            aria-controls="admin-empresa-listbox"
+            aria-labelledby="admin-empresa-label"
+            aria-describedby="admin-empresa-error"
+            [attr.aria-invalid]="form.controls.empresa.touched && form.controls.empresa.invalid"
+            (click)="toggleCompanies()">
+            @if (selectedCompany(); as selected) {
+              <span class="company-trigger-main">
+                <span class="company-badge" aria-hidden="true">{{ selected.nombre.charAt(0).toUpperCase() }}</span>
+                <span class="company-info">
+                  <strong class="company-name">{{ selected.nombre }}</strong>
+                  <small class="company-code">{{ selected.codigo }}</small>
+                </span>
+              </span>
+            } @else if (form.controls.empresa.value) {
+              <span class="company-trigger-main">
+                <span class="company-badge" aria-hidden="true">{{ form.controls.empresa.value.charAt(0).toUpperCase() }}</span>
+                <span class="company-info">
+                  <strong class="company-name">{{ form.controls.empresa.value }}</strong>
+                  <small class="company-code">Empresa seleccionada</small>
+                </span>
+              </span>
+            } @else {
+              <span class="company-placeholder">Selecciona o pasa el cursor para elegir tu empresa</span>
+            }
+            <span class="company-chevron" aria-hidden="true">▾</span>
+          </button>
+
+          <div
+            id="admin-empresa-listbox"
+            class="company-dropdown"
+            [class.expanded]="companyMenuOpen()"
+            role="listbox"
+            aria-labelledby="admin-empresa-label"
+            [attr.aria-hidden]="!companyMenuOpen()">
+            <div class="company-dropdown-inner">
+              @if (loadingCompanies()) {
+                <p class="company-status" role="status">Cargando empresas disponibles…</p>
+              } @else if (companiesError()) {
+                <p class="company-status" role="alert">{{ companiesError() }}</p>
+                <button type="button" class="company-option company-retry" (click)="loadCompanies()">Reintentar</button>
+              } @else {
+                @for (company of companies(); track company.codigo) {
+                  <button
+                    type="button"
+                    role="option"
+                    class="company-option"
+                    [class.selected]="form.controls.empresa.value === company.codigo"
+                    [attr.aria-selected]="form.controls.empresa.value === company.codigo"
+                    (click)="selectCompany(company)">
+                    <span class="company-badge" aria-hidden="true">{{ company.nombre.charAt(0).toUpperCase() }}</span>
+                    <span class="company-info">
+                      <strong class="company-name">{{ company.nombre }}</strong>
+                      <small class="company-code">{{ company.codigo }}</small>
+                    </span>
+                    @if (form.controls.empresa.value === company.codigo) {
+                      <span class="company-check" aria-hidden="true">✓</span>
+                    }
+                  </button>
+                } @empty {
+                  <p class="company-status">No hay empresas activas disponibles.</p>
+                }
+              }
+            </div>
+          </div>
+          <app-field-error [control]="form.controls.empresa" errorId="admin-empresa-error" />
+        </div>
         <div class="field">
           <label for="admin-correo">Correo electrónico</label>
           <input id="admin-correo" type="email" formControlName="correo" autocomplete="username"

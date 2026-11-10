@@ -2,11 +2,11 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, defer, map, Observable, of, tap, throwError } from 'rxjs';
+import { catchError, defer, map, Observable, of, tap, throwError, timeout } from 'rxjs';
 import { isInternalSession } from '../models/session-type';
 import { API_BASE_URL } from '../../../core/config/api.config';
 import { PwaSyncService } from '../../../core/offline/pwa-sync.service';
-import { AuthResponse, LoginRequest, RegistroRequest, RegistroResponse } from '../models/auth.models';
+import { AuthResponse, EmpresaAcceso, LoginRequest, MiSuscripcion, RegistroRequest, RegistroResponse } from '../models/auth.models';
 
 const OFFLINE_CASHIER_SESSION = 'fashionstore-offline-cashier-session-v1';
 
@@ -65,6 +65,16 @@ export class AuthService {
   private loginRevision = 0;
   readonly session = this.state.asReadonly();
 
+  listCompanies(): Observable<EmpresaAcceso[]> {
+    // Lista pública de empresas activas: solo código y nombre. No expone usuarios
+    // ni confirma pertenencia; eso lo valida el backend al iniciar sesión.
+    return this.http.get<EmpresaAcceso[]>(`${this.base}/empresas`).pipe(timeout(20000));
+  }
+
+  mySubscription(): Observable<MiSuscripcion | null> {
+    return this.http.get<MiSuscripcion | null>(`${this.base}/mi-suscripcion`);
+  }
+
   requestRecovery(correo: string): Observable<{ mensaje: string }> {
     return this.http.post<{ mensaje: string }>(`${this.base}/recuperar-contrasena`, { correo: correo.trim().toLowerCase() });
   }
@@ -78,6 +88,7 @@ export class AuthService {
   register(input: RegistroRequest): Observable<RegistroResponse> {
     // Explicit allowlist: never spread form data into the public registration payload.
     const body: RegistroRequest = {
+      ...(input.empresa ? { empresa: input.empresa.trim().toLowerCase() } : {}),
       ci: input.ci.trim(), nombres: input.nombres.trim(), apellidoPat: input.apellidoPat.trim(),
       apellidoMat: input.apellidoMat.trim(), sexo: input.sexo,
       correo: input.correo.trim().toLowerCase(), telefono: input.telefono.trim(),
@@ -111,6 +122,7 @@ export class AuthService {
         ...(portal !== 'saas' && input.empresa ? { empresa: input.empresa.trim().toLowerCase() } : {}),
         correo: input.correo.trim().toLowerCase(), contrasena: input.contrasena,
       }).pipe(
+        timeout(20000),
         map(publicSession),
         tap((session) => { if (revision === this.revision) {
           this.state.set(session);
@@ -153,6 +165,7 @@ export class AuthService {
     return defer(() => {
       const revision = ++this.revision;
       return this.http.get<AuthResponse>(`${this.base}/me`).pipe(
+        timeout(20000),
         map(publicSession),
         tap((session) => { if (revision === this.revision) {
           this.state.set(session);

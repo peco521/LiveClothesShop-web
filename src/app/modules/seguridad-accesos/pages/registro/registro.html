@@ -9,6 +9,82 @@
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="busy()">
       <fieldset [disabled]="busy()">
         <legend class="visually-hidden">Datos de registro de Cliente</legend>
+        <div
+          class="field company-selector-field full-width"
+          (mouseenter)="hoverCompanies()"
+          (mouseleave)="leaveCompanies()"
+          (keydown.escape)="closeCompanies()">
+          <label id="registro-empresa-label">Empresa / Tienda</label>
+          <button
+            type="button"
+            class="company-trigger"
+            [class.open]="companyMenuOpen()"
+            [class.has-selection]="!!empresa()"
+            [attr.aria-expanded]="companyMenuOpen()"
+            aria-haspopup="listbox"
+            aria-controls="registro-empresa-listbox"
+            aria-labelledby="registro-empresa-label"
+            (click)="toggleCompanies()">
+            @if (selectedCompany(); as selected) {
+              <span class="company-trigger-main">
+                <span class="company-badge" aria-hidden="true">{{ selected.nombre.charAt(0).toUpperCase() }}</span>
+                <span class="company-info">
+                  <strong class="company-name">{{ selected.nombre }}</strong>
+                  <small class="company-code">{{ selected.codigo }}</small>
+                </span>
+              </span>
+            } @else if (empresa()) {
+              <span class="company-trigger-main">
+                <span class="company-badge" aria-hidden="true">{{ empresa().charAt(0).toUpperCase() }}</span>
+                <span class="company-info">
+                  <strong class="company-name">{{ empresa() }}</strong>
+                  <small class="company-code">Empresa seleccionada</small>
+                </span>
+              </span>
+            } @else {
+              <span class="company-placeholder">Selecciona o pasa el cursor para elegir tu tienda</span>
+            }
+            <span class="company-chevron" aria-hidden="true">▾</span>
+          </button>
+
+          <div
+            id="registro-empresa-listbox"
+            class="company-dropdown"
+            [class.expanded]="companyMenuOpen()"
+            role="listbox"
+            aria-labelledby="registro-empresa-label"
+            [attr.aria-hidden]="!companyMenuOpen()">
+            <div class="company-dropdown-inner">
+              @if (loadingCompanies()) {
+                <p class="company-status" role="status">Cargando tiendas disponibles…</p>
+              } @else if (companiesError()) {
+                <p class="company-status" role="alert">{{ companiesError() }}</p>
+                <button type="button" class="company-option company-retry" (click)="loadCompanies()">Reintentar</button>
+              } @else {
+                @for (company of companies(); track company.codigo) {
+                  <button
+                    type="button"
+                    role="option"
+                    class="company-option"
+                    [class.selected]="empresa() === company.codigo"
+                    [attr.aria-selected]="empresa() === company.codigo"
+                    (click)="selectCompany(company)">
+                    <span class="company-badge" aria-hidden="true">{{ company.nombre.charAt(0).toUpperCase() }}</span>
+                    <span class="company-info">
+                      <strong class="company-name">{{ company.nombre }}</strong>
+                      <small class="company-code">{{ company.codigo }}</small>
+                    </span>
+                    @if (empresa() === company.codigo) {
+                      <span class="company-check" aria-hidden="true">✓</span>
+                    }
+                  </button>
+                } @empty {
+                  <p class="company-status">No hay empresas activas disponibles.</p>
+                }
+              }
+            </div>
+          </div>
+        </div>
         <div class="form-grid">
           @for (field of fields; track field.name) {
             <div class="field" [class.full-width]="field.name === 'direccion'">

@@ -1,4 +1,5 @@
 export interface RegistroRequest {
+  empresa?: string;
   ci: string;
   nombres: string;
   apellidoPat: string;
@@ -11,12 +12,29 @@ export interface RegistroRequest {
   contrasena: string;
 }
 
+export interface MiSuscripcion {
+  empresaCodigo: string;
+  empresaNombre: string;
+  plan: string | null;
+  estadoSuscripcion: string | null;
+  fechaInicio: string | null;
+  fechaVencimiento: string | null;
+  sucursalesActivas: number;
+  maxSucursales: number;
+  funcionalidades: string[];
+}
+
 export interface RegistroResponse {
   idUsuario: string;
   correo: string;
   mensaje: string;
   // CU01: el registro público devuelve la sesión ya iniciada (mismo contrato que el login).
   sesion?: AuthResponse;
+}
+
+export interface EmpresaAcceso {
+  codigo: string;
+  nombre: string;
 }
 
 export interface LoginRequest {

@@ -63,6 +63,8 @@ app-saas-dashboard{display:block;min-height:100vh;color:#17272e}
   .fields fieldset{grid-column:1/-1;padding:16px;border:1px solid #d9e3e5;border-radius:10px}
   .fields legend{padding:0 7px;color:#263f47;font-weight:750}
   .fields fieldset label{display:grid}
+  .fields input[readonly]{background:#f4f8f9;color:#4a6066;cursor:default}
+  .field-hint{color:#62757b;font-size:.73rem;font-weight:500;line-height:1.4}
   .fields .provision-fields,.fields .subscription-fields{padding:0;border:0;border-radius:0}
   .review-card{margin:12px 0;padding:16px;border:1px solid #cedfe2;border-radius:10px;background:#f5fafb}
   .review-card p{color:#536970;font-size:.84rem;line-height:1.55}

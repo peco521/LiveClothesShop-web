@@ -27,7 +27,7 @@
             ],
             "styles": [
               "src/styles.css",
-              "src/app/modules/plataforma-saas/saas-dashboard.css"
+              "src/app/modules/saas_suscripciones/suscripciones/pages/saas-dashboard.css"
             ],
             "server": "src/main.server.ts",
             "outputMode": "server",

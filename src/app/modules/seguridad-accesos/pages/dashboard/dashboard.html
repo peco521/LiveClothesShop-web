@@ -7,9 +7,42 @@
     <button class="button primary dashboard-action" type="button" (click)="verify()">Volver a verificar</button>
     <p class="form-footer"><a routerLink="/admin/login">Ir a iniciar sesión</a></p>
   } @else if (auth.session(); as session) {
-    <p class="eyebrow">FashionStore · Administración</p>
+    <p class="eyebrow">FashionStore · Administración@if (session.empresa) { · {{ session.empresa }} }</p>
     <h1 id="dashboard-title">Hola, {{ session.usuario.nombres || 'bienvenido/a' }}</h1>
     <p class="description">Sesión iniciada correctamente como {{ session.usuario.correo }}.</p>
+    @if (subscription(); as sub) {
+      <section class="subscription-card" aria-label="Plan y suscripción de la empresa">
+        <div class="subscription-header">
+          <div>
+            <span class="subscription-eyebrow">Suscripción empresarial · {{ sub.empresaNombre }}</span>
+            <h2 class="subscription-plan">Plan {{ sub.plan || 'Sin plan' }}</h2>
+          </div>
+          <span class="subscription-badge" [class.active]="sub.estadoSuscripcion === 'activa'">
+            {{ sub.estadoSuscripcion || 'Inactiva' }}
+          </span>
+        </div>
+        <div class="subscription-metrics">
+          <div>
+            <small>Vigencia</small>
+            <strong>{{ sub.fechaInicio || '—' }} al {{ sub.fechaVencimiento || '—' }}</strong>
+          </div>
+          <div>
+            <small>Sucursales activas</small>
+            <strong>{{ sub.sucursalesActivas }} / {{ sub.maxSucursales }} permitidas</strong>
+          </div>
+        </div>
+        @if (sub.funcionalidades.length) {
+          <div class="subscription-features">
+            <small>Funcionalidades habilitadas por el plan:</small>
+            <div class="feature-chips">
+              @for (code of sub.funcionalidades; track code) {
+                <span class="feature-chip">{{ code }}</span>
+              }
+            </div>
+          </div>
+        }
+      </section>
+    }
     <div class="module-grid">
       @if (session.permisos.includes('CU05')) {
         <a class="module-card" routerLink="/admin/usuarios">

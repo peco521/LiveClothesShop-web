@@ -1,3 +1,4 @@
+import { SaasSessionRecovery } from '../../shared/components/session-recovery';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -15,7 +16,7 @@ interface Impact { confirmacionImpacto: string; suscripcionesActivas: number; em
 
 @Component({
   selector: 'app-saas-planes',
-  imports: [FormsModule],
+  imports: [FormsModule, SaasSessionRecovery],
   templateUrl: './planes.html',
   styleUrl: './planes.css',
 })
@@ -31,6 +32,7 @@ export class SaasPlanesPage {
   readonly loading = signal(false);
   readonly working = signal(false);
   readonly error = signal('');
+  readonly sessionExpired = signal(false);
   readonly notice = signal('');
   readonly impact = signal<Impact | null>(null);
   editing: number | null = null;
@@ -41,6 +43,7 @@ export class SaasPlanesPage {
   private empty(): Draft { return { nombre: '', maxSucursales: 1, estado: 'activo', funcionalidades: [] }; }
   private message(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
+      if (error.status === 401) { this.sessionExpired.set(true); return 'La sesión SaaS venció. Renueva tu acceso para guardar.'; }
       if (error.status === 503) return 'El servicio no está disponible. Comprueba la conexión de plataforma.';
       if (error.status === 0) return 'No se pudo conectar con el servidor.';
       if (typeof error.error?.error?.message === 'string') return error.error.error.message;

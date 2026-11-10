@@ -1,18 +1,18 @@
 import { Routes } from '@angular/router';
 
 import { internalGuard } from './modules/seguridad-accesos/shared/guards/internal.guard';
-import { platformGuard } from './modules/plataforma-saas/platform.guard';
+import { platformGuard } from './modules/saas_suscripciones/shared/guards/platform.guard';
 import { saasGuard } from './modules/saas_suscripciones/planes_funcionalidades/guards/saas.guard';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: 'saas/login', title: 'Acceso SaaS | FashionStore', loadComponent: () => import('./modules/saas_suscripciones/planes_funcionalidades/pages/login').then(m => m.SaasLoginPage) },
-  { path: 'saas', pathMatch: 'full', title: 'Resumen SaaS | FashionStore', canActivate: [platformGuard], data: { section: 'resumen' }, loadComponent: () => import('./modules/plataforma-saas/saas-dashboard').then(m => m.SaasDashboardPage) },
-  { path: 'saas/empresas', title: 'Empresas SaaS | FashionStore', canActivate: [platformGuard], data: { section: 'empresas' }, loadComponent: () => import('./modules/plataforma-saas/saas-dashboard').then(m => m.SaasDashboardPage) },
-  { path: 'saas/planes-suscripciones', title: 'Planes SaaS | FashionStore', canActivate: [platformGuard], data: { section: 'planes' }, loadComponent: () => import('./modules/plataforma-saas/saas-dashboard').then(m => m.SaasDashboardPage) },
-  { path: 'saas/registro', title: 'Registrar empresa | FashionStore', canActivate: [platformGuard], data: { section: 'aprovisionar' }, loadComponent: () => import('./modules/plataforma-saas/saas-dashboard').then(m => m.SaasDashboardPage) },
-  { path: 'saas/auditoria', title: 'Auditoría SaaS | FashionStore', canActivate: [platformGuard], data: { section: 'auditoria' }, loadComponent: () => import('./modules/plataforma-saas/saas-dashboard').then(m => m.SaasDashboardPage) },
-  { path: 'saas/respaldos', title: 'Respaldos SaaS | FashionStore', canActivate: [platformGuard], data: { section: 'respaldos' }, loadComponent: () => import('./modules/plataforma-saas/saas-dashboard').then(m => m.SaasDashboardPage) },
+  { path: 'saas', pathMatch: 'full', title: 'Resumen SaaS | FashionStore', canActivate: [platformGuard], data: { section: 'resumen' }, loadComponent: () => import('./modules/saas_suscripciones/suscripciones/pages/saas-dashboard').then(m => m.SaasDashboardPage) },
+  { path: 'saas/empresas', title: 'Empresas SaaS | FashionStore', canActivate: [platformGuard], data: { section: 'empresas' }, loadComponent: () => import('./modules/saas_suscripciones/suscripciones/pages/saas-dashboard').then(m => m.SaasDashboardPage) },
+  { path: 'saas/planes-suscripciones', title: 'Planes SaaS | FashionStore', canActivate: [platformGuard], data: { section: 'planes' }, loadComponent: () => import('./modules/saas_suscripciones/suscripciones/pages/saas-dashboard').then(m => m.SaasDashboardPage) },
+  { path: 'saas/registro', title: 'Registrar empresa | FashionStore', canActivate: [platformGuard], data: { section: 'aprovisionar' }, loadComponent: () => import('./modules/saas_suscripciones/suscripciones/pages/saas-dashboard').then(m => m.SaasDashboardPage) },
+  { path: 'saas/auditoria', title: 'Auditoría SaaS | FashionStore', canActivate: [platformGuard], data: { section: 'auditoria' }, loadComponent: () => import('./modules/saas_suscripciones/suscripciones/pages/saas-dashboard').then(m => m.SaasDashboardPage) },
+  { path: 'saas/respaldos', title: 'Respaldos SaaS | FashionStore', canActivate: [platformGuard], data: { section: 'respaldos' }, loadComponent: () => import('./modules/saas_suscripciones/suscripciones/pages/saas-dashboard').then(m => m.SaasDashboardPage) },
   { path: 'saas/planes', title: 'Planes | FashionStore', canActivate: [saasGuard], loadComponent: () => import('./modules/saas_suscripciones/planes_funcionalidades/pages/planes').then(m => m.SaasPlanesPage) },
   { path: 'admin/login', title: 'Acceso administrativo | FashionStore', loadComponent: () => import('./modules/seguridad-accesos/pages/admin-login/admin-login').then(m => m.AdminLoginPage) },
   {

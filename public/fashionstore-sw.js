@@ -1,12 +1,16 @@
 // The authenticated application owns the IndexedDB queue and posts it with its
 // current HttpOnly session; this worker never caches API responses or tokens.
-const SHELL_CACHE = 'fashionstore-shell-v2';
+const SHELL_CACHE = 'fashionstore-shell-v3';
 self.addEventListener('install', event => event.waitUntil((async () => {
   const cache = await caches.open(SHELL_CACHE);
   try { await cache.add('/'); } catch { /* navigation requests populate cache when online */ }
   await self.skipWaiting();
 })()));
-self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
+self.addEventListener('activate', event => event.waitUntil((async () => {
+  const keys = await caches.keys();
+  await Promise.all(keys.filter(key => key.startsWith('fashionstore-shell-') && key !== SHELL_CACHE).map(key => caches.delete(key)));
+  await self.clients.claim();
+})()));
 self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
@@ -27,11 +31,13 @@ self.addEventListener('fetch', event => {
   if (['script', 'style', 'image', 'font'].includes(request.destination)) {
     event.respondWith((async () => {
       const cache = await caches.open(SHELL_CACHE);
-      const cached = await cache.match(request);
-      if (cached) return cached;
-      const response = await fetch(request);
-      if (response.ok) await cache.put(request, response.clone());
-      return response;
+      try {
+        const response = await fetch(request);
+        if (response.ok) await cache.put(request, response.clone());
+        return response;
+      } catch {
+        return (await cache.match(request)) || Response.error();
+      }
     })());
   }
 });

@@ -7,8 +7,8 @@ import { AuthService } from '../../services/auth.service';
 import { isInternalSession } from '../../models/session-type';
 
 export const internalGuard: CanActivateChildFn = (_route, state) => {
-  if (!isPlatformBrowser(inject(PLATFORM_ID))) return false;
   const router = inject(Router);
+  if (!isPlatformBrowser(inject(PLATFORM_ID))) return router.createUrlTree(['/admin/login']);
   return inject(AuthService).restore().pipe(
     map(session => !session ? router.createUrlTree(['/admin/login'])
       : session.offlineOnly
