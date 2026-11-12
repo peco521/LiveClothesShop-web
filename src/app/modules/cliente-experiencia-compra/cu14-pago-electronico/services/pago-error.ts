@@ -19,7 +19,11 @@ export function pagoError(error: unknown): string {
       return 'Existe un conflicto. Vuelve a consultar el estado del pago antes de continuar.';
     }
     if (error.status === 503) return error.error?.error?.code === 'reembolso_pendiente' ? 'El reembolso está pendiente. Consulta nuevamente su estado.' : 'La pasarela no está disponible. Consulta el estado antes de reintentar.';
-    if (error.status === 422) return 'El método de pago o los datos enviados no son válidos.';
+    if (error.status === 422) {
+      const code = error.error?.error?.code;
+      if (code === 'monto_minimo_stripe') return 'La compra minima de Stripe es USD 0,50. Cancela esta compra, actualiza el precio del producto y vuelve a agregarlo al carrito.';
+      return 'El metodo de pago o los datos enviados no son validos.';
+    }
     if (error.status === 0) return 'No se pudo conectar con el servidor. Comprueba tu conexión.';
   }
   // Do not render arbitrary backend messages or exception diagnostics.

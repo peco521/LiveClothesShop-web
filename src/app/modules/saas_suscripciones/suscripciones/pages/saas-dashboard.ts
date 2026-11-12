@@ -9,6 +9,7 @@ import { Observable } from 'rxjs';
 import { CatalogoPlanesSaasComponent } from '../../planes_funcionalidades/components/catalogo-planes';
 import { API_BASE_URL } from '../../../../core/config/api.config';
 import { AuthService } from '../../../seguridad-accesos/services/auth.service';
+import { SaasReportesComponent } from './saas-reportes';
 
 interface Company {
   idEmp: number; codigo: string; nombre: string; estado: string;
@@ -35,13 +36,13 @@ interface BackupList {
   configuracion: { configurado: boolean; estado: string; mensaje: string | null; destino: string; retencionDias: number };
   respaldos: BackupJob[];
 }
-type SaasSection = 'resumen' | 'empresas' | 'planes' | 'aprovisionar' | 'auditoria' | 'respaldos';
+type SaasSection = 'resumen' | 'empresas' | 'planes' | 'aprovisionar' | 'auditoria' | 'respaldos' | 'reportes';
 interface ProvisionedCompany { idEmp: number; codigo: string; nombre: string }
 interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombre: string; estado: string }>; usuarios: Array<{ idUsuario: string; correo: string; tipo: string; nroRol: string }>; aviso: string }
 
 @Component({
   selector: 'app-saas-dashboard',
-  imports: [SaasSessionRecovery, FormsModule, JsonPipe, RouterLink, CatalogoPlanesSaasComponent],
+  imports: [SaasSessionRecovery, FormsModule, JsonPipe, RouterLink, CatalogoPlanesSaasComponent, SaasReportesComponent],
   template: `
     @if (sessionExpired()) { <app-saas-session-recovery (recovered)="sessionExpired.set(false); error.set('')" /> }<div class="saas-layout">
     @if (menuOpen()) { <button class="saas-scrim" type="button" aria-label="Cerrar navegación" (click)="menuOpen.set(false)"></button> }
@@ -58,6 +59,7 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
         @if (can('SAAS-EMPRESAS')) { <button type="button" [class.active]="section() === 'aprovisionar'" [attr.aria-current]="section() === 'aprovisionar' ? 'page' : null" (click)="setSection('aprovisionar')">Registrar empresa</button> }
         @if (can('SAAS-AUDITORIA')) { <button type="button" [class.active]="section() === 'auditoria'" [attr.aria-current]="section() === 'auditoria' ? 'page' : null" (click)="setSection('auditoria')">Auditoría</button> }
         @if (can('SAAS-RESPALDOS')) { <button type="button" [class.active]="section() === 'respaldos'" [attr.aria-current]="section() === 'respaldos' ? 'page' : null" (click)="setSection('respaldos')">Respaldos</button> }
+        @if (can('SAAS-EMPRESAS') || can('SAAS-PLANES')) { <button type="button" [class.active]="section() === 'reportes'" [attr.aria-current]="section() === 'reportes' ? 'page' : null" (click)="setSection('reportes')">Reportes</button> }
       </nav>
       <div class="saas-sidebar-foot">
         <span>Administración de plataforma</span>
@@ -74,6 +76,7 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
         @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
         @if (success()) { <p class="notice success" role="status">{{ success() }}</p> }
 
+    @if (section() === 'reportes') { <app-saas-reportes /> }
     @if (section() === 'resumen') {
       <section class="summary-page" aria-labelledby="summary-heading">
         <div class="section-heading"><div><p class="saas-kicker">VISTA GENERAL</p><h2 id="summary-heading">Estado de la plataforma</h2><p>Indicadores calculados a partir de empresas, suscripciones y sucursales actuales.</p></div><button class="secondary" type="button" (click)="loadSummary()" [disabled]="loadingSummary()">Actualizar</button></div>
@@ -333,7 +336,7 @@ export class SaasDashboardPage implements OnInit {
     this.route.data.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(data => {
       const section = data['section'];
       if (section === 'resumen' || section === 'empresas' || section === 'planes'
-          || section === 'aprovisionar' || section === 'auditoria' || section === 'respaldos') {
+          || section === 'aprovisionar' || section === 'auditoria' || section === 'respaldos' || section === 'reportes') {
         this.section.set(section);
         if (section === 'respaldos') this.loadBackups();
         if (section === 'auditoria') this.loadAudit(0);
@@ -352,6 +355,7 @@ export class SaasDashboardPage implements OnInit {
       aprovisionar: 'Registrar empresa',
       auditoria: 'Auditoría',
       respaldos: 'Respaldos',
+      reportes: 'Reportes de empresas',
     } as const)[this.section()];
   }
 
@@ -363,11 +367,15 @@ export class SaasDashboardPage implements OnInit {
       aprovisionar: 'Registra una empresa y su administrador inicial.',
       auditoria: 'Consulta acciones de plataforma registradas en auditoría.',
       respaldos: 'Administra respaldos completos del entorno de pruebas.',
+      reportes: 'Consulta ventas, inventario, reservas y devoluciones por empresa y plan.',
     } as const)[this.section()];
   }
 
   setSection(section: SaasSection): void {
     this.menuOpen.set(false);
+    this.section.set(section);
+    this.error.set('');
+    this.success.set('');
     const paths: Record<SaasSection, string> = {
       resumen: '/saas',
       empresas: '/saas/empresas',
@@ -375,19 +383,16 @@ export class SaasDashboardPage implements OnInit {
       aprovisionar: '/saas/registro',
       auditoria: '/saas/auditoria',
       respaldos: '/saas/respaldos',
+      reportes: '/saas/reportes',
     };
     const path = paths[section];
-    if (this.router.url === path) {
-      this.section.set(section);
-      this.error.set('');
-      this.success.set('');
-      if (section === 'resumen') this.loadSummary();
-      if (section === 'empresas') this.reload();
-      if (section === 'auditoria') this.loadAudit(0);
-      if (section === 'respaldos') this.loadBackups();
-      return;
+    if (this.router.url !== path) {
+      void this.router.navigateByUrl(path);
     }
-    void this.router.navigateByUrl(path);
+    if (section === 'resumen') this.loadSummary();
+    if (section === 'empresas') this.reload();
+    if (section === 'auditoria') this.loadAudit(0);
+    if (section === 'respaldos') this.loadBackups();
   }
 
   visibleCompanies(): Company[] {

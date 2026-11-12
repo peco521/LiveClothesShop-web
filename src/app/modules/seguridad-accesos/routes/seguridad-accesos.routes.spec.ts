@@ -40,7 +40,7 @@ describe('Rutas de Seguridad y Accesos', () => {
 
   it('no prerenderiza estado de sesión', () => {
     expect(serverRoutes).toEqual([{ path: 'admin/**', renderMode: RenderMode.Client },
-      { path: 'tienda/**', renderMode: RenderMode.Client }, { path: 'saas/**', renderMode: RenderMode.Client }, { path: '**', renderMode: RenderMode.Server }]);
+      { path: 'tienda/**', renderMode: RenderMode.Client }, { path: 'saas', renderMode: RenderMode.Client }, { path: 'saas/**', renderMode: RenderMode.Client }, { path: '**', renderMode: RenderMode.Server }]);
   });
 
   it('CU04 resuelve ambas páginas sin sesión ni permisos', async () => {
