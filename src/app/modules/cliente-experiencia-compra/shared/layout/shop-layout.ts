@@ -5,6 +5,7 @@ import { AuthService } from '../../../seguridad-accesos/services/auth.service';
 import { authError } from '../../../seguridad-accesos/services/auth-error';
 import { CarritoService } from '../../cu12-carrito/services/carrito.service';
 import { PwaSyncService } from '../../../../core/offline/pwa-sync.service';
+import { ClienteNotificacionesService } from '../../../../core/notifications/cliente-notificaciones.service';
 
 @Component({
   selector: 'app-shop-layout',
@@ -20,17 +21,21 @@ export class ShopLayout {
   });
   readonly carrito = inject(CarritoService);
   readonly sync = inject(PwaSyncService);
+  readonly notifs = inject(ClienteNotificacionesService);
   private readonly destroyRef = inject(DestroyRef);
   readonly busy = signal(false);
   readonly logoutError = signal('');
 
   constructor() {
-    // Contador real del carrito: se refresca al entrar a la tienda (solo navegador).
-    afterNextRender(() => this.carrito.obtener().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      // CU10 must remain usable while CU12 is intentionally closed in SaaS.
-      // Do not open cart routes or retain an earlier count after a failed read.
-      error: () => this.carrito.estado.set(null),
-    }));
+    // Contador real del carrito y notificaciones de promociones al entrar a la tienda.
+    afterNextRender(() => {
+      this.notifs.iniciar();
+      this.carrito.obtener().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        // CU10 must remain usable while CU12 is intentionally closed in SaaS.
+        // Do not open cart routes or retain an earlier count after a failed read.
+        error: () => this.carrito.estado.set(null),
+      });
+    });
   }
 
   logout(): void {
@@ -45,5 +50,15 @@ export class ShopLayout {
         this.logoutError.set(authError(error, 'sesion'));
       },
     });
+  }
+
+  formatDateOnly(dateStr?: string): string {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
   }
 }

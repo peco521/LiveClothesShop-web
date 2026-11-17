@@ -192,4 +192,42 @@ describe('Resumen del administrador SaaS', () => {
     expect(component.provisionReview()).toBe(true);
     http.verify();
   });
+
+  it('oculta Analítica inteligente y ML al abrir la sección de Reportes en el panel SaaS', () => {
+    const session = signal({ plataforma: true, usuario: { tipo: 'S', correo: 'saas@example.com' }, permisos: ['SAAS-EMPRESAS', 'SAAS-PLANES'] });
+    TestBed.configureTestingModule({
+      providers: [provideRouter([{ path: 'saas/reportes', component: SaasDashboardPage }]), provideHttpClient(), provideHttpClientTesting(), { provide: AuthService, useValue: { session } }],
+    });
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(SaasDashboardPage);
+    fixture.detectChanges();
+
+    http.expectOne('/api/saas/resumen').flush({
+      empresas: { total: 1, activas: 1, suspendidas: 0, inactivas: 0 },
+      suscripciones: { vigentes: 1, vencidas: 0, proximasAVencer: 0 },
+      distribucionPlanes: [],
+      sucursalesActivas: 1,
+      actividadReciente: [],
+      diasProximosAVencer: 30,
+    });
+    http.expectOne('/api/saas/empresas').flush([]);
+    http.expectOne('/api/saas/planes').flush([]);
+
+    fixture.componentInstance.setSection('reportes');
+    fixture.detectChanges();
+
+    http.expectOne('/api/saas/reportes/estado').flush({ iaDisponible: true });
+    http.expectOne('/api/saas/reportes/empresas').flush([]);
+    http.expectOne('/api/saas/reportes/dinamicos/ejecutar').flush({
+      plan: { tipo: 'ventas_sucursal', fechaIni: null, fechaFin: null, nroSuc: null, limite: 10, umbral: 5 },
+      empresas: [],
+      procedencia: 'Prueba',
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Reportes gerenciales dinámicos (CU28)');
+    expect(fixture.nativeElement.textContent).not.toContain('Analítica inteligente y ML');
+    expect(fixture.nativeElement.textContent).not.toContain('Simulador de predicción de demanda sintética');
+    http.verify();
+  });
 });

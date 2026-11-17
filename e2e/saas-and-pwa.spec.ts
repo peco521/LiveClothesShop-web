@@ -301,10 +301,14 @@ test('CU25 dinámicos: cuatro reportes, exportación calculada, IA local y recha
   await expect(page.getByRole('button',{name:'Confirmar plan y calcular',exact:true})).toBeVisible({timeout:60_000});
   await page.getByRole('button',{name:'Confirmar plan y calcular',exact:true}).click();
   await expect(page.getByRole('region',{name:'Resultado calculado'})).toContainText('Ventas por sucursal y período');
-  await page.getByRole('button',{name:'Consultar modelos y métricas sintéticas',exact:true}).click();
-  await expect(page.locator('pre')).toContainText('synthetic');
+  await expect(page.getByRole('button',{name:'Consultar modelos y métricas sintéticas'})).toHaveCount(0);
+  await expect(page.getByText('Analítica ML · demostración sintética')).toHaveCount(0);
   await page.getByRole('button',{name:'Cerrar sesión',exact:true}).click();
   await login('urbanwomen');await page.goto('/admin/reportes/dinamicos');
+  await expect(page.getByRole('button',{name:'Calcular reporte',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Dictar solicitud',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Interpretar texto confirmado',exact:true})).toHaveCount(0);
+  await expect(page.getByText('Interpretación IA local')).toHaveCount(0);
   const denied=await page.request.post('/api/admin/reportes/interpretar',{
     headers:{Origin:'http://localhost:4201','X-CSRF-Protection':'1'},data:{texto:'Ventas por sucursal del 2026-10-01 al 2026-10-31'}});
   expect(denied.status()).toBe(403);

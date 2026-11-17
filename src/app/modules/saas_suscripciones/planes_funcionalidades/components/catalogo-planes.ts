@@ -27,6 +27,12 @@ export class CatalogoPlanesSaasComponent {
       CU19: 'Proveedores', CU20: 'Inventario', CU21: 'Promociones',
       CU22: 'Reservas en sucursal', CU23: 'Devoluciones', CU24: 'Venta presencial',
       CU25: 'Reportes gerenciales',
+      PRODUCTOS: 'Gestión de productos',
+      VENTAS: 'Gestión de ventas',
+      RESERVAS: 'Reservas',
+      OFFLINE: 'Operaciones offline',
+      REPORTES: 'Reportes convencionales',
+      REPORTES_IA: 'Reportes con IA y comandos de voz',
     };
     return labels[code] || code;
   }

@@ -1,6 +1,6 @@
 // The authenticated application owns the IndexedDB queue and posts it with its
 // current HttpOnly session; this worker never caches API responses or tokens.
-const SHELL_CACHE = 'fashionstore-shell-v3';
+const SHELL_CACHE = 'fashionstore-shell-v4';
 self.addEventListener('install', event => event.waitUntil((async () => {
   const cache = await caches.open(SHELL_CACHE);
   try { await cache.add('/'); } catch { /* navigation requests populate cache when online */ }
@@ -53,3 +53,42 @@ self.addEventListener('message', event => {
     event.waitUntil(self.registration.sync?.register('fashionstore-sync'));
   }
 });
+
+self.addEventListener('push', event => {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch {
+      data = { title: 'FashionStore', body: event.data.text() };
+    }
+  }
+  const title = data.titulo || data.title || 'FashionStore · Promoción';
+  const options = {
+    body: data.mensaje || data.body || 'Hay una nueva promoción disponible en la tienda.',
+    icon: '/favicon.ico',
+    badge: '/favicon.ico',
+    data: data.url || '/tienda',
+    tag: data.id || ('promo-' + Date.now()),
+    renotify: true,
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const targetUrl = event.notification.data || '/tienda';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      for (const client of windowClients) {
+        if (client.url.includes('/tienda') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+

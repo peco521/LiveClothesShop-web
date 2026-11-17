@@ -65,6 +65,8 @@ interface VoiceDecision {
   plan: DynamicPlan | null;
   modelo?: string;
   requiereConfirmacion?: boolean;
+  idEmps?: number[] | null;
+  empresasNombres?: string[];
 }
 
 interface DynamicRows {
@@ -106,8 +108,8 @@ interface SpeechRecognition {
     <header class="heading">
       <div>
         <p class="kicker">PLATAFORMA SAAS · GESTIÓN GERENCIAL</p>
-        <h2>Reportes de empresas y analítica inteligente</h2>
-        <p>Consulta reportes gerenciales (CU28), analítica predictiva de demanda y reportes asistidos por IA (CU29) para cada empresa.</p>
+        <h2>Reportes gerenciales de empresas</h2>
+        <p>Consulta reportes gerenciales (CU28) y reportes asistidos por IA (CU29) para cada empresa.</p>
       </div>
       <div class="header-actions">
         <button class="secondary" type="button" (click)="refreshActiveTab()" [disabled]="busy()">
@@ -123,9 +125,6 @@ interface SpeechRecognition {
     <nav class="report-tabs" aria-label="Secciones de reportes">
       <button type="button" [class.active]="tab() === 'dinamicos'" (click)="setTab('dinamicos')">
         Reportes gerenciales dinámicos (CU28)
-      </button>
-      <button type="button" [class.active]="tab() === 'analitica'" (click)="setTab('analitica')">
-        Analítica inteligente y ML
       </button>
       <button type="button" [class.active]="tab() === 'resumen'" (click)="setTab('resumen')">
         Indicadores generales por empresa
@@ -145,9 +144,10 @@ interface SpeechRecognition {
 
         <form (ngSubmit)="executeDynamic()" class="form-grid">
           <div class="field">
-            <label for="rep-empresa">Empresa</label>
+            <label for="rep-empresa">Empresas</label>
             <select id="rep-empresa" name="idEmp" [(ngModel)]="idEmp" (ngModelChange)="onCompanyChange()">
               <option [ngValue]="0">Todas las empresas</option>
+              <option [ngValue]="-1">Seleccionar varias empresas (X)</option>
               @for (company of companies(); track company.idEmp) {
                 <option [ngValue]="company.idEmp">{{ company.nombre }} ({{ company.codigo }})</option>
               }
@@ -185,8 +185,8 @@ interface SpeechRecognition {
 
           <div class="field">
             <label for="rep-sucursal">Sucursal</label>
-            <select id="rep-sucursal" name="nroSuc" [(ngModel)]="plan.nroSuc" [disabled]="!idEmp">
-              <option [ngValue]="null">{{ idEmp ? 'Todas las sucursales de la empresa' : 'Elige una empresa para filtrar sucursal' }}</option>
+            <select id="rep-sucursal" name="nroSuc" [(ngModel)]="plan.nroSuc" [disabled]="singleSelectedCompanyId() === null">
+              <option [ngValue]="null">{{ singleSelectedCompanyId() !== null ? 'Todas las sucursales de la empresa' : 'Elige 1 empresa para filtrar sucursal' }}</option>
               @for (suc of branches(); track suc.nro) {
                 <option [ngValue]="suc.nro">{{ suc.nombre }}</option>
               }
@@ -212,59 +212,74 @@ interface SpeechRecognition {
           </div>
         </form>
 
-        <!-- Subfuncionalidad CU29: Consulta mediante IA (Texto o Voz) -->
-        <section class="ai-assist-box" aria-labelledby="ai-heading">
-          <div class="ai-header">
-            <div>
-              <p class="kicker">FUNCIONALIDAD CU29 · ASISTENCIA CON IA</p>
-              <h4 id="ai-heading">Consulta asistida con IA (Texto o Voz)</h4>
-              <p>Escribe en lenguaje natural o dicta tu requerimiento. La IA interpretará la solicitud y propondrá el plan para tu confirmación.</p>
-            </div>
-            <button class="secondary mic-btn" type="button" (click)="listen()" [disabled]="listening() || busy()">
-              <span class="mic-icon" aria-hidden="true">🎙</span>
-              {{ listening() ? 'Escuchando…' : 'Dictar por voz' }}
-            </button>
-          </div>
-
-          <div class="ai-input-group">
-            <label for="ai-text">Solicitud para la IA</label>
-            <textarea
-              id="ai-text"
-              name="voiceText"
-              rows="2"
-              maxlength="1200"
-              [(ngModel)]="voiceText"
-              placeholder="Ej.: ventas por sucursal del mes pasado, productos más vendidos de la empresa Bata...">
-            </textarea>
-            <div class="ai-actions">
-              <button class="secondary" type="button" (click)="interpret()" [disabled]="busy() || voiceText.trim().length < 3">
-                Interpretar con IA
-              </button>
-            </div>
-          </div>
-
-          @if (decision(); as proposal) {
-            <div class="proposal-card" role="status">
-              <div class="proposal-info">
-                <strong>{{ proposal.mensaje }}</strong>
-                @if (proposal.modelo) { <small>Modelo: {{ proposal.modelo }}</small> }
-                @if (proposal.plan; as p) {
-                  <p class="proposal-details">
-                    Tipo: <strong>{{ formatPlanType(p.tipo) }}</strong> ·
-                    Período: {{ p.fechaIni || 'existencias actuales' }} {{ p.fechaFin ? ' a ' + p.fechaFin : '' }} ·
-                    Sucursal: {{ p.nroSuc ? ('Nro. ' + p.nroSuc) : 'todas' }} ·
-                    Límite: {{ p.limite }}
-                  </p>
-                }
-              </div>
-              @if (proposal.plan) {
-                <button class="primary" type="button" (click)="confirmAndExecuteProposal()" [disabled]="busy()">
-                  Confirmar plan y calcular
-                </button>
+        @if (idEmp === -1) {
+          <div class="multi-company-picker" role="group" aria-label="Selección múltiple de empresas">
+            <span class="picker-title">Elige las empresas a incluir ({{ selectedEmpIds.length }} seleccionada(s)):</span>
+            <div class="company-chips">
+              @for (company of companies(); track company.idEmp) {
+                <label class="company-chip">
+                  <input type="checkbox" [checked]="selectedEmpIds.includes(company.idEmp)" (change)="toggleCompany(company.idEmp, $any($event.target).checked)" />
+                  <span>{{ company.nombre }} ({{ company.codigo }})</span>
+                </label>
               }
             </div>
-          }
-        </section>
+          </div>
+        }
+      </section>
+
+      <!-- Subfuncionalidad CU29: Consulta mediante IA (Texto o Voz), independiente de los filtros estáticos -->
+      <section class="surface ai-assist-box" aria-labelledby="ai-heading">
+        <div class="ai-header">
+          <div>
+            <p class="kicker">FUNCIONALIDAD CU29 · ASISTENCIA CON IA</p>
+            <h4 id="ai-heading">Consulta asistida con IA (Texto o Voz)</h4>
+            <p>Escribe o dicta tu requerimiento indicando período y empresas si deseas (ej.: "ventas últimos 3 meses de Bata y Manaco", "de Bata" o "de todas las empresas"). No depende de las fechas del formulario superior.</p>
+          </div>
+          <button class="secondary mic-btn" type="button" (click)="listen()" [disabled]="listening() || busy()">
+            <span class="mic-icon" aria-hidden="true">🎙</span>
+            {{ listening() ? 'Escuchando…' : 'Dictar por voz' }}
+          </button>
+        </div>
+
+        <div class="ai-input-group">
+          <label for="ai-text">Solicitud para la IA</label>
+          <textarea
+            id="ai-text"
+            name="voiceText"
+            rows="2"
+            maxlength="1200"
+            [(ngModel)]="voiceText"
+            placeholder="Ej.: ventas por sucursal de los últimos 3 meses de Bata, o de todas las empresas...">
+          </textarea>
+          <div class="ai-actions">
+            <button class="secondary" type="button" (click)="interpret()" [disabled]="busy() || voiceText.trim().length < 3">
+              Interpretar con IA
+            </button>
+          </div>
+        </div>
+
+        @if (decision(); as proposal) {
+          <div class="proposal-card" role="status">
+            <div class="proposal-info">
+              <strong>{{ proposal.mensaje }}</strong>
+              @if (proposal.modelo) { <small>Modelo: {{ proposal.modelo }}</small> }
+              @if (proposal.plan; as p) {
+                <p class="proposal-details">
+                  Tipo: <strong>{{ formatPlanType(p.tipo) }}</strong> ·
+                  Empresas: <strong>{{ proposalCompaniesLabel(proposal) }}</strong> ·
+                  Período: {{ p.fechaIni || 'existencias actuales' }} {{ p.fechaFin ? ' a ' + p.fechaFin : '' }} ·
+                  Sucursal: {{ p.nroSuc ? ('Nro. ' + p.nroSuc) : 'todas' }} ·
+                  Límite: {{ p.limite }}
+                </p>
+              }
+            </div>
+            @if (proposal.plan) {
+              <button class="primary" type="button" (click)="confirmAndExecuteProposal()" [disabled]="busy()">
+                Confirmar plan y calcular
+              </button>
+            }
+          </div>
+        }
       </section>
 
       <!-- Resultados del reporte dinámico CU28 -->
@@ -351,113 +366,7 @@ interface SpeechRecognition {
       }
     }
 
-    <!-- ==================== PESTAÑA 2: ANALÍTICA INTELIGENTE Y MACHINE LEARNING ==================== -->
-    @if (tab() === 'analitica') {
-      <section class="surface ml-section" aria-label="Modelos de Machine Learning y Demanda">
-        <div class="surface-heading">
-          <div>
-            <p class="kicker">CU28 - ANALÍTICA INTELIGENTE</p>
-            <h3>Métricas de Modelos y Predicción de Demanda</h3>
-            <p>Modelos supervisados (regresión de demanda) y no supervisados (segmentación y detección de anomalías).</p>
-          </div>
-          <button class="primary" type="button" (click)="loadAnalytics()" [disabled]="busy()">
-            {{ busy() ? 'Cargando modelos…' : 'Consultar modelos y métricas' }}
-          </button>
-        </div>
-
-        @if (analytics(); as a) {
-          <div class="ml-cards-grid">
-            @for (m of supervisedMetrics(); track m.model) {
-              <article class="ml-metric-card">
-                <span class="model-badge">Supervisado</span>
-                <h4>{{ m.model }}</h4>
-                <p class="model-desc">Predicción de demanda de prendas</p>
-                <dl class="metric-dl">
-                  <div><dt>R² (precisión)</dt><dd><strong>{{ m.r2 }}</strong></dd></div>
-                  <div><dt>MAE (error absoluto)</dt><dd>{{ m.mae }}</dd></div>
-                  <div><dt>RMSE (error cuadrático)</dt><dd>{{ m.rmse }}</dd></div>
-                </dl>
-              </article>
-            }
-
-            @if (unsupervisedSummary(); as u) {
-              <article class="ml-metric-card">
-                <span class="model-badge pattern">No supervisado</span>
-                <h4>K-Means & IsolationForest</h4>
-                <p class="model-desc">Detección de patrones y compras atípicas</p>
-                <dl class="metric-dl">
-                  <div><dt>Silhouette Score</dt><dd><strong>{{ u.silhouette ?? '0.42' }}</strong></dd></div>
-                  <div><dt>Anomalías detectadas</dt><dd>{{ u.anomalies ?? 0 }}</dd></div>
-                </dl>
-              </article>
-            }
-          </div>
-
-          <details class="tech-json">
-            <summary>Ver detalle técnico de los modelos (JSON)</summary>
-            <pre>{{ analyticsText() }}</pre>
-          </details>
-        }
-
-        <!-- Simulador interactivo de demanda -->
-        <section class="simulator-box">
-          <h4>Simulador de predicción de demanda sintética</h4>
-          <p class="subnote">Ajusta los parámetros para simular la demanda diaria estimada con el modelo entrenado.</p>
-
-          <form (ngSubmit)="predictScenario()" class="sim-grid">
-            <div class="field">
-              <label for="sim-cat">Categoría</label>
-              <select id="sim-cat" name="simCat" [(ngModel)]="scenario.category">
-                <option value="camiseta">Camiseta</option>
-                <option value="pantalon">Pantalón</option>
-                <option value="vestido">Vestido</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="sim-dia">Día de la semana (0 lunes, 6 domingo)</label>
-              <input id="sim-dia" type="number" name="simDia" min="0" max="6" [(ngModel)]="scenario.day_of_week" />
-            </div>
-
-            <div class="field">
-              <label for="sim-mes">Mes del año (1 a 12)</label>
-              <input id="sim-mes" type="number" name="simMes" min="1" max="12" [(ngModel)]="scenario.month" />
-            </div>
-
-            <div class="field">
-              <label for="sim-precio">Precio sintético ($)</label>
-              <input id="sim-precio" type="number" name="simPrecio" min="1" max="500" [(ngModel)]="scenario.price" />
-            </div>
-
-            <div class="field">
-              <label for="sim-desc">Descuento (0.00 a 0.70)</label>
-              <input id="sim-desc" type="number" step="0.05" min="0" max="0.70" name="simDesc" [(ngModel)]="scenario.discount" />
-            </div>
-
-            <div class="field">
-              <label for="sim-promo">En promoción</label>
-              <select id="sim-promo" name="simPromo" [(ngModel)]="scenario.promotion">
-                <option [ngValue]="1">Sí (1)</option>
-                <option [ngValue]="0">No (0)</option>
-              </select>
-            </div>
-
-            <div class="sim-actions">
-              <button class="primary" type="submit" [disabled]="busy()">Predecir demanda</button>
-            </div>
-          </form>
-
-          @if (prediction()) {
-            <div class="prediction-result" role="status">
-              <strong>Resultado de la predicción:</strong>
-              <p>{{ prediction() }}</p>
-            </div>
-          }
-        </section>
-      </section>
-    }
-
-    <!-- ==================== PESTAÑA 3: INDICADORES GENERALES POR EMPRESA (RESUMEN) ==================== -->
+    <!-- ==================== PESTAÑA 2: INDICADORES GENERALES POR EMPRESA (RESUMEN) ==================== -->
     @if (tab() === 'resumen') {
       <section class="surface filters-section" aria-label="Filtros del resumen operacional">
         <div class="surface-heading">
@@ -473,9 +382,10 @@ interface SpeechRecognition {
 
         <div class="form-grid">
           <div class="field">
-            <label for="res-empresa">Empresa</label>
-            <select id="res-empresa" name="resIdEmp" [(ngModel)]="idEmp">
+            <label for="res-empresa">Empresas</label>
+            <select id="res-empresa" name="resIdEmp" [(ngModel)]="idEmp" (ngModelChange)="onCompanyChange()">
               <option [ngValue]="0">Todas las empresas</option>
+              <option [ngValue]="-1">Seleccionar varias empresas (X)</option>
               @for (company of companies(); track company.idEmp) {
                 <option [ngValue]="company.idEmp">{{ company.nombre }} ({{ company.codigo }})</option>
               }
@@ -503,11 +413,25 @@ interface SpeechRecognition {
           </div>
         </div>
 
+        @if (idEmp === -1) {
+          <div class="multi-company-picker" role="group" aria-label="Selección múltiple de empresas">
+            <span class="picker-title">Elige las empresas a incluir ({{ selectedEmpIds.length }} seleccionada(s)):</span>
+            <div class="company-chips">
+              @for (company of companies(); track company.idEmp) {
+                <label class="company-chip">
+                  <input type="checkbox" [checked]="selectedEmpIds.includes(company.idEmp)" (change)="toggleCompany(company.idEmp, $any($event.target).checked)" />
+                  <span>{{ company.nombre }} ({{ company.codigo }})</span>
+                </label>
+              }
+            </div>
+          </div>
+        }
+
         <!-- Descargas masivas globales -->
         <div class="global-export-row">
           <div>
             <strong>Exportar reporte estándar de la plataforma:</strong>
-            <p class="subnote">Para múltiples empresas se descarga un ZIP organizado por empresa.</p>
+            <p class="subnote">Para múltiples empresas se genera un único archivo PDF o Excel consolidado con una fila por empresa.</p>
           </div>
           <div class="export-controls">
             <select [(ngModel)]="tipoExportacion" name="tipoExportacionSelect">
@@ -588,24 +512,24 @@ interface SpeechRecognition {
     .report-tabs{display:flex;gap:8px;border-bottom:2px solid #e1e8e5}
     .report-tabs button{padding:9px 16px;border:none;background:transparent;font:inherit;font-size:.9rem;font-weight:650;color:#5a7076;cursor:pointer;border-radius:6px 6px 0 0}
     .report-tabs button.active{color:#0e5967;border-bottom:3px solid #0e5967;background:#f0f7f7;font-weight:750}
-    .form-grid,.sim-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end}
+    .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end}
     .field{display:grid;gap:5px}
     .field label,.ai-input-group label{font-size:.84rem;font-weight:650;color:#32474e}
     .field input,.field select,textarea{min-height:38px;padding:7px 10px;border:1px solid #c7d4d6;border-radius:8px;background:#fff;color:#17272e;font:inherit}
     .field input:disabled,.field select:disabled{background:#f4f7f6;color:#8e9fa3}
-    .form-actions,.sim-actions{display:flex;align-items:flex-end}
+    .form-actions{display:flex;align-items:flex-end}
     .primary,.secondary{min-height:38px;padding:8px 16px;border-radius:8px;font:inherit;font-size:.88rem;font-weight:700;cursor:pointer;border:1px solid transparent}
     .primary{background:#0e5967;color:#fff;border-color:#0b4a55}
     .primary:disabled,.secondary:disabled{opacity:.55;cursor:wait}
     .secondary{background:#fff;border-color:#c7d4d6;color:#17272e}
-    .ai-assist-box{margin-top:18px;padding:16px;border:1px solid #cce0dd;border-radius:10px;background:#f6faf9}
-    .ai-header h4,.simulator-box h4{margin:2px 0 4px;font-size:1.05rem;color:#0d5f6e}
+    .ai-assist-box{border-color:#cce0dd;background:#f6faf9}
+    .ai-header h4{margin:2px 0 4px;font-size:1.05rem;color:#0d5f6e}
     .ai-input-group{display:grid;gap:6px}
     .ai-input-group textarea{width:100%;box-sizing:border-box;resize:vertical;min-height:55px}
     .ai-actions{display:flex;justify-content:flex-end}
     .proposal-card{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;padding:12px;border-radius:8px;background:#e9f4f2;border:1px solid #b7dcda;flex-wrap:wrap}
     .proposal-details{margin:4px 0 0;font-size:.84rem;color:#214349}
-    .results-section,.ml-section{display:grid;gap:16px}
+    .results-section{display:grid;gap:16px}
     .export-actions,.export-controls,.card-footer-export{display:flex;gap:8px;align-items:center}
     .company-dynamic-card,.company-report-card{padding:16px;border:1px solid #e1e9e6;border-radius:10px;background:#fafcfb;display:grid;gap:12px}
     .company-badge{padding:2px 7px;border-radius:5px;background:#e3eff0;color:#0e5967;font-size:.75rem;font-weight:700}
@@ -622,15 +546,6 @@ interface SpeechRecognition {
     .bar-fill{height:100%;background:#0e5967;border-radius:5px}
     .bar-value{text-align:right;font-weight:700}
     .card-foot{font-size:.78rem;color:#70858b}
-    .ml-cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-    .ml-metric-card{padding:14px;border:1px solid #d9e3e0;border-radius:8px;background:#fafcfb}
-    .model-badge{padding:2px 6px;border-radius:4px;font-size:.7rem;font-weight:750;background:#e0f2fe;color:#0369a1}
-    .model-badge.pattern{background:#fef3c7;color:#92400e}
-    .metric-dl{display:grid;gap:5px;margin:0}
-    .metric-dl div{display:flex;justify-content:space-between;font-size:.84rem}
-    .tech-json pre{padding:10px;border-radius:6px;background:#f4f7f6;font-size:.78rem;overflow:auto;max-height:220px}
-    .simulator-box{padding:16px;border:1px solid #d8e5e1;border-radius:8px;background:#f8fbfa}
-    .prediction-result{margin-top:12px;padding:12px;border-radius:8px;background:#eaf5ef;border:1px solid #bee3cb;color:#1c5232;font-size:.88rem}
     .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
     .kpi-box{padding:10px;border-radius:7px;background:#f4f8f6;display:grid;gap:3px}
     .kpi-box span{font-size:.75rem;color:#5f757b}
@@ -639,6 +554,10 @@ interface SpeechRecognition {
     .error{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
     .success{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
     .status-pill{padding:2px 8px;border-radius:99px;background:#eef7ee;color:#235c2e;font-size:.78rem}
+    .multi-company-picker{margin-top:12px;padding:12px;border:1px solid #dbe4e1;border-radius:8px;background:#f8fbfa;display:grid;gap:8px}
+    .picker-title{font-size:.82rem;font-weight:700;color:#2a454d}
+    .company-chips{display:flex;flex-wrap:wrap;gap:8px}
+    .company-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #c7d4d6;border-radius:99px;background:#fff;font-size:.83rem;cursor:pointer}
     .empty-state{text-align:center;color:#6b8086;padding:24px}
     @media(max-width:700px){.bar-row{grid-template-columns:110px 1fr 70px}}
   `]
@@ -648,14 +567,12 @@ export class SaasReportesComponent {
   private readonly destroy = inject(DestroyRef);
   private readonly api = inject(API_BASE_URL).replace(/\/$/, '') + '/saas/reportes';
 
-  readonly tab = signal<'dinamicos' | 'analitica' | 'resumen'>('dinamicos');
+  readonly tab = signal<'dinamicos' | 'resumen'>('dinamicos');
   readonly companies = signal<Company[]>([]);
   readonly branches = signal<Array<{ nro: number; nombre: string }>>([]);
   readonly dashboard = signal<DashboardResult | null>(null);
   readonly dynamicResult = signal<DynamicResult | null>(null);
   readonly decision = signal<VoiceDecision | null>(null);
-  readonly analytics = signal<Record<string, unknown> | null>(null);
-  readonly prediction = signal<string>('');
 
   readonly busy = signal(false);
   readonly exporting = signal(false);
@@ -665,7 +582,9 @@ export class SaasReportesComponent {
   readonly listening = signal(false);
 
   idEmp = 0;
+  selectedEmpIds: number[] = [];
   idPlan = 0;
+  private lastDynamicScope: Record<string, number | number[]> = {};
   tipoExportacion: ReportKind = 'ventas';
   fechaIni = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
   fechaFin = new Date().toISOString().slice(0, 10);
@@ -686,7 +605,6 @@ export class SaasReportesComponent {
     umbral: 5,
   };
 
-  scenario = { category: 'camiseta' as const, day_of_week: 5, month: 6, price: 45, discount: 0.2, promotion: 1 };
   voiceText = '';
   private recognition: SpeechRecognition | null = null;
 
@@ -708,14 +626,12 @@ export class SaasReportesComponent {
     this.destroy.onDestroy(() => this.recognition?.stop());
   }
 
-  setTab(tab: 'dinamicos' | 'analitica' | 'resumen'): void {
+  setTab(tab: 'dinamicos' | 'resumen'): void {
     this.tab.set(tab);
     this.error.set('');
     this.success.set('');
     if (tab === 'dinamicos' && !this.dynamicResult()) {
       this.executeDynamic();
-    } else if (tab === 'analitica' && !this.analytics()) {
-      this.loadAnalytics();
     } else if (tab === 'resumen' && !this.dashboard()) {
       this.loadDashboard();
     }
@@ -723,7 +639,6 @@ export class SaasReportesComponent {
 
   refreshActiveTab(): void {
     if (this.tab() === 'dinamicos') this.executeDynamic();
-    else if (this.tab() === 'analitica') this.loadAnalytics();
     else if (this.tab() === 'resumen') this.loadDashboard();
   }
 
@@ -735,48 +650,106 @@ export class SaasReportesComponent {
     return [...byId].map(([id, nombre]) => ({ id, nombre }));
   }
 
+  singleSelectedCompanyId(): number | null {
+    if (this.idEmp > 0) return this.idEmp;
+    if (this.idEmp === -1 && this.selectedEmpIds.length === 1) return this.selectedEmpIds[0];
+    return null;
+  }
+
   onCompanyChange(): void {
+    if (this.idEmp !== -1) this.selectedEmpIds = [];
+    this.loadBranchesForSelection();
+  }
+
+  toggleCompany(id: number, checked: boolean): void {
+    this.selectedEmpIds = checked
+      ? (this.selectedEmpIds.includes(id) ? this.selectedEmpIds : [...this.selectedEmpIds, id])
+      : this.selectedEmpIds.filter(item => item !== id);
+    this.loadBranchesForSelection();
+  }
+
+  private loadBranchesForSelection(): void {
     this.plan.nroSuc = null;
     this.branches.set([]);
-    if (!this.idEmp) return;
+    const singleId = this.singleSelectedCompanyId();
+    if (!singleId) return;
     this.http.get<{ sucursales: Array<{ nro: number; nombre: string }> }>(`${this.api}/referencias`, {
-      params: { idEmp: this.idEmp }
+      params: { idEmp: singleId }
     }).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: res => this.branches.set(res.sucursales || []),
       error: () => this.branches.set([]),
     });
   }
 
-  private scope(): Record<string, number> {
+  private validateMultiScope(): boolean {
+    if (this.idEmp === -1 && this.selectedEmpIds.length === 0) {
+      this.error.set('Selecciona al menos una empresa o elige "Todas las empresas".');
+      return false;
+    }
+    return true;
+  }
+
+  private scope(): Record<string, number | number[]> {
+    const companyScope: Record<string, number | number[]> = {};
+    if (this.idEmp > 0) {
+      companyScope['idEmp'] = this.idEmp;
+    } else if (this.idEmp === -1) {
+      if (this.selectedEmpIds.length === 1) companyScope['idEmp'] = this.selectedEmpIds[0];
+      else if (this.selectedEmpIds.length > 1) companyScope['idEmps'] = [...this.selectedEmpIds];
+    }
     return {
-      ...(this.idEmp ? { idEmp: this.idEmp } : {}),
+      ...companyScope,
       ...(this.idPlan ? { idPlan: this.idPlan } : {}),
     };
   }
 
+  proposalCompaniesLabel(proposal: VoiceDecision): string {
+    if (proposal.empresasNombres?.length) return proposal.empresasNombres.join(', ');
+    if (Array.isArray(proposal.idEmps) && proposal.idEmps.length === 0) return 'Todas las empresas';
+    const singleId = this.singleSelectedCompanyId();
+    if (singleId) {
+      const found = this.companies().find(c => c.idEmp === singleId);
+      return found ? found.nombre : `Empresa #${singleId}`;
+    }
+    if (this.idEmp === -1 && this.selectedEmpIds.length > 1) {
+      return `${this.selectedEmpIds.length} empresas seleccionadas`;
+    }
+    return 'Todas las empresas';
+  }
+
   // ==================== Dynamic CU28 Execution ====================
   executeDynamic(): void {
+    if (!this.validateMultiScope()) return;
+    this.runDynamicPlan(this.plan, 'Reporte calculado correctamente.', this.scope());
+  }
+
+  private runDynamicPlan(
+    source: DynamicPlan,
+    successMessage: string,
+    executionScope: Record<string, number | number[]> = this.scope(),
+  ): void {
     if (this.busy()) return;
     this.busy.set(true);
     this.error.set('');
     this.success.set('');
+    this.lastDynamicScope = executionScope;
 
     const payloadPlan: DynamicPlan = {
-      ...this.plan,
-      nroSuc: this.plan.nroSuc ? Number(this.plan.nroSuc) : null,
-      fechaIni: this.plan.tipo === 'existencias_bajas' ? null : this.plan.fechaIni,
-      fechaFin: this.plan.tipo === 'existencias_bajas' ? null : this.plan.fechaFin,
-      limite: Number(this.plan.limite) || 10,
-      umbral: Number(this.plan.umbral) || 5,
+      ...source,
+      nroSuc: source.nroSuc ? Number(source.nroSuc) : null,
+      fechaIni: source.tipo === 'existencias_bajas' ? null : source.fechaIni,
+      fechaFin: source.tipo === 'existencias_bajas' ? null : source.fechaFin,
+      limite: Number(source.limite) || 10,
+      umbral: Number(source.umbral) || 5,
     };
 
-    const payload = { plan: payloadPlan, ...this.scope() };
+    const payload = { plan: payloadPlan, ...executionScope };
     this.http.post<DynamicResult>(`${this.api}/dinamicos/ejecutar`, payload)
       .pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false)))
       .subscribe({
         next: result => {
           this.dynamicResult.set(result);
-          this.success.set('Reporte calculado correctamente.');
+          this.success.set(successMessage);
         },
         error: error => this.fail(error),
       });
@@ -787,10 +760,11 @@ export class SaasReportesComponent {
     if (!res || this.exporting()) return;
     this.exporting.set(true);
     this.error.set('');
-    this.http.post(`${this.api}/dinamicos/exportar`, { plan: res.plan, formato: format, ...this.scope() }, { responseType: 'blob' })
+    const prefix = res.empresas.length > 1 ? 'consolidado-' : '';
+    this.http.post(`${this.api}/dinamicos/exportar`, { plan: res.plan, formato: format, ...this.lastDynamicScope }, { responseType: 'blob' })
       .pipe(takeUntilDestroyed(this.destroy), finalize(() => this.exporting.set(false)))
       .subscribe({
-        next: blob => this.save(blob, `reporte-${res.plan.tipo}.${format}${!this.idEmp ? '.zip' : ''}`),
+        next: blob => this.save(blob, `reporte-${prefix}${res.plan.tipo}.${format}`),
         error: error => this.fail(error),
       });
   }
@@ -818,10 +792,20 @@ export class SaasReportesComponent {
   }
 
   confirmAndExecuteProposal(): void {
-    const proposal = this.decision()?.plan;
+    const decision = this.decision();
+    const proposal = decision?.plan;
     if (!proposal) return;
-    this.plan = { ...proposal };
-    this.executeDynamic();
+    let execScope: Record<string, number | number[]> = this.scope();
+    if (Array.isArray(decision.idEmps)) {
+      execScope = decision.idEmps.length === 1
+        ? { idEmp: decision.idEmps[0] }
+        : decision.idEmps.length > 1
+          ? { idEmps: decision.idEmps }
+          : {};
+    } else if (!this.validateMultiScope()) {
+      return;
+    }
+    this.runDynamicPlan(proposal, 'Reporte por IA calculado correctamente.', execScope);
   }
 
   listen(): void {
@@ -853,56 +837,18 @@ export class SaasReportesComponent {
     }
   }
 
-  // ==================== Tab 2: Machine Learning ====================
-  loadAnalytics(): void {
-    this.busy.set(true);
-    this.error.set('');
-    this.http.get<Record<string, unknown>>(`${this.api}/analitica`)
-      .pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false)))
-      .subscribe({
-        next: r => this.analytics.set(r),
-        error: error => this.fail(error),
-      });
-  }
-
-  analyticsText(): string {
-    return JSON.stringify(this.analytics(), null, 2);
-  }
-
-  supervisedMetrics(): Array<{ model: string; mae: number; rmse: number; r2: number }> {
-    const sup = this.analytics()?.['supervised'] as { metrics?: Record<string, { mae: number; rmse: number; r2: number }> } | undefined;
-    if (!sup?.metrics) return [];
-    return Object.entries(sup.metrics).map(([model, m]) => ({ model, mae: m.mae, rmse: m.rmse, r2: m.r2 }));
-  }
-
-  unsupervisedSummary(): { silhouette?: number; anomalies?: number; clusters?: Array<Record<string, unknown>> } | null {
-    const unsup = this.analytics()?.['unsupervised'] as { kmeans_silhouette?: number; anomalies_detected?: number; clusters?: Array<Record<string, unknown>> } | undefined;
-    if (!unsup) return null;
-    return { silhouette: unsup.kmeans_silhouette, anomalies: unsup.anomalies_detected, clusters: unsup.clusters };
-  }
-
-  predictScenario(): void {
-    this.busy.set(true);
-    this.error.set('');
-    this.prediction.set('');
-    this.http.post<{ synthetic: boolean; predicted_daily_units: number; limitation: string }>(`${this.api}/analitica/predecir`, this.scenario)
-      .pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false)))
-      .subscribe({
-        next: r => this.prediction.set(`Predicción sintética: ${r.predicted_daily_units} unidades/día estimadas. ${r.limitation}`),
-        error: error => this.fail(error),
-      });
-  }
-
-  // ==================== Tab 3: Resumen de Empresas ====================
+  // ==================== Tab 2: Resumen de Empresas ====================
   loadDashboard(): void {
+    if (!this.validateMultiScope()) return;
     if (!this.fechaIni || !this.fechaFin || this.fechaFin < this.fechaIni) {
       this.error.set('Verifica las fechas del período.');
       return;
     }
     this.busy.set(true);
     this.error.set('');
-    let params = new HttpParams().set('fechaIni', this.fechaIni).set('fechaFin', this.fechaFin);
-    for (const [key, value] of Object.entries(this.scope())) params = params.set(key, String(value));
+    const params = this.buildScopeParams(this.scope())
+      .set('fechaIni', this.fechaIni)
+      .set('fechaFin', this.fechaFin);
 
     this.http.get<DashboardResult>(`${this.api}/dashboard`, { params })
       .pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false)))
@@ -914,19 +860,38 @@ export class SaasReportesComponent {
 
   downloadStandard(format: Format, companyId?: number): void {
     if (this.exporting()) return;
+    if (!companyId && !this.validateMultiScope()) return;
     this.exporting.set(true);
     this.error.set('');
-    let params = new HttpParams().set('fechaIni', this.fechaIni).set('fechaFin', this.fechaFin)
-      .set('tipo', this.tipoExportacion).set('formato', format);
-    const scope = { ...this.scope(), ...(companyId ? { idEmp: companyId } : {}) };
-    for (const [key, value] of Object.entries(scope)) params = params.set(key, String(value));
+    const scope = companyId
+      ? { idEmp: companyId, ...(this.idPlan ? { idPlan: this.idPlan } : {}) }
+      : this.scope();
+    const params = this.buildScopeParams(scope)
+      .set('fechaIni', this.fechaIni)
+      .set('fechaFin', this.fechaFin)
+      .set('tipo', this.tipoExportacion)
+      .set('formato', format);
+    const isSingle = Boolean(companyId || this.singleSelectedCompanyId() !== null);
+    const prefix = isSingle ? '' : 'consolidado-';
 
     this.http.get(`${this.api}/exportar`, { params, responseType: 'blob' })
       .pipe(takeUntilDestroyed(this.destroy), finalize(() => this.exporting.set(false)))
       .subscribe({
-        next: blob => this.save(blob, `reporte-${this.tipoExportacion}.${format}${!companyId && !this.idEmp ? '.zip' : ''}`),
+        next: blob => this.save(blob, `reporte-${prefix}${this.tipoExportacion}.${format}`),
         error: error => this.fail(error),
       });
+  }
+
+  private buildScopeParams(scope: Record<string, number | number[]>): HttpParams {
+    let params = new HttpParams();
+    for (const [key, value] of Object.entries(scope)) {
+      if (Array.isArray(value)) {
+        for (const item of value) params = params.append(key, String(item));
+      } else {
+        params = params.set(key, String(value));
+      }
+    }
+    return params;
   }
 
   // ==================== Formatters & Bar Visuals ====================

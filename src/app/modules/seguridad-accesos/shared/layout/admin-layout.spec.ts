@@ -99,4 +99,55 @@ describe('AdminLayout', () => {
     buttons[1].click(); fixture.detectChanges();
     expect(buttons[1].getAttribute('aria-expanded')).toBe('true');
   });
+
+  it('oculta Dashboard y reportes cuando el plan de la empresa no incluye REPORTES', () => {
+    const mySubscription = vi.fn().mockReturnValue(of({
+      empresaCodigo: 'new-0001',
+      empresaNombre: 'Nueva Empresa',
+      plan: 'Inicial',
+      estadoSuscripcion: 'activa',
+      fechaInicio: '2026-01-01',
+      fechaVencimiento: '2027-01-01',
+      sucursalesActivas: 1,
+      maxSucursales: 2,
+      funcionalidades: ['PRODUCTOS', 'VENTAS'],
+    }));
+    const localAuth = {
+      logout: vi.fn().mockReturnValue(of(undefined)),
+      session: signal<AuthResponse | null>({
+        ...session,
+        empresa: 'new-0001',
+        usuario: { ...session.usuario, tipo: 'A' },
+        permisos: ['CU18', 'CU25'],
+      }),
+      mySubscription,
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [AdminLayout],
+      providers: [provideRouter([]), { provide: AuthService, useValue: localAuth }],
+    });
+    const fixture = TestBed.createComponent(AdminLayout);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('a[href="/admin/reportes"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href="/admin/catalogo/productos"]')).toBeTruthy();
+
+    mySubscription.mockReturnValue(of({
+      empresaCodigo: 'new-0001',
+      empresaNombre: 'Nueva Empresa',
+      plan: 'Basico',
+      estadoSuscripcion: 'activa',
+      fechaInicio: '2026-01-01',
+      fechaVencimiento: '2027-01-01',
+      sucursalesActivas: 1,
+      maxSucursales: 2,
+      funcionalidades: ['PRODUCTOS', 'VENTAS', 'REPORTES'],
+    }));
+    localAuth.session.set({
+      ...localAuth.session()!,
+      empresa: 'new-0002',
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('a[href="/admin/reportes"]')).toBeTruthy();
+  });
 });

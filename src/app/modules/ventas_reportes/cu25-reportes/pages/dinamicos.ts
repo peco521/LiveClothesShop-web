@@ -20,45 +20,34 @@ export class ReportesDinamicosPage {
   readonly busy=signal(false); readonly error=signal(''); readonly message=signal(''); readonly result=signal<Report|null>(null);
   readonly decision=signal<Decision|null>(null); readonly branches=signal<Array<{nro:number;nombre:string}>>([]);
   readonly analytics=signal<Record<string,unknown>|null>(null); readonly listening=signal(false);
-  readonly prediction=signal<string>('');
-  scenario={category:'camiseta',day_of_week:5,month:6,price:45,discount:0.2,promotion:1};
+  readonly reportesHabilitados=signal(true); readonly iaHabilitada=signal(false);
   readonly types=[{id:'ventas_sucursal',label:'Ventas por sucursal y período'},{id:'productos_vendidos',label:'Productos más vendidos'},
     {id:'ventas_semana',label:'Evolución semanal de ventas'},{id:'existencias_bajas',label:'Productos con menor existencia'}];
   plan: Plan={tipo:'ventas_sucursal',fechaIni:new Date().toISOString().slice(0,8)+'01',fechaFin:new Date().toISOString().slice(0,10),nroSuc:null,limite:10,umbral:5};
   text=''; private recognition:Recognition|null=null;
   private owner():string {const session=this.auth.session();return JSON.stringify(session ? [session.empresa,session.usuario.idUsuario,session.expiraEn]:null);}
-  constructor(){effect(()=>{const owner=this.owner();this.result.set(null);this.decision.set(null);this.analytics.set(null);this.branches.set([]);this.prediction.set('');this.text='';
-    this.http.get<{sucursales:Array<{nro:number;nombre:string}>}>(this.base+'/dinamicos/referencias').pipe(takeUntilDestroyed(this.destroy)).subscribe({
-      next:r=>{if(owner===this.owner())this.branches.set(r.sucursales);},error:e=>{if(owner===this.owner())this.fail(e);}});
+  constructor(){effect(()=>{const owner=this.owner();this.result.set(null);this.decision.set(null);this.analytics.set(null);this.branches.set([]);this.reportesHabilitados.set(true);this.iaHabilitada.set(false);this.text='';
+    this.http.get<{sucursales:Array<{nro:number;nombre:string}>;iaHabilitada?:boolean}>(this.base+'/dinamicos/referencias').pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next:r=>{if(owner===this.owner()){this.branches.set(r.sucursales);this.reportesHabilitados.set(true);this.iaHabilitada.set(Boolean(r.iaHabilitada));}},
+      error:e=>{if(owner===this.owner()){if(e instanceof HttpErrorResponse&&e.status===403){this.reportesHabilitados.set(false);this.iaHabilitada.set(false);}this.fail(e);}}});
   });this.destroy.onDestroy(()=>this.recognition?.stop());}
   private fail(error:unknown):void {const e=error as HttpErrorResponse;this.error.set(e.status===401?'Sesión vencida: inicia sesión de nuevo.':e.error?.error?.message??'No se pudo completar la consulta.');}
-  execute():void {if(this.busy())return;this.busy.set(true);this.error.set('');const owner=this.owner();
-    const plan={...this.plan,nroSuc:this.plan.nroSuc?Number(this.plan.nroSuc):null,
-      fechaIni:this.plan.tipo==='existencias_bajas'?null:this.plan.fechaIni,fechaFin:this.plan.tipo==='existencias_bajas'?null:this.plan.fechaFin};
+  execute():void {this.runPlan(this.plan);}
+  private runPlan(source:Plan):void {if(this.busy())return;this.busy.set(true);this.error.set('');const owner=this.owner();
+    const plan={...source,nroSuc:source.nroSuc?Number(source.nroSuc):null,
+      fechaIni:source.tipo==='existencias_bajas'?null:source.fechaIni,fechaFin:source.tipo==='existencias_bajas'?null:source.fechaFin};
     this.http.post<Report>(this.base+'/dinamicos/ejecutar',plan).pipe(takeUntilDestroyed(this.destroy),finalize(()=>this.busy.set(false))).subscribe({
-      next:r=>{if(owner===this.owner())this.result.set(r);},error:e=>{if(owner===this.owner())this.fail(e);}});
+      next:r=>{if(owner===this.owner())this.result.set(r);},
+      error:e=>{if(owner===this.owner()){if(e instanceof HttpErrorResponse&&e.status===403){this.reportesHabilitados.set(false);this.iaHabilitada.set(false);}this.fail(e);}}});
   }
   interpret():void {if(this.busy()||!this.text.trim())return;this.busy.set(true);this.error.set('');this.decision.set(null);const owner=this.owner();
     this.http.post<Decision>(this.base+'/interpretar',{texto:this.text.trim(),canal:'texto'}).pipe(takeUntilDestroyed(this.destroy),finalize(()=>this.busy.set(false))).subscribe({
-      next:r=>{if(owner===this.owner())this.decision.set(r);},error:e=>{if(owner===this.owner())this.fail(e);}});}
-  confirm():void {const plan=this.decision()?.plan;if(plan){this.plan={...plan};this.execute();}}
+      next:r=>{if(owner===this.owner())this.decision.set(r);},
+      error:e=>{if(owner===this.owner()){if(e instanceof HttpErrorResponse&&e.status===403)this.iaHabilitada.set(false);this.fail(e);}}});}
+  confirm():void {const plan=this.decision()?.plan;if(plan)this.runPlan(plan);}
   export(format:'pdf'|'xlsx'):void {const result=this.result();if(!result)return;const owner=this.owner();this.error.set('');
     this.http.get(this.base+'/dinamicos/'+result.resultadoId+'/exportar',{params:{formato:format},responseType:'blob'}).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next:blob=>{if(owner!==this.owner())return;const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='fashionstore-reporte.'+format;a.click();URL.revokeObjectURL(url);},error:e=>{if(owner===this.owner())this.fail(e);}});}
-  loadAnalytics():void {const owner=this.owner();this.error.set('');this.http.get<Record<string,unknown>>(this.base+'/analitica').pipe(takeUntilDestroyed(this.destroy)).subscribe({next:r=>{if(owner===this.owner())this.analytics.set(r);},error:e=>{if(owner===this.owner())this.fail(e);}});}
-  analyticsText():string{return JSON.stringify(this.analytics(),null,2);}
-  supervisedMetrics():Array<{model:string;mae:number;rmse:number;r2:number}>{
-    const sup=this.analytics()?.['supervised'] as {metrics?:Record<string,{mae:number;rmse:number;r2:number}>}|undefined;
-    if(!sup?.metrics)return[];
-    return Object.entries(sup.metrics).map(([model,m])=>({model,mae:m.mae,rmse:m.rmse,r2:m.r2}));
-  }
-  unsupervisedSummary():{silhouette?:number;anomalies?:number;clusters?:Array<Record<string,unknown>>}|null{
-    const unsup=this.analytics()?.['unsupervised'] as {kmeans_silhouette?:number;anomalies_detected?:number;clusters?:Array<Record<string,unknown>>}|undefined;
-    if(!unsup)return null;
-    return {silhouette:unsup.kmeans_silhouette,anomalies:unsup.anomalies_detected,clusters:unsup.clusters};
-  }
-  predict():void {const owner=this.owner();this.error.set('');this.http.post<{synthetic:boolean;predicted_daily_units:number;limitation:string}>(this.base+'/analitica/predecir',this.scenario).pipe(takeUntilDestroyed(this.destroy)).subscribe({
-    next:r=>{if(owner===this.owner())this.prediction.set('Escenario sintético: '+r.predicted_daily_units+' unidades/día estimadas. '+r.limitation);},error:e=>{if(owner===this.owner())this.fail(e);}});}
   bar(row:Record<string,string|number>):number {const rows=this.result()?.filas??[];const key=this.result()?.plan.tipo==='existencias_bajas'?'disponible':'importe';const max=Math.max(1,...rows.map(r=>Number(r[key])||0));return 100*(Number(row[key])||0)/max;}
   label(row:Record<string,string|number>):string{return String(row['sucursal']??row['producto']??row['semana']??'');}
   voice():void {const win=window as unknown as {SpeechRecognition?:new()=>Recognition;webkitSpeechRecognition?:new()=>Recognition};

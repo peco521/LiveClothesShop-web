@@ -39,6 +39,19 @@ interface BackupList {
 type SaasSection = 'resumen' | 'empresas' | 'planes' | 'aprovisionar' | 'auditoria' | 'respaldos' | 'reportes';
 interface ProvisionedCompany { idEmp: number; codigo: string; nombre: string }
 interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombre: string; estado: string }>; usuarios: Array<{ idUsuario: string; correo: string; tipo: string; nroRol: string }>; aviso: string }
+interface VencimientoSuscripcion {
+  idEmp: number;
+  empresa: string;
+  codigo: string;
+  plan: string;
+  fechaVencimiento: string;
+  diasRestantes: number;
+  adminCorreo: string;
+  adminNombre: string;
+  ultimoAviso: string | null;
+  diasDesdeUltimoAviso: number | null;
+  necesitaAviso: boolean;
+}
 
 @Component({
   selector: 'app-saas-dashboard',
@@ -185,6 +198,70 @@ interface SupportView { empresa: Company; sucursales: Array<{ nro: number; nombr
 
     @if (section() === 'planes') {
       <app-catalogo-planes-saas [plans]="plans()" [canManage]="can('SAAS-PLANES')" />
+
+      <section class="surface" style="margin-top: 2rem;">
+        <div class="section-heading">
+          <div>
+            <p class="saas-kicker">RECORDATORIOS DE RENOVACIÓN</p>
+            <h2>Avisos de renovación de suscripciones</h2>
+            <p>Empresas con suscripción por vencer en el próximo mes (30 días). El sistema envía un recordatorio semanal al correo del administrador.</p>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="secondary" type="button" (click)="loadVencimientos()" [disabled]="loadingVencimientos()">Actualizar</button>
+            @if (can('SAAS-PLANES')) {
+              <button class="primary" type="button" (click)="notificarVencimientos(false)" [disabled]="sendingVencimientos() || loadingVencimientos()">
+                {{ sendingVencimientos() ? 'Enviando…' : 'Enviar avisos semanales' }}
+              </button>
+              <button class="secondary" type="button" (click)="notificarVencimientos(true)" [disabled]="sendingVencimientos() || loadingVencimientos()" title="Fuerza el envío inmediato aunque ya se haya enviado esta semana">
+                Forzar reenvío
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (loadingVencimientos()) {
+          <p role="status">Consultando suscripciones próximas a vencer…</p>
+        } @else {
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Empresa</th>
+                  <th>Plan</th>
+                  <th>Vencimiento</th>
+                  <th>Días restantes</th>
+                  <th>Administrador</th>
+                  <th>Último aviso enviado</th>
+                  <th>Estado semanal</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (v of vencimientos(); track v.idEmp) {
+                  <tr>
+                    <td><strong>{{ v.empresa }}</strong><br><small>{{ v.codigo }}</small></td>
+                    <td>{{ v.plan }}</td>
+                    <td><time>{{ formatDateOnly(v.fechaVencimiento) }}</time></td>
+                    <td><strong>{{ v.diasRestantes }} días</strong></td>
+                    <td>{{ v.adminNombre }}<br><small>{{ v.adminCorreo }}</small></td>
+                    <td>{{ v.ultimoAviso ? formatDate(v.ultimoAviso) : 'Sin avisos aún' }}</td>
+                    <td>
+                      @if (v.necesitaAviso) {
+                        <span class="status-pill warning">Pendiente esta semana</span>
+                      } @else {
+                        <span class="status-pill success">Avisado esta semana</span>
+                      }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="7" class="empty-state">No hay suscripciones que requieran renovación en los próximos 30 días.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
     }
 
     @if (section() === 'aprovisionar' && can('SAAS-EMPRESAS')) {
@@ -279,6 +356,9 @@ export class SaasDashboardPage implements OnInit {
   readonly success = signal('');
   readonly summary = signal<PlatformSummary | null>(null);
   readonly backupList = signal<BackupList | null>(null);
+  readonly vencimientos = signal<VencimientoSuscripcion[]>([]);
+  readonly loadingVencimientos = signal(false);
+  readonly sendingVencimientos = signal(false);
   readonly menuOpen = signal(false);
   readonly auditPage = signal(0);
   readonly auditHasNext = signal(false);
@@ -340,6 +420,7 @@ export class SaasDashboardPage implements OnInit {
         this.section.set(section);
         if (section === 'respaldos') this.loadBackups();
         if (section === 'auditoria') this.loadAudit(0);
+        if (section === 'planes') this.loadVencimientos();
       }
     });
     this.reload();
@@ -391,6 +472,7 @@ export class SaasDashboardPage implements OnInit {
     }
     if (section === 'resumen') this.loadSummary();
     if (section === 'empresas') this.reload();
+    if (section === 'planes') this.loadVencimientos();
     if (section === 'auditoria') this.loadAudit(0);
     if (section === 'respaldos') this.loadBackups();
   }
@@ -654,6 +736,56 @@ export class SaasDashboardPage implements OnInit {
   support(company: Company): void {
     const body = { idEmp: company.idEmp, motivo: this.supportReason.trim() };
     this.finish(this.http.post<SupportView>(`${this.api}/saas/soporte/acceso`, body), 'Resumen de solo lectura generado y auditado.', value => this.supportView.set(value));
+  }
+
+  loadVencimientos(): void {
+    this.loadingVencimientos.set(true);
+    this.http.get<{ proximas_a_vencer: Array<Record<string, unknown>> }>(`${this.api}/api/saas/suscripciones/vencimientos`, { withCredentials: true })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: res => {
+          this.loadingVencimientos.set(false);
+          const mapped: VencimientoSuscripcion[] = (res.proximas_a_vencer || []).map(item => ({
+            idEmp: Number(item['idemp']),
+            empresa: String(item['empresa'] || ''),
+            codigo: String(item['codigo'] || ''),
+            plan: String(item['plan'] || ''),
+            fechaVencimiento: String(item['fechavencimiento'] || ''),
+            diasRestantes: Number(item['dias_restantes'] || 0),
+            adminCorreo: String(item['admin_correo'] || ''),
+            adminNombre: String(item['admin_nombre'] || ''),
+            ultimoAviso: item['ultimo_aviso'] ? String(item['ultimo_aviso']) : null,
+            diasDesdeUltimoAviso: item['dias_desde_ultimo_aviso'] !== null && item['dias_desde_ultimo_aviso'] !== undefined ? Number(item['dias_desde_ultimo_aviso']) : null,
+            necesitaAviso: !!item['necesita_aviso'],
+          }));
+          this.vencimientos.set(mapped);
+        },
+        error: () => this.loadingVencimientos.set(false),
+      });
+  }
+
+  notificarVencimientos(forzar = false): void {
+    if (this.sendingVencimientos()) return;
+    this.sendingVencimientos.set(true);
+    this.error.set('');
+    this.success.set('');
+    this.http.post<{ mensaje: string; notificados: number }>(
+      `${this.api}/api/saas/suscripciones/notificar-vencimientos`,
+      { forzar },
+      { withCredentials: true },
+    )
+    .pipe(takeUntilDestroyed(this.destroyRef))
+    .subscribe({
+      next: res => {
+        this.sendingVencimientos.set(false);
+        this.success.set(res.mensaje || 'Avisos procesados correctamente.');
+        this.loadVencimientos();
+      },
+      error: () => {
+        this.sendingVencimientos.set(false);
+        this.error.set('No se pudieron despachar los avisos de vencimiento.');
+      },
+    });
   }
 
   logout(): void {
